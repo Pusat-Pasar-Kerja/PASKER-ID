@@ -151,13 +151,13 @@ if (file_exists($pkiCssPath)) {
                 Nomor WhatsApp <span class="req">*</span>
             </label>
             <input type="text" name="whatsapp" id="pki_whatsapp" value="<?php echo $vWhatsapp; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx">
-            <div style="margin-top:5px; margin-bottom:3px;">
+            <div class="pki-field-helper" id="helper_whatsapp">Gunakan nomor WhatsApp aktif.</div>
+            <div style="margin-top:6px; margin-bottom:2px;">
                 <label style="font-size:12px; font-weight:500; color:#334155; display:inline-flex; align-items:center; gap:6px; cursor:pointer; user-select:none;">
                     <input type="checkbox" id="pki_same_as_phone" style="width:14px; height:14px; accent-color:#0284c7; cursor:pointer;" <?php echo (!empty($vPhone) && $vPhone === $vWhatsapp) ? 'checked' : ''; ?>>
                     <span>Samakan dengan Nomor Telepon Aktif</span>
                 </label>
             </div>
-            <div class="pki-field-helper" id="helper_whatsapp">Gunakan nomor WhatsApp aktif.</div>
         </div>
     </div>
 
