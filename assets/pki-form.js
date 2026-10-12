@@ -253,6 +253,7 @@
         initLocationSelector();
         initDomicileCheckbox();
         initAddressListeners();
+        initPhoneWhatsappSync();
         forms.forEach(f => initValidation(f));
         updateMapPreview();
     }
@@ -601,6 +602,48 @@
         enforceDigitsOnly(document.getElementById('pki_npwp'), 16);
     }
 
+    // ─── 2b. Sync Phone with WhatsApp Checkbox ───
+    function initPhoneWhatsappSync() {
+        const phoneInput = document.getElementById('pki_phone');
+        const waInput = document.getElementById('pki_whatsapp');
+        const sameCheckbox = document.getElementById('pki_same_as_phone');
+
+        if (!phoneInput || !waInput || !sameCheckbox) return;
+
+        // Auto-check if both fields have identical non-empty value initially
+        if (phoneInput.value && phoneInput.value === waInput.value) {
+            sameCheckbox.checked = true;
+        }
+
+        sameCheckbox.addEventListener('change', function () {
+            if (this.checked) {
+                waInput.value = phoneInput.value;
+                clearFieldError('whatsapp');
+            }
+        });
+
+        // Mirror phone changes if checkbox is checked
+        ['input', 'paste', 'change', 'keyup'].forEach(ev => {
+            phoneInput.addEventListener(ev, function () {
+                if (sameCheckbox.checked) {
+                    waInput.value = phoneInput.value;
+                    clearFieldError('whatsapp');
+                }
+            });
+        });
+
+        // Uncheck if user edits WhatsApp and value differs
+        ['input', 'paste', 'keyup'].forEach(ev => {
+            waInput.addEventListener(ev, function () {
+                if (waInput.value !== phoneInput.value) {
+                    sameCheckbox.checked = false;
+                } else if (waInput.value && waInput.value === phoneInput.value) {
+                    sameCheckbox.checked = true;
+                }
+            });
+        });
+    }
+
     // ─── 3. Address Listeners for Live Map ───
     function initAddressListeners() {
         const addrInput = document.getElementById('pki_inputAddress');
@@ -744,15 +787,15 @@
                 return;
             }
             clearFieldError('permit_document');
-        } else if (fieldId === 'workplace_photo') {
+        } else if (fieldId === 'workplace_photo' || fieldId === 'business_logo') {
             const ext = (file.name.split('.').pop() || '').toLowerCase();
             if (!['png', 'jpg', 'jpeg'].includes(ext) || file.size > 2 * 1024 * 1024) {
                 input.value = '';
-                setFieldError('workplace_photo', 'Format PNG, JPG. Ukuran Maksimal 2MB.');
+                setFieldError(fieldId, 'Format PNG, JPG. Ukuran Maksimal 2MB.');
                 setUploadSizeInfo(fieldId, 0);
                 return;
             }
-            clearFieldError('workplace_photo');
+            clearFieldError(fieldId);
         }
 
         if (textBox) {
@@ -805,7 +848,7 @@
             textBox.classList.remove('has-file');
             textBox.textContent = fieldId === 'permit_document'
                 ? 'Pilih file untuk diunggah'
-                : 'Pilih foto untuk diunggah';
+                : (fieldId === 'business_logo' ? 'Pilih foto logo untuk diunggah' : 'Pilih foto untuk diunggah');
         }
 
         if (btn) btn.textContent = 'Upload';
@@ -825,6 +868,8 @@
         whatsapp: 'Gunakan nomor WhatsApp aktif.',
         profession: 'Pilih jenis usaha individu yang paling sesuai dengan kegiatan utama Anda.',
         npwp: 'NPWP 15 atau 16 digit.',
+        brand_name: 'Nama brand atau merek usaha/kegiatan yang dijalankan.',
+        business_logo: 'Format PNG, JPG. Ukuran Maksimal 2MB',
         location: 'Pilih lokasi secara berjenjang sampai Kelurahan/Desa.',
         address: 'Tuliskan alamat lengkap tempat usaha/kegiatan.',
         postal_code: 'Pilihan kode pos mengikuti lokasi yang dipilih.',
@@ -865,7 +910,7 @@
 
     function initValidation(form) {
         // Live clear on input
-        ['owner_name', 'phone', 'whatsapp', 'npwp', 'address'].forEach(id => {
+        ['owner_name', 'phone', 'whatsapp', 'npwp', 'address', 'brand_name'].forEach(id => {
             const input = document.getElementById(`pki_${id}`);
             if (input) {
                 input.addEventListener('input', () => clearFieldError(id));
@@ -1034,6 +1079,20 @@
                 }
             } else {
                 clearFieldError('workplace_photo');
+            }
+
+            // Logo Usaha (Opsional, validasi file jika dipilih)
+            const logoFileInput = document.getElementById('pki_input_business_logo');
+            const logoFile = logoFileInput?.files?.[0];
+            if (logoFile) {
+                const logoExt = (logoFile.name.split('.').pop() || '').toLowerCase();
+                if (!['png', 'jpg', 'jpeg'].includes(logoExt) || logoFile.size > 2 * 1024 * 1024) {
+                    flagError('business_logo', 'Format PNG, JPG. Ukuran Maksimal 2MB.', document.getElementById('pki_box_business_logo'));
+                } else {
+                    clearFieldError('business_logo');
+                }
+            } else {
+                clearFieldError('business_logo');
             }
 
             // 12. Media Sosial (Minimal 1 diisi)

@@ -24,6 +24,8 @@ function ensure_platform_schema(): void
         'longitude' => 'VARCHAR(40) NULL',
         'permit_document' => 'VARCHAR(255) NULL',
         'workplace_photo' => 'VARCHAR(255) NULL',
+        'brand_name' => 'VARCHAR(255) NULL',
+        'business_logo' => 'VARCHAR(255) NULL',
         'consent_accepted' => 'TINYINT(1) NOT NULL DEFAULT 0',
         'active_until' => 'DATETIME NULL',
         'last_activated_at' => 'DATETIME NULL',

@@ -56,6 +56,22 @@ if (!empty($vPhoto)) {
         }
     }
 }
+$vBrandName = e($formData['brand_name'] ?? '');
+$vLogo = $formData['business_logo'] ?? ($formData['brand_logo'] ?? '');
+$vLogoSizeText = '';
+if (!empty($vLogo)) {
+    $baseDir = realpath(__DIR__ . '/..');
+    $logoRelative = ltrim(str_replace('\\', '/', (string) $vLogo), '/');
+    $logoAbsolute = realpath(__DIR__ . '/../' . $logoRelative);
+    if ($baseDir && $logoAbsolute && str_starts_with($logoAbsolute, $baseDir) && is_file($logoAbsolute)) {
+        $bytes = (int) filesize($logoAbsolute);
+        if ($bytes > 0) {
+            $vLogoSizeText = $bytes >= 1024 * 1024
+                ? number_format($bytes / (1024 * 1024), 2) . ' MB'
+                : number_format($bytes / 1024, 2) . ' KB';
+        }
+    }
+}
 
 $vLinkedin = e($formData['linkedin'] ?? '');
 $vFacebook = e($formData['facebook'] ?? '');
@@ -135,6 +151,12 @@ if (file_exists($pkiCssPath)) {
                 Nomor WhatsApp <span class="req">*</span>
             </label>
             <input type="text" name="whatsapp" id="pki_whatsapp" value="<?php echo $vWhatsapp; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx">
+            <div style="margin-top:5px; margin-bottom:3px;">
+                <label style="font-size:12px; font-weight:500; color:#334155; display:inline-flex; align-items:center; gap:6px; cursor:pointer; user-select:none;">
+                    <input type="checkbox" id="pki_same_as_phone" style="width:14px; height:14px; accent-color:#0284c7; cursor:pointer;" <?php echo (!empty($vPhone) && $vPhone === $vWhatsapp) ? 'checked' : ''; ?>>
+                    <span>Samakan dengan Nomor Telepon Aktif</span>
+                </label>
+            </div>
             <div class="pki-field-helper" id="helper_whatsapp">Gunakan nomor WhatsApp aktif (10–15 digit angka).</div>
         </div>
     </div>
@@ -189,6 +211,54 @@ if (file_exists($pkiCssPath)) {
 <!-- 2. TEMPAT USAHA / KEGIATAN PEMBERI KERJA -->
 <div class="modal-section" style="margin-bottom:20px;">
     <div class="section-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:14px;">2. TEMPAT USAHA / KEGIATAN PEMBERI KERJA</div>
+
+    <div class="pki-grid-2">
+        <div class="pki-field">
+            <label class="pki-field-label" id="label_brand_name" for="pki_brand_name">
+                Nama Brand Usaha
+                <span class="pki-tooltip" tabindex="0" role="tooltip">
+                    <?php echo $infoIconSvg; ?>
+                    <span class="tooltip-popover">Nama merek dagang, brand, atau nama komersial tempat usaha/kegiatan Anda.</span>
+                </span>
+            </label>
+            <input type="text" name="brand_name" id="pki_brand_name" value="<?php echo $vBrandName; ?>" placeholder="Masukkan nama brand usaha">
+            <div class="pki-field-helper" id="helper_brand_name">Nama brand atau merek usaha/kegiatan yang dijalankan.</div>
+        </div>
+        <div class="pki-field">
+            <label class="pki-field-label" id="label_business_logo">
+                Logo Usaha
+                <span class="pki-tooltip" tabindex="0" role="tooltip">
+                    <?php echo $infoIconSvg; ?>
+                    <span class="tooltip-popover">Unggah logo resmi atau foto identitas visual usaha/kegiatan Anda.</span>
+                </span>
+            </label>
+            <div class="pki-upload-box" id="pki_box_business_logo" onclick="pkiTriggerUpload('business_logo')">
+                <span class="pki-upload-text <?php echo !empty($vLogo) ? 'has-file' : ''; ?>" id="pki_text_business_logo">
+                    <?php if (!empty($vLogo)): ?>
+                        <i class="fa-solid fa-image" style="color:#0284c7; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($vLogo)); ?></span>
+                    <?php else: ?>
+                        <span>Pilih foto logo untuk diunggah</span>
+                    <?php endif; ?>
+                </span>
+                <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                    <?php if (!empty($vLogo)): ?>
+                        <button type="button" class="pki-upload-clear-btn" title="Hapus logo" onclick="pkiClearUpload(event, 'business_logo')">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    <?php endif; ?>
+                    <button type="button" class="pki-upload-btn" id="pki_btn_business_logo"><?php echo !empty($vLogo) ? 'Ganti' : 'Upload'; ?></button>
+                </div>
+            </div>
+            <input type="file" name="business_logo" id="pki_input_business_logo" accept=".png,.jpg,.jpeg" style="display:none;" onchange="pkiHandleFileChange(this, 'business_logo')">
+            <input type="hidden" name="existing_business_logo" id="pki_existing_business_logo" value="<?php echo e($vLogo); ?>">
+            <div class="pki-field-helper" id="helper_business_logo">Format PNG, JPG. Ukuran Maksimal 2MB</div>
+            <div class="pki-field-helper" id="helper_business_logo_size" style="<?php echo $vLogoSizeText !== '' ? '' : 'display:none;'; ?>">
+                <?php if ($vLogoSizeText !== ''): ?>
+                    Ukuran file yang di upload: <?php echo e($vLogoSizeText); ?>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
 
     <div class="pki-field">
         <label class="pki-field-label" id="label_description" for="pki_description">

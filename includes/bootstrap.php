@@ -185,6 +185,12 @@ function ensure_sqlite_extra_tables(PDO $pdo): void
             if (!in_array('social_media', $cols, true)) {
                 $pdo->exec('ALTER TABLE employer_profiles ADD COLUMN social_media TEXT');
             }
+            if (!in_array('brand_name', $cols, true)) {
+                $pdo->exec('ALTER TABLE employer_profiles ADD COLUMN brand_name TEXT');
+            }
+            if (!in_array('business_logo', $cols, true)) {
+                $pdo->exec('ALTER TABLE employer_profiles ADD COLUMN business_logo TEXT');
+            }
         } catch (Throwable $ignored) {}
     } catch (Throwable $ignored) {}
 
@@ -584,6 +590,8 @@ function ensure_database_schema(PDO $pdo): void
                 'permit_document' => "VARCHAR(255) NULL AFTER doc_location_photo",
                 'workplace_photo' => "VARCHAR(255) NULL AFTER permit_document",
                 'user_consent' => "TINYINT(1) DEFAULT 0 AFTER description",
+                'brand_name' => "VARCHAR(255) NULL AFTER description",
+                'business_logo' => "VARCHAR(255) NULL AFTER brand_name",
                 'consent_accepted' => "TINYINT(1) NOT NULL DEFAULT 0 AFTER user_consent",
                 'consent_agreed' => "TINYINT(1) DEFAULT 0 AFTER consent_accepted",
                 'verification_status' => "ENUM('NOT_SUBMITTED', 'PENDING', 'NEEDS_REVISION', 'APPROVED', 'REJECTED', 'SUSPENDED', 'TRANSITION_LIMITED', 'FULL_DISABLED') DEFAULT 'NOT_SUBMITTED' AFTER verified",

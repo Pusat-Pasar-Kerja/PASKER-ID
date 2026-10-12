@@ -443,6 +443,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $latitude    = trim($_POST['latitude'] ?? '');
         $longitude   = trim($_POST['longitude'] ?? '');
         $description = trim($_POST['description'] ?? '');
+        $brandName   = trim($_POST['brand_name'] ?? '');
         $consent     = isset($_POST['user_consent']) ? 1 : 0;
 
         if ($ownerName === '' || $nik === '' || $phone === '' || $whatsapp === '' || $profession === '' || $npwp === '' || ($linkedin === '' && $facebook === '' && $instagram === '') || !$consent) {
@@ -491,6 +492,22 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             }
         }
         $workplacePhoto = store_upload('workplace_photo', 'employer/' . $user['id'], ['png', 'jpg', 'jpeg']);
+
+        if (!empty($_FILES['business_logo']['name'])) {
+            $logoExt = strtolower(pathinfo((string) $_FILES['business_logo']['name'], PATHINFO_EXTENSION));
+            $logoSize = (int) ($_FILES['business_logo']['size'] ?? 0);
+            $logoErr = (int) ($_FILES['business_logo']['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($logoErr !== UPLOAD_ERR_OK || !in_array($logoExt, ['png', 'jpg', 'jpeg'], true) || $logoSize > 2 * 1024 * 1024) {
+                $_SESSION['profile_modal_error'] = 'Logo Usaha harus berformat PNG atau JPG dengan ukuran maksimal 2MB.';
+                flash('error', 'Logo Usaha harus berformat PNG atau JPG dengan ukuran maksimal 2MB.');
+                redirect('dashboard.php?open_profile=1');
+                exit;
+            }
+        }
+        $businessLogo = store_upload('business_logo', 'employer/' . $user['id'], ['png', 'jpg', 'jpeg']);
+        $existingLogo = !empty($_POST['existing_business_logo']) ? trim($_POST['existing_business_logo']) : null;
+        $businessLogo = $businessLogo ?: ($existingLogo ?: ($profile['business_logo'] ?? null));
+
         $existingPermit = !empty($_POST['existing_permit_document']) ? trim($_POST['existing_permit_document']) : null;
         $existingWorkplace = !empty($_POST['existing_workplace_photo']) ? trim($_POST['existing_workplace_photo']) : null;
         $permitDoc = $permitDoc ?: ($existingPermit ?: ($profile['permit_document'] ?? $profile['doc_permission'] ?? null));
@@ -516,6 +533,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if ($profile) {
             $stmt = db()->prepare('UPDATE employer_profiles SET
                 owner_name = ?, nik = ?, phone = ?, whatsapp = ?, profession = ?, npwp = ?,
+                brand_name = ?, business_logo = ?,
                 linkedin = ?, facebook = ?, instagram = ?,
                 same_location_siapkerja = ?, province = ?, city = ?, domicile_city_id = ?, district = ?, village = ?, postal_code = ?,
                 same_address_siapkerja = ?, address = ?, address_detail = ?,
@@ -530,6 +548,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 WHERE user_id = ?');
             $stmt->execute([
                 $ownerName, $nik, $phone, $whatsapp, $profession, $npwp,
+                $brandName, $businessLogo,
                 $linkedin, $facebook, $instagram,
                 $sameLoc, $province, $city, $city, $district, $village, $postalCode,
                 $sameAddr, $address, $addressDetail,
@@ -560,15 +579,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         } else {
             $stmt = db()->prepare('INSERT INTO employer_profiles (
                 user_id, owner_name, nik, phone, whatsapp, profession, npwp,
+                brand_name, business_logo,
                 linkedin, facebook, instagram,
                 same_location_siapkerja, province, city, domicile_city_id, district, village, postal_code,
                 same_address_siapkerja, address, address_detail,
                 latitude, longitude, permit_document, doc_permission, workplace_photo, doc_location_photo,
                 description, user_consent, consent_accepted,
                 entity_type, verification_status, verified, active_until, extension_requested, extension_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Individu", "PENDING", 0, NULL, 0, "NONE")');
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Individu", "PENDING", 0, NULL, 0, "NONE")');
             $stmt->execute([
                 $user['id'], $ownerName, $nik, $phone, $whatsapp, $profession, $npwp,
+                $brandName, $businessLogo,
                 $linkedin, $facebook, $instagram,
                 $sameLoc, $province, $city, $city, $district, $village, $postalCode,
                 $sameAddr, $address, $addressDetail,
