@@ -285,15 +285,62 @@ a {
 
 /* Helper Text */
 .pki-field-helper {
-    font-size: 11px !important;
+    font-size: 11.5px !important;
     color: #64748b !important;
-    margin-top: 4px !important;
-    line-height: 1.35 !important;
+    margin-top: 5px !important;
+    line-height: 1.4 !important;
     font-weight: 400 !important;
+    transition: color 0.15s ease !important;
 }
 .pki-field-helper.error {
-    color: #ef4444 !important;
-    font-weight: 500 !important;
+    color: #dc2626 !important;
+    font-weight: 600 !important;
+    display: block !important;
+}
+
+/* Red error styling for inputs & containers */
+.pki-field.has-error input[type="text"],
+.pki-field.has-error select,
+.pki-field.has-error textarea,
+.pki-field.has-error .hierarchical-loc-field,
+.pki-field.has-error .pki-upload-box,
+.pki-field input.error,
+.pki-field select.error,
+.pki-field textarea.error,
+.hierarchical-loc-field.error,
+.pki-upload-box.error {
+    border-color: #dc2626 !important;
+    background-color: #fffafb !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+}
+
+.pki-field.has-error input[type="text"]:focus,
+.pki-field.has-error select:focus,
+.pki-field.has-error textarea:focus,
+.pki-field input.error:focus,
+.pki-field select.error:focus,
+.pki-field textarea.error:focus,
+.hierarchical-loc-field.error:focus,
+.pki-upload-box.error:focus {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.22) !important;
+}
+
+.pki-consent-box.has-error,
+.pki-consent-box.error {
+    border-color: #dc2626 !important;
+    background-color: #fef2f2 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+}
+
+.pki-field-label.error {
+    color: #dc2626 !important;
+    font-weight: 700 !important;
+}
+
+.pki-field-helper.error {
+    color: #dc2626 !important;
+    font-weight: 600 !important;
     display: block !important;
 }
 
@@ -544,42 +591,44 @@ a {
     z-index: 3 !important;
 }
 
-/* Compact Upload Box */
+/* Compact Upload Box (Matching Karirhub Screenshot) */
 .pki-upload-box {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 8px !important;
+    gap: 10px !important;
     flex-wrap: nowrap !important;
-    height: 38px !important;
+    min-height: 44px !important;
+    height: 44px !important;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    padding: 0 8px 0 12px !important;
-    border: 1px solid #cbd5e1 !important;
-    border-radius: 6px !important;
+    padding: 0 10px 0 14px !important;
+    border: 1px dashed #cbd5e1 !important;
+    border-radius: 8px !important;
     background: #ffffff !important;
     cursor: pointer !important;
-    transition: border-color 0.15s ease !important;
+    transition: all 0.15s ease !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
 }
 .pki-upload-box:hover {
-    border-color: #0284c7 !important;
+    border-color: #2563eb !important;
+    background: #f8fafc !important;
 }
 .pki-upload-text {
     flex: 1 1 0% !important;
     min-width: 0 !important;
     width: 0 !important;
     max-width: 100% !important;
-    font-size: 12px !important;
+    font-size: 12.5px !important;
     color: #64748b !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 8px !important;
 }
 .pki-upload-text > span,
 .pki-upload-filename {
@@ -595,13 +644,13 @@ a {
     font-weight: 600 !important;
 }
 .pki-upload-btn {
-    height: 28px !important;
-    padding: 0 12px !important;
-    border-radius: 5px !important;
-    background: #f1f5f9 !important;
+    height: 30px !important;
+    padding: 0 14px !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
-    color: #334155 !important;
-    font-size: 12px !important;
+    color: #0f172a !important;
+    font-size: 12.5px !important;
     font-weight: 600 !important;
     cursor: pointer !important;
     transition: all 0.15s ease !important;
@@ -610,10 +659,11 @@ a {
     justify-content: center !important;
     flex-shrink: 0 !important;
     white-space: nowrap !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
 }
 .pki-upload-btn:hover {
-    background: #e2e8f0 !important;
-    color: #0f172a !important;
+    background: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
 }
 .pki-upload-clear-btn {
     height: 24px !important;
@@ -626,7 +676,7 @@ a {
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
-    font-size: 11px !important;
+    font-size: 12px !important;
 }
 .pki-upload-clear-btn:hover {
     color: #ef4444 !important;
@@ -638,11 +688,11 @@ a {
     background: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 8px !important;
-    padding: 12px 14px !important;
-    font-size: 12px !important;
+    padding: 14px 16px !important;
+    font-size: 12.5px !important;
     color: #334155 !important;
-    line-height: 1.6 !important;
-    margin-bottom: 12px !important;
+    line-height: 1.65 !important;
+    margin-bottom: 14px !important;
     text-align: left !important;
 }
 #label_user_consent_container {
@@ -672,48 +722,178 @@ a {
     display: block !important;
 }
 
-/* Compact Modal Footer */
-.modal-panel[data-modal="modal-employer-profile"] .modal-footer {
-    padding: 14px 0 0 0 !important;
-    margin-top: 16px !important;
+/* ─── MULTI-STEP 4 LANGKAH WIZARD STYLES ──────────────────────────────── */
+
+/* Callout Banner: Instansi Anda */
+.pki-entity-badge {
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 12px 18px !important;
+    margin-bottom: 22px !important;
+}
+.pki-entity-badge-label {
+    font-size: 11.5px !important;
+    font-weight: 500 !important;
+    color: #64748b !important;
+    margin-bottom: 4px !important;
+}
+.pki-entity-badge-val {
+    font-size: 14.5px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
     display: flex !important;
-    justify-content: flex-end !important;
-    gap: 10px !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+/* Step Header: Title & Step Progress Counter */
+.pki-step-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 20px !important;
+    padding-bottom: 4px !important;
+}
+.pki-step-title {
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    letter-spacing: -0.2px !important;
+}
+.pki-step-indicator {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    color: #475467 !important;
+}
+.pki-step-pie {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 18px !important;
+    height: 18px !important;
+}
+.pki-step-counter {
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    color: #475467 !important;
+}
+
+/* Step Panes */
+.pki-step-pane {
+    display: none;
+}
+.pki-step-pane.active {
+    display: block !important;
+    animation: pkiPaneFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+@keyframes pkiPaneFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(3px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Step Footer Navigation Controls */
+.pki-step-footer {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-top: 24px !important;
+    padding-top: 18px !important;
     border-top: 1px solid #f1f5f9 !important;
 }
-.modal-footer .ghost-btn {
-    height: 36px !important;
-    padding: 0 16px !important;
-    border: 1px solid #cbd5e1 !important;
+.pki-btn-prev {
+    height: 44px !important;
+    padding: 0 20px !important;
     background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
     color: #334155 !important;
     font-weight: 600 !important;
-    font-size: 12.5px !important;
-    border-radius: 6px !important;
+    font-size: 13.5px !important;
+    border-radius: 8px !important;
     cursor: pointer !important;
     transition: all 0.15s ease !important;
+    display: inline-flex;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
 }
-.modal-footer .ghost-btn:hover {
+.pki-btn-prev:hover {
     background: #f8fafc !important;
     border-color: #94a3b8 !important;
+    color: #0f172a !important;
 }
-.modal-footer .primary-btn {
-    height: 36px !important;
-    padding: 0 18px !important;
-    background: #0284c7 !important;
+
+.pki-btn-next,
+.pki-btn-submit {
+    height: 44px !important;
+    padding: 0 24px !important;
+    background: #2563eb !important;
+    border: none !important;
     color: #ffffff !important;
     font-weight: 700 !important;
-    font-size: 12.5px !important;
-    border-radius: 6px !important;
-    border: none !important;
+    font-size: 14px !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    flex: 1 1 0% !important;
+    width: 100% !important;
+    display: inline-flex;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.22) !important;
+    transition: all 0.15s ease !important;
+    white-space: nowrap !important;
+}
+.pki-btn-next:hover,
+.pki-btn-submit:hover {
+    background: #1d4ed8 !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.32) !important;
+}
+
+.pki-btn-prev[style*="display: none"],
+.pki-btn-prev[style*="display:none"],
+.pki-btn-next[style*="display: none"],
+.pki-btn-next[style*="display:none"],
+.pki-btn-submit[style*="display: none"],
+.pki-btn-submit[style*="display:none"] {
+    display: none !important;
+}
+.pki-cancel-wrapper {
+    display: inline-flex !important;
+    align-items: center !important;
+}
+.pki-cancel-wrapper .ghost-btn {
+    height: 44px !important;
+    padding: 0 18px !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #475467 !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
     cursor: pointer !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
-    box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2) !important;
+    text-decoration: none !important;
     transition: all 0.15s ease !important;
 }
-.modal-footer .primary-btn:hover {
-    background: #0369a1 !important;
+.pki-cancel-wrapper .ghost-btn:hover {
+    background: #f8fafc !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+}
+
+/* Compact Modal Footer Compatibility */
+.modal-panel[data-modal="modal-employer-profile"] .modal-footer {
+    display: none !important; /* replaced by inside-form pki-step-footer */
 }

@@ -882,23 +882,42 @@
         description: 'Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen.'
     };
 
+    function getFieldElement(fieldId) {
+        if (fieldId === 'location') return document.getElementById('pki_hierarchicalLocationInput');
+        if (fieldId === 'address') return document.getElementById('pki_inputAddress');
+        if (fieldId === 'postal_code') return document.getElementById('pki_selectPostalCode');
+        if (fieldId === 'permit_document') return document.getElementById('pki_box_permit_document');
+        if (fieldId === 'workplace_photo') return document.getElementById('pki_box_workplace_photo');
+        if (fieldId === 'business_logo') return document.getElementById('pki_box_business_logo');
+        if (fieldId === 'user_consent') return document.getElementById('pki_user_consent');
+        return document.getElementById(`pki_${fieldId}`) || document.getElementById(fieldId);
+    }
+
     function setFieldError(fieldId, errorMsg) {
         const label = document.getElementById(`label_${fieldId}`);
         const helper = document.getElementById(`helper_${fieldId}`);
+        const el = getFieldElement(fieldId);
+        const container = (label || helper || el)?.closest('.pki-field');
 
         if (label) label.classList.add('error');
+        if (el) el.classList.add('error');
+        if (container) container.classList.add('has-error');
         if (helper) {
             helper.classList.add('error');
             helper.textContent = errorMsg;
-            helper.style.display = 'block';
+            helper.style.setProperty('display', 'block', 'important');
         }
     }
 
     function clearFieldError(fieldId) {
         const label = document.getElementById(`label_${fieldId}`);
         const helper = document.getElementById(`helper_${fieldId}`);
+        const el = getFieldElement(fieldId);
+        const container = (label || helper || el)?.closest('.pki-field');
 
         if (label) label.classList.remove('error');
+        if (el) el.classList.remove('error');
+        if (container) container.classList.remove('has-error');
         if (helper) {
             helper.classList.remove('error');
             helper.textContent = DEFAULT_HELPERS[fieldId] || '';
@@ -910,7 +929,7 @@
 
     function initValidation(form) {
         // Live clear on input
-        ['owner_name', 'phone', 'whatsapp', 'npwp', 'address', 'brand_name'].forEach(id => {
+        ['owner_name', 'phone', 'whatsapp', 'npwp', 'brand_name'].forEach(id => {
             const input = document.getElementById(`pki_${id}`);
             if (input) {
                 input.addEventListener('input', () => clearFieldError(id));
@@ -955,12 +974,105 @@
         const consentCb = document.getElementById('pki_user_consent');
         if (consentCb) {
             consentCb.addEventListener('change', function () {
-                if (this.checked) clearFieldError('user_consent');
+                if (this.checked) {
+                    clearFieldError('user_consent');
+                    document.getElementById('pki_consent_statement_box')?.classList.remove('has-error');
+                }
             });
         }
 
-        // Intercept Submit
-        form.addEventListener('submit', function (e) {
+        // Multi-Step Wizard State & Navigation
+        let currentStep = 1;
+        const STEP_TITLES = {
+            1: 'Identitas Perorangan',
+            2: 'PROFIL USAHA / KEGIATAN PEMBERI KERJA',
+            3: 'File & Bukti Tempat Usaha & Media Sosial',
+            4: 'PERNYATAAN'
+        };
+
+        function updateStepPie(step) {
+            const pieContainer = document.getElementById('pkiStepPie');
+            if (!pieContainer) return;
+            const circ = 56.54;
+            const percent = Math.min(Math.max(step / 4, 0), 1);
+            const offset = circ * (1 - percent);
+            pieContainer.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="#cbd5e1" stroke-width="2.5" fill="none"></circle>
+                    <circle cx="12" cy="12" r="9" stroke="#2563eb" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${offset.toFixed(2)}" transform="rotate(-90 12 12)"></circle>
+                </svg>
+            `;
+        }
+
+        function goToStep(step) {
+            if (step < 1) step = 1;
+            if (step > 4) step = 4;
+            currentStep = step;
+
+            // Toggle Panes
+            const panes = document.querySelectorAll('.pki-step-pane');
+            panes.forEach(pane => {
+                const paneStep = parseInt(pane.getAttribute('data-step') || '1', 10);
+                if (paneStep === step) {
+                    pane.classList.add('active');
+                    pane.style.display = 'block';
+                } else {
+                    pane.classList.remove('active');
+                    pane.style.display = 'none';
+                }
+            });
+
+            // Update Header Title & Counter
+            const titleEl = document.getElementById('pkiStepTitle');
+            if (titleEl) {
+                titleEl.textContent = STEP_TITLES[step] || 'Identitas Perorangan';
+            }
+
+            const counterEl = document.getElementById('pkiStepCounter');
+            if (counterEl) {
+                counterEl.textContent = `Langkah ${step}/4`;
+            }
+
+            updateStepPie(step);
+
+            // Update Navigation Buttons
+            const btnPrev = document.getElementById('pkiBtnPrev');
+            const btnNext = document.getElementById('pkiBtnNext');
+            const btnSubmit = document.getElementById('btnSubmitProfile');
+            const cancelWrapper = document.getElementById('pkiCancelWrapper');
+
+            if (cancelWrapper) {
+                cancelWrapper.style.setProperty('display', 'none', 'important');
+            }
+            if (btnPrev) {
+                btnPrev.textContent = 'Kembali';
+                btnPrev.style.setProperty('display', (step > 1) ? 'inline-flex' : 'none', 'important');
+            }
+            if (btnNext) {
+                btnNext.textContent = 'Selanjutnya';
+                btnNext.style.setProperty('display', (step < 4) ? 'inline-flex' : 'none', 'important');
+            }
+            if (btnSubmit) {
+                btnSubmit.style.setProperty('display', (step === 4) ? 'inline-flex' : 'none', 'important');
+            }
+
+            if (step === 2) {
+                setTimeout(updateMapPreview, 60);
+            }
+
+            // Smooth scroll up to top of container
+            const modalBody = document.querySelector('.modal-body');
+            if (modalBody && typeof modalBody.scrollTo === 'function') {
+                modalBody.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                const card = document.querySelector('.registration-card, .profile-modal-preview, .modal-panel');
+                if (card && typeof card.scrollIntoView === 'function') {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        }
+
+        function validateStep(stepNumber) {
             let hasError = false;
             let firstErrorElement = null;
 
@@ -972,153 +1084,157 @@
                 }
             }
 
-            // 1. Nama Pemberi Kerja
-            const ownerName = document.getElementById('pki_owner_name')?.value?.trim();
-            if (!ownerName) {
-                flagError('owner_name', 'Nama Pemberi Kerja wajib diisi.', document.getElementById('pki_owner_name'));
-            } else {
-                clearFieldError('owner_name');
-            }
-
-            // 2. NIK
-            const nik = document.getElementById('pki_nik')?.value?.trim();
-            if (!nik || nik.length !== 16) {
-                flagError('nik', 'NIK wajib diisi 16 digit angka.', document.getElementById('pki_nik'));
-            } else {
-                clearFieldError('nik');
-            }
-
-            // 3. Nomor Telepon Aktif
-            const phone = document.getElementById('pki_phone')?.value?.trim();
-            if (!phone || phone.length < 10 || phone.length > 15) {
-                flagError('phone', 'Nomor telepon aktif wajib diisi (10–15 digit angka).', document.getElementById('pki_phone'));
-            } else {
-                clearFieldError('phone');
-            }
-
-            // 4. Nomor WhatsApp
-            const whatsapp = document.getElementById('pki_whatsapp')?.value?.trim();
-            if (!whatsapp || whatsapp.length < 10 || whatsapp.length > 15) {
-                flagError('whatsapp', 'Nomor WhatsApp aktif wajib diisi (10–15 digit angka).', document.getElementById('pki_whatsapp'));
-            } else {
-                clearFieldError('whatsapp');
-            }
-
-            // 5. Jenis Usaha Individu
-            const profession = document.getElementById('pki_profession')?.value?.trim();
-            if (!profession) {
-                flagError('profession', 'Pilih jenis usaha individu yang sesuai.', document.getElementById('pki_profession'));
-            } else {
-                clearFieldError('profession');
-            }
-
-            // 6. NPWP
-            const npwp = document.getElementById('pki_npwp')?.value?.trim();
-            const npwpDigits = (npwp || '').replace(/\D/g, '');
-            if (!npwp || npwpDigits.length < 15 || npwpDigits.length > 16) {
-                flagError('npwp', 'NPWP wajib diisi (15 atau 16 digit angka).', document.getElementById('pki_npwp'));
-            } else {
-                clearFieldError('npwp');
-            }
-
-            // 7. Lokasi Tempat Usaha / Kegiatan
-            const village = document.getElementById('pki_hiddenVillage')?.value?.trim();
-            if (!village) {
-                flagError('location', 'Lokasi tempat usaha/kegiatan wajib dipilih secara berjenjang.', document.getElementById('pki_hierarchicalLocationInput'));
-            } else {
-                clearFieldError('location');
-            }
-
-            // 8. Alamat Lengkap Tempat Usaha
-            const address = document.getElementById('pki_inputAddress')?.value?.trim();
-            if (!address) {
-                flagError('address', 'Alamat lengkap tempat usaha/kegiatan wajib diisi.', document.getElementById('pki_inputAddress'));
-            } else {
-                clearFieldError('address');
-            }
-
-            // 9. Kode Pos
-            const postalCode = document.getElementById('pki_selectPostalCode')?.value?.trim();
-            if (!postalCode) {
-                flagError('postal_code', 'Kode pos wajib dipilih/diisi.', document.getElementById('pki_selectPostalCode'));
-            } else {
-                clearFieldError('postal_code');
-            }
-
-            // 10. Dokumen Perizinan Usaha
-            const permitFileInput = document.getElementById('pki_input_permit_document');
-            const existingPermit = document.getElementById('pki_existing_permit_document')?.value?.trim();
-            const permitFile = permitFileInput?.files?.[0];
-            const hasPermit = Boolean(permitFile) || Boolean(existingPermit);
-            if (!hasPermit) {
-                flagError('permit_document', 'Dokumen Perizinan Usaha wajib diunggah minimal 1 dokumen.', document.getElementById('pki_box_permit_document'));
-            } else if (permitFile) {
-                const permitExt = (permitFile.name.split('.').pop() || '').toLowerCase();
-                if (!['pdf', 'docx'].includes(permitExt) || permitFile.size > 2 * 1024 * 1024) {
-                    flagError('permit_document', 'Format PDF, Docx. Ukuran Maksimal 2MB.', document.getElementById('pki_box_permit_document'));
+            if (stepNumber === 1) {
+                // 1. Nama Pemberi Kerja
+                const ownerName = document.getElementById('pki_owner_name')?.value?.trim();
+                if (!ownerName) {
+                    flagError('owner_name', 'Nama Pemberi Kerja wajib diisi.', document.getElementById('pki_owner_name'));
                 } else {
-                    clearFieldError('permit_document');
+                    clearFieldError('owner_name');
                 }
-            } else {
-                clearFieldError('permit_document');
-            }
 
-            // 11. Foto Bukti Tempat Usaha / Lokasi
-            const photoFileInput = document.getElementById('pki_input_workplace_photo');
-            const existingPhoto = document.getElementById('pki_existing_workplace_photo')?.value?.trim();
-            const photoFile = photoFileInput?.files?.[0];
-            const hasPhoto = Boolean(photoFile) || Boolean(existingPhoto);
-            if (!hasPhoto) {
-                flagError('workplace_photo', 'Unggah minimal 1 foto tempat usaha/kegiatan.', document.getElementById('pki_box_workplace_photo'));
-            } else if (photoFile) {
-                const photoExt = (photoFile.name.split('.').pop() || '').toLowerCase();
-                if (!['png', 'jpg', 'jpeg'].includes(photoExt) || photoFile.size > 2 * 1024 * 1024) {
-                    flagError('workplace_photo', 'Format PNG, JPG. Ukuran Maksimal 2MB.', document.getElementById('pki_box_workplace_photo'));
+                // 2. NIK
+                const nik = document.getElementById('pki_nik')?.value?.trim();
+                if (!nik || nik.length !== 16) {
+                    flagError('nik', 'NIK wajib diisi 16 digit angka.', document.getElementById('pki_nik'));
                 } else {
-                    clearFieldError('workplace_photo');
+                    clearFieldError('nik');
                 }
-            } else {
-                clearFieldError('workplace_photo');
-            }
 
-            // Logo Usaha (Opsional, validasi file jika dipilih)
-            const logoFileInput = document.getElementById('pki_input_business_logo');
-            const logoFile = logoFileInput?.files?.[0];
-            if (logoFile) {
-                const logoExt = (logoFile.name.split('.').pop() || '').toLowerCase();
-                if (!['png', 'jpg', 'jpeg'].includes(logoExt) || logoFile.size > 2 * 1024 * 1024) {
-                    flagError('business_logo', 'Format PNG, JPG. Ukuran Maksimal 2MB.', document.getElementById('pki_box_business_logo'));
+                // 3. Nomor Telepon Aktif
+                const phone = document.getElementById('pki_phone')?.value?.trim();
+                if (!phone || phone.length < 10 || phone.length > 15) {
+                    flagError('phone', 'Nomor telepon aktif wajib diisi (10–15 digit angka).', document.getElementById('pki_phone'));
+                } else {
+                    clearFieldError('phone');
+                }
+
+                // 4. Nomor WhatsApp
+                const whatsapp = document.getElementById('pki_whatsapp')?.value?.trim();
+                if (!whatsapp || whatsapp.length < 10 || whatsapp.length > 15) {
+                    flagError('whatsapp', 'Nomor WhatsApp aktif wajib diisi (10–15 digit angka).', document.getElementById('pki_whatsapp'));
+                } else {
+                    clearFieldError('whatsapp');
+                }
+
+                // 5. Jenis Usaha Individu
+                const profession = document.getElementById('pki_profession')?.value?.trim();
+                if (!profession) {
+                    flagError('profession', 'Pilih jenis usaha individu yang sesuai.', document.getElementById('pki_profession'));
+                } else {
+                    clearFieldError('profession');
+                }
+
+                // 6. NPWP
+                const npwp = document.getElementById('pki_npwp')?.value?.trim();
+                const npwpDigits = (npwp || '').replace(/\D/g, '');
+                if (!npwp || npwpDigits.length < 15 || npwpDigits.length > 16) {
+                    flagError('npwp', 'NPWP wajib diisi (15 atau 16 digit angka).', document.getElementById('pki_npwp'));
+                } else {
+                    clearFieldError('npwp');
+                }
+            } else if (stepNumber === 2) {
+                // 7. Lokasi Tempat Usaha / Kegiatan
+                const village = document.getElementById('pki_hiddenVillage')?.value?.trim();
+                if (!village) {
+                    flagError('location', 'Lokasi tempat usaha/kegiatan wajib dipilih secara berjenjang.', document.getElementById('pki_hierarchicalLocationInput'));
+                } else {
+                    clearFieldError('location');
+                }
+
+                // 8. Alamat Lengkap Tempat Usaha
+                const address = document.getElementById('pki_inputAddress')?.value?.trim();
+                if (!address) {
+                    flagError('address', 'Alamat lengkap tempat usaha/kegiatan wajib diisi.', document.getElementById('pki_inputAddress'));
+                } else {
+                    clearFieldError('address');
+                }
+
+                // 9. Kode Pos
+                const postalCode = document.getElementById('pki_selectPostalCode')?.value?.trim();
+                if (!postalCode) {
+                    flagError('postal_code', 'Kode pos wajib dipilih/diisi.', document.getElementById('pki_selectPostalCode'));
+                } else {
+                    clearFieldError('postal_code');
+                }
+
+                // Logo Usaha (Opsional, validasi file jika dipilih)
+                const logoFileInput = document.getElementById('pki_input_business_logo');
+                const logoFile = logoFileInput?.files?.[0];
+                if (logoFile) {
+                    const logoExt = (logoFile.name.split('.').pop() || '').toLowerCase();
+                    if (!['png', 'jpg', 'jpeg'].includes(logoExt) || logoFile.size > 2 * 1024 * 1024) {
+                        flagError('business_logo', 'Format PNG, JPG. Ukuran Maksimal 2MB.', document.getElementById('pki_box_business_logo'));
+                    } else {
+                        clearFieldError('business_logo');
+                    }
                 } else {
                     clearFieldError('business_logo');
                 }
-            } else {
-                clearFieldError('business_logo');
-            }
+            } else if (stepNumber === 3) {
+                // 10. Dokumen Perizinan Usaha
+                const permitFileInput = document.getElementById('pki_input_permit_document');
+                const existingPermit = document.getElementById('pki_existing_permit_document')?.value?.trim();
+                const permitFile = permitFileInput?.files?.[0];
+                const hasPermit = Boolean(permitFile) || Boolean(existingPermit);
+                if (!hasPermit) {
+                    flagError('permit_document', 'Dokumen Perizinan Usaha wajib diunggah minimal 1 dokumen.', document.getElementById('pki_box_permit_document'));
+                } else if (permitFile) {
+                    const permitExt = (permitFile.name.split('.').pop() || '').toLowerCase();
+                    if (!['pdf', 'docx'].includes(permitExt) || permitFile.size > 2 * 1024 * 1024) {
+                        flagError('permit_document', 'Format PDF, Docx. Ukuran Maksimal 2MB.', document.getElementById('pki_box_permit_document'));
+                    } else {
+                        clearFieldError('permit_document');
+                    }
+                } else {
+                    clearFieldError('permit_document');
+                }
 
-            // 12. Media Sosial (Minimal 1 diisi)
-            const linkedinVal = document.getElementById('pki_linkedin')?.value?.trim();
-            const facebookVal = document.getElementById('pki_facebook')?.value?.trim();
-            const instagramVal = document.getElementById('pki_instagram')?.value?.trim();
-            if (!linkedinVal && !facebookVal && !instagramVal) {
-                flagError('linkedin', 'Wajib mengisi minimal salah satu media sosial (LinkedIn, Facebook, atau Instagram).', document.getElementById('pki_linkedin'));
-                setFieldError('facebook', 'Wajib mengisi minimal salah satu media sosial.');
-                setFieldError('instagram', 'Wajib mengisi minimal salah satu media sosial.');
-            } else {
-                clearFieldError('linkedin');
-                clearFieldError('facebook');
-                clearFieldError('instagram');
-            }
+                // 11. Foto Bukti Tempat Usaha / Lokasi
+                const photoFileInput = document.getElementById('pki_input_workplace_photo');
+                const existingPhoto = document.getElementById('pki_existing_workplace_photo')?.value?.trim();
+                const photoFile = photoFileInput?.files?.[0];
+                const hasPhoto = Boolean(photoFile) || Boolean(existingPhoto);
+                if (!hasPhoto) {
+                    flagError('workplace_photo', 'Unggah minimal 1 foto tempat usaha/kegiatan.', document.getElementById('pki_box_workplace_photo'));
+                } else if (photoFile) {
+                    const photoExt = (photoFile.name.split('.').pop() || '').toLowerCase();
+                    if (!['png', 'jpg', 'jpeg'].includes(photoExt) || photoFile.size > 2 * 1024 * 1024) {
+                        flagError('workplace_photo', 'Format PNG, JPG. Ukuran Maksimal 2MB.', document.getElementById('pki_box_workplace_photo'));
+                    } else {
+                        clearFieldError('workplace_photo');
+                    }
+                } else {
+                    clearFieldError('workplace_photo');
+                }
 
-            // 13. Pernyataan
-            const consent = document.getElementById('pki_user_consent')?.checked;
-            if (!consent) {
-                flagError('user_consent', 'Anda harus menyetujui pernyataan sebelum mengajukan profil.', document.getElementById('pki_user_consent'));
-            } else {
-                clearFieldError('user_consent');
+                // 12. Media Sosial (Minimal 1 diisi)
+                const linkedinVal = document.getElementById('pki_linkedin')?.value?.trim();
+                const facebookVal = document.getElementById('pki_facebook')?.value?.trim();
+                const instagramVal = document.getElementById('pki_instagram')?.value?.trim();
+                if (!linkedinVal && !facebookVal && !instagramVal) {
+                    flagError('linkedin', 'Wajib mengisi minimal salah satu media sosial (LinkedIn, Facebook, atau Instagram).', document.getElementById('pki_linkedin'));
+                    setFieldError('facebook', 'Wajib mengisi minimal salah satu media sosial.');
+                    setFieldError('instagram', 'Wajib mengisi minimal salah satu media sosial.');
+                } else {
+                    clearFieldError('linkedin');
+                    clearFieldError('facebook');
+                    clearFieldError('instagram');
+                }
+            } else if (stepNumber === 4) {
+                // 13. Pernyataan
+                const consent = document.getElementById('pki_user_consent')?.checked;
+                const consentBox = document.getElementById('pki_consent_statement_box');
+                if (!consent) {
+                    if (consentBox) consentBox.classList.add('has-error');
+                    flagError('user_consent', 'Anda harus menyetujui pernyataan sebelum mengajukan profil.', document.getElementById('pki_user_consent'));
+                } else {
+                    if (consentBox) consentBox.classList.remove('has-error');
+                    clearFieldError('user_consent');
+                }
             }
 
             if (hasError) {
-                e.preventDefault();
                 if (firstErrorElement) {
                     firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     if (typeof firstErrorElement.focus === 'function') {
@@ -1127,7 +1243,63 @@
                 }
                 return false;
             }
+            return true;
+        }
+
+        // Attach Step Button Listeners
+        const btnNext = document.getElementById('pkiBtnNext');
+        if (btnNext && !btnNext.dataset.bound) {
+            btnNext.dataset.bound = 'true';
+            btnNext.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (validateStep(currentStep)) {
+                    goToStep(currentStep + 1);
+                }
+            });
+        }
+
+        const btnPrev = document.getElementById('pkiBtnPrev');
+        if (btnPrev && !btnPrev.dataset.bound) {
+            btnPrev.dataset.bound = 'true';
+            btnPrev.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentStep > 1) {
+                    goToStep(currentStep - 1);
+                }
+            });
+        }
+
+        // Prevent Enter from bypassing step validation
+        form.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && e.target && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                if (currentStep < 4) {
+                    if (validateStep(currentStep)) {
+                        goToStep(currentStep + 1);
+                    }
+                } else {
+                    if (validateStep(4)) {
+                        form.submit();
+                    }
+                }
+            }
         });
+
+        // Intercept Form Submit (Validates all steps sequentially)
+        form.addEventListener('submit', function (e) {
+            for (let s = 1; s <= 4; s++) {
+                if (!validateStep(s)) {
+                    e.preventDefault();
+                    goToStep(s);
+                    return false;
+                }
+            }
+        });
+
+        // Initialize to step 1
+        goToStep(1);
     }
 
     function setInputValue(id, val) {

@@ -248,44 +248,265 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/app.css">
-    <link rel="stylesheet" href="assets/pki-form.css?v=20260928_v1">
+    <link rel="stylesheet" href="assets/pki-form.css?v=20261012_v1">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f8fafc;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #101828;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Top Header Navbar */
+        .top-nav-bar {
+            height: 68px;
+            background: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .top-nav-left {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .nav-back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #334155;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+
+        .nav-back-link:hover {
+            color: #0284c7;
+        }
+
+        .top-nav-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .brand-logo-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .brand-logo-icon {
+            width: 34px;
+            height: 34px;
+        }
+
+        .brand-logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-name {
+            font-size: 24px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+            line-height: 1.05;
+        }
+
+        .brand-sub {
+            font-size: 10px;
+            font-weight: 600;
+            color: #64748b;
+            margin-top: 1px;
+        }
+
+        .top-nav-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex: 1;
+        }
+
+        .nav-admin-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #1e293b;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .admin-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            color: #475467;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            overflow: hidden;
+            border: 1px solid #cbd5e1;
+        }
+
+        /* Container Shell */
+        .registration-shell {
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 36px 20px 36px;
+            min-height: calc(100vh - 68px);
+        }
+
+        .registration-card {
+            width: 100%;
+            max-width: 580px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 36px 36px 28px;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03);
+        }
+
+        .registration-title {
+            margin: 0 0 18px 0;
+            font-size: 22px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.3px;
+        }
+
+        /* Bottom Help Footer */
+        .page-help-footer {
+            margin-top: 36px;
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .page-help-footer p {
+            margin: 0 0 8px;
+        }
+
+        .page-help-footer a {
+            color: #0284c7;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .page-help-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .help-contact-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            font-size: 13px;
+            color: #475467;
+        }
+
+        .help-contact-row i {
+            margin-right: 4px;
+        }
+
+        .contact-sep {
+            color: #cbd5e1;
+        }
+
+        @media (max-width: 640px) {
+            .top-nav-bar { padding: 0 16px; }
+            .nav-admin-link span { display: none; }
+            .registration-card { padding: 24px 20px; }
+            .help-contact-row { flex-direction: column; gap: 6px; }
+            .contact-sep { display: none; }
+        }
+    </style>
 </head>
 <body>
-    <div class="auth-shell auth-shell-single">
-        <div class="auth-panel">
-            <div class="auth-card profile-modal-preview">
-                <div class="modal-header">
-                    <div>
-                        <div class="modal-title">FORM PROFIL PEMBERI KERJA INDIVIDU</div>
-                        <div class="modal-subtitle">Lengkapi biodata individu untuk pengajuan verifikasi Hak Akses Pemberi Kerja Individu.</div>
-                    </div>
-                </div>
-
-                <?php $flash = get_flash(); if ($flash): ?>
-                    <div style="margin:16px 24px 0; padding:12px 16px; border-radius:8px; font-size:13.5px; font-weight:600; background:<?php echo $flash['type'] === 'error' ? '#fef2f2' : '#f0fdf4'; ?>; color:<?php echo $flash['type'] === 'error' ? '#991b1b' : '#166534'; ?>; border:1px solid <?php echo $flash['type'] === 'error' ? '#fecaca' : '#bbf7d0'; ?>; display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                        <div style="display:flex; align-items:center; gap:6px; flex:1;">
-                            <i class="fa-solid <?php echo $flash['type'] === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'; ?>"></i>
-                            <span><?php echo e($flash['message']); ?></span>
-                        </div>
-                        <button type="button" aria-label="Tutup Notifikasi" onclick="this.parentElement.remove()" style="background:transparent; border:none; color:inherit; font-size:16px; cursor:pointer; padding:0 4px; line-height:1; opacity:0.6; transition:opacity 0.15s ease;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
-                <?php endif; ?>
-
-                <form method="post" id="registrationForm" enctype="multipart/form-data">
-                    <input type="hidden" name="register_action" value="simulate_employer_session">
-                    <div class="modal-body" style="padding:24px;">
-                        <?php
-                        $isRevision = false;
-                        $formData = [];
-                        $cancelButtonHtml = '<a href="employer-type.php" class="ghost-btn" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">Batal</a>';
-                        include __DIR__ . '/includes/employer-profile-form.php';
-                        ?>
-                    </div>
-                </form>
-            </div>
+    <!-- Top Header Navbar -->
+    <header class="top-nav-bar">
+        <div class="top-nav-left">
+            <a href="employer-type.php" class="nav-back-link">
+                Kembali ke Halaman Utama
+            </a>
         </div>
+        <div class="top-nav-center">
+            <a href="index.php" class="brand-logo-link">
+                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="brand-logo-icon">
+                    <circle cx="73" cy="22" r="13" fill="#2590F9" />
+                    <path d="M22 32 C15.37 32 10 37.37 10 44 C10 50.63 15.37 56 22 56 H42 C44.2 56 46 57.8 46 60 V76 C46 82.63 51.37 88 58 88 C64.63 88 70 82.63 70 76 V50 C70 40.06 61.94 32 52 32 H22 Z" fill="#2590F9" />
+                </svg>
+                <div class="brand-logo-text">
+                    <span class="brand-name">Karirhub</span>
+                    <span class="brand-sub">oleh Kemnaker</span>
+                </div>
+            </a>
+        </div>
+        <div class="top-nav-right">
+            <a href="admin.php" class="nav-admin-link" title="Dasbor Pengelola">
+                <span>Dasbor Pengelola</span>
+                <div class="admin-avatar">
+                    <i class="fa-solid fa-user-tie"></i>
+                </div>
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Container Shell -->
+    <div class="registration-shell">
+        <div class="registration-card">
+            <h1 class="registration-title">Daftar sebagai pemberi kerja</h1>
+
+            <?php $flash = get_flash(); if ($flash): ?>
+                <div style="margin:0 0 20px; padding:12px 16px; border-radius:8px; font-size:13.5px; font-weight:600; background:<?php echo $flash['type'] === 'error' ? '#fef2f2' : '#f0fdf4'; ?>; color:<?php echo $flash['type'] === 'error' ? '#991b1b' : '#166534'; ?>; border:1px solid <?php echo $flash['type'] === 'error' ? '#fecaca' : '#bbf7d0'; ?>; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                    <div style="display:flex; align-items:center; gap:6px; flex:1;">
+                        <i class="fa-solid <?php echo $flash['type'] === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'; ?>"></i>
+                        <span><?php echo e($flash['message']); ?></span>
+                    </div>
+                    <button type="button" aria-label="Tutup Notifikasi" onclick="this.parentElement.remove()" style="background:transparent; border:none; color:inherit; font-size:16px; cursor:pointer; padding:0 4px; line-height:1; opacity:0.6; transition:opacity 0.15s ease;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            <?php endif; ?>
+
+            <form method="post" id="registrationForm" enctype="multipart/form-data">
+                <input type="hidden" name="register_action" value="simulate_employer_session">
+                <?php
+                $isRevision = false;
+                $formData = [];
+                $cancelButtonHtml = '';
+                include __DIR__ . '/includes/employer-profile-form.php';
+                ?>
+            </form>
+        </div>
+
+        <!-- Bottom Help Footer -->
+        <footer class="page-help-footer">
+            <p>Butuh bantuan? <a href="#">Kunjungi Pusat Bantuan</a> atau hubungi kami</p>
+            <div class="help-contact-row">
+                <span><i class="fa-solid fa-phone" style="font-size:12px;"></i> 0811-871-2018</span>
+                <span class="contact-sep">|</span>
+                <span><i class="fa-regular fa-envelope"></i> pusatpasarkerja@kemnaker.go.id</span>
+            </div>
+        </footer>
     </div>
     <div class="modal-backdrop <?php echo $showSuccessPopup ? 'open' : ''; ?>" id="modalPendaftaranBerhasil">
         <div class="popup-dialog-card" style="padding: 32px 28px; border-radius: 16px; max-width: 440px;">
@@ -313,7 +534,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
             <a class="primary-btn" href="dashboard.php#dashboard" style="width: 100%; text-align: center; justify-content: center; height: 42px; font-size: 13.5px; font-weight: 600; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center;">Menuju Dashboard Pemberi Kerja</a>
         </div>
     </div>
-    <script src="assets/pki-form.js?v=20260930_v4"></script>
+    <script src="assets/pki-form.js?v=20261012_v2"></script>
     <script>
     (function () {
         var modal = document.getElementById('modalPendaftaranBerhasil');

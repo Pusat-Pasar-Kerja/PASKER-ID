@@ -1,6 +1,6 @@
 <?php
 /**
- * Shared Form Profil Pemberi Kerja Individu
+ * Shared Form Profil Pemberi Kerja Individu (Multi-step 4 Langkah)
  * Variables available:
  * - $isRevision (bool): true if editing/revision, false if initial registration
  * - $formData (array): user profile data to pre-fill (empty for initial registration)
@@ -63,7 +63,7 @@ if (!empty($vLogo)) {
     $baseDir = realpath(__DIR__ . '/..');
     $logoRelative = ltrim(str_replace('\\', '/', (string) $vLogo), '/');
     $logoAbsolute = realpath(__DIR__ . '/../' . $logoRelative);
-    if ($baseDir && $logoAbsolute && str_starts_with($logoAbsolute, $baseDir) && is_file($logoAbsolute)) {
+    if ($baseDir && $photoAbsolute && str_starts_with($logoAbsolute, $baseDir) && is_file($logoAbsolute)) {
         $bytes = (int) filesize($logoAbsolute);
         if ($bytes > 0) {
             $vLogoSizeText = $bytes >= 1024 * 1024
@@ -90,7 +90,7 @@ if (!empty($vVillage) && !empty($vDistrict) && !empty($vCity) && !empty($vProvin
 $googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') ?: ($_ENV['GOOGLE_MAPS_API_KEY'] ?? '');
 $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
 ?>
-<link rel="stylesheet" href="assets/pki-form.css?v=20260928_v1">
+<link rel="stylesheet" href="assets/pki-form.css?v=20261012_v2">
 <style>
 <?php
 $pkiCssPath = __DIR__ . '/../assets/pki-form.css';
@@ -100,7 +100,6 @@ if (file_exists($pkiCssPath)) {
 ?>
 </style>
 
-
 <?php if (!empty($profileModalError)): ?>
 <div class="pki-alert-error" style="background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px 16px; margin-bottom:20px; display:flex; align-items:center; gap:10px; color:#991b1b; font-size:13.5px; font-weight:600;">
     <i class="fa-solid fa-circle-exclamation" style="font-size:16px; color:#dc2626; flex-shrink:0;"></i>
@@ -109,10 +108,33 @@ if (file_exists($pkiCssPath)) {
 </div>
 <?php endif; ?>
 
-<!-- 1. IDENTITAS PERORANGAN -->
-<div class="modal-section" style="margin-bottom:20px;">
-    <div class="section-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:16px;">1. IDENTITAS PERORANGAN</div>
-    
+<!-- CALLOUT BANNER: INSTANSI ANDA -->
+<div class="pki-entity-badge">
+    <div class="pki-entity-badge-label">Instansi Anda</div>
+    <div class="pki-entity-badge-val">
+        <i class="fa-solid fa-user" style="color:#0284c7; font-size:15px;"></i>
+        <span>Pemberi Kerja Individu</span>
+    </div>
+</div>
+
+<!-- STEP HEADER WITH TITLE & PROGRESS INDICATOR (LANGKAH X/4) -->
+<div class="pki-step-header">
+    <div class="pki-step-title" id="pkiStepTitle">Identitas Perorangan</div>
+    <div class="pki-step-indicator" id="pkiStepIndicator">
+        <span class="pki-step-pie" id="pkiStepPie">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#cbd5e1" stroke-width="2.5" fill="none"></circle>
+                <circle cx="12" cy="12" r="9" stroke="#2563eb" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="56.54" stroke-dashoffset="42.4" transform="rotate(-90 12 12)"></circle>
+            </svg>
+        </span>
+        <span class="pki-step-counter" id="pkiStepCounter">Langkah 1/4</span>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- LANGKAH 1: SECTION 1 (IDENTITAS PERORANGAN)                     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="pki-step-pane active" data-step="1">
     <div class="pki-grid-2">
         <div class="pki-field">
             <label class="pki-field-label" id="label_owner_name" for="pki_owner_name">
@@ -162,7 +184,7 @@ if (file_exists($pkiCssPath)) {
                     <span class="tooltip-popover">Pilih jenis usaha individu yang paling sesuai dengan kegiatan utama Anda.</span>
                 </span>
             </label>
-            <select name="profession" id="pki_profession" style="width:100%; height:42px; padding:0 14px; border:1px solid #cbd5e1; border-radius:8px; font-size:13.5px; color:#0f172a; background:#fff;">
+            <select name="profession" id="pki_profession">
                 <option value="">Pilih jenis usaha individu</option>
                 <?php
                 $professions = [
@@ -198,12 +220,10 @@ if (file_exists($pkiCssPath)) {
     </div>
 </div>
 
-<hr class="modal-section-hr">
-
-<!-- 2. PROFIL USAHA / KEGIATAN PEMBERI KERJA -->
-<div class="modal-section" style="margin-bottom:20px;">
-    <div class="section-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:14px;">2. PROFIL USAHA / KEGIATAN PEMBERI KERJA</div>
-
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- LANGKAH 2: SECTION 2 (PROFIL USAHA / KEGIATAN PEMBERI KERJA)     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="pki-step-pane" data-step="2" style="display:none;">
     <div class="pki-grid-2">
         <div class="pki-field">
             <label class="pki-field-label" id="label_brand_name" for="pki_brand_name">
@@ -229,7 +249,7 @@ if (file_exists($pkiCssPath)) {
                     <?php if (!empty($vLogo)): ?>
                         <i class="fa-solid fa-image" style="color:#0284c7; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($vLogo)); ?></span>
                     <?php else: ?>
-                        <span>Pilih foto logo untuk diunggah</span>
+                        <span>Klik dan letakkan file di sini atau <strong style="color:#2563eb;">Pilih File</strong></span>
                     <?php endif; ?>
                 </span>
                 <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
@@ -238,12 +258,12 @@ if (file_exists($pkiCssPath)) {
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     <?php endif; ?>
-                    <button type="button" class="pki-upload-btn" id="pki_btn_business_logo"><?php echo !empty($vLogo) ? 'Ganti' : 'Upload'; ?></button>
+                    <button type="button" class="pki-upload-btn" id="pki_btn_business_logo"><?php echo !empty($vLogo) ? 'Ganti' : 'Pilih File'; ?></button>
                 </div>
             </div>
             <input type="file" name="business_logo" id="pki_input_business_logo" accept=".png,.jpg,.jpeg" style="display:none;" onchange="pkiHandleFileChange(this, 'business_logo')">
             <input type="hidden" name="existing_business_logo" id="pki_existing_business_logo" value="<?php echo e($vLogo); ?>">
-            <div class="pki-field-helper" id="helper_business_logo">Format PNG, JPG. Ukuran Maksimal 2MB</div>
+            <div class="pki-field-helper" id="helper_business_logo">Ukuran maksimum 2 MB • Format PNG, JPG</div>
             <div class="pki-field-helper" id="helper_business_logo_size" style="<?php echo $vLogoSizeText !== '' ? '' : 'display:none;'; ?>">
                 <?php if ($vLogoSizeText !== ''): ?>
                     Ukuran file yang di upload: <?php echo e($vLogoSizeText); ?>
@@ -260,13 +280,13 @@ if (file_exists($pkiCssPath)) {
                 <span class="tooltip-popover">Jelaskan secara singkat usaha atau kegiatan yang dijalankan serta gambaran kebutuhan rekrutmen yang dilakukan.</span>
             </span>
         </label>
-        <textarea name="description" id="pki_description" placeholder="Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen..." style="min-height:90px; padding:10px 14px; font-size:13.5px; border:1px solid #cbd5e1; border-radius:8px; width:100%; font-family:inherit; line-height:1.5; resize:vertical;"><?php echo $vDescription; ?></textarea>
+        <textarea name="description" id="pki_description" placeholder="Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen..." style="min-height:85px;"><?php echo $vDescription; ?></textarea>
         <div class="pki-field-helper" id="helper_description">Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen.</div>
     </div>
 
-    <div style="margin-bottom:16px;">
-        <label style="font-size:13px; font-weight:600; color:#334155; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
-            <input type="checkbox" name="same_location_siapkerja" id="pki_cbSameLocation" value="1" <?php echo $vSameLoc ? 'checked' : ''; ?>>
+    <div style="margin-bottom:14px;">
+        <label style="font-size:12.5px; font-weight:600; color:#334155; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" name="same_location_siapkerja" id="pki_cbSameLocation" value="1" <?php echo $vSameLoc ? 'checked' : ''; ?> style="accent-color:#0284c7; cursor:pointer;">
             <span>Gunakan alamat domisili di SIAPKerja sebagai lokasi tempat usaha/kegiatan</span>
         </label>
     </div>
@@ -316,7 +336,7 @@ if (file_exists($pkiCssPath)) {
         <label class="pki-field-label" id="label_postal_code" for="pki_selectPostalCode">
             Kode Pos <span class="req">*</span>
         </label>
-        <select name="postal_code" id="pki_selectPostalCode" style="width:100%; height:42px; padding:0 14px; border:1px solid #cbd5e1; border-radius:8px; font-size:13.5px; color:#0f172a; background:#fff;">
+        <select name="postal_code" id="pki_selectPostalCode">
             <option value="">Pilih kode pos</option>
             <?php if (!empty($vPostalCode)): ?>
                 <option value="<?php echo $vPostalCode; ?>" selected><?php echo $vPostalCode; ?></option>
@@ -340,26 +360,26 @@ if (file_exists($pkiCssPath)) {
 
     <!-- Peta Lokasi (Google Maps) -->
     <div class="pki-field">
-        <label class="pki-field-label" style="margin-bottom:8px;">Peta Lokasi</label>
+        <label class="pki-field-label" style="margin-bottom:6px;">Peta Lokasi</label>
         <div id="pki_mapContainer" class="pki-map-container">
             <div id="pki_mapPlaceholder" class="pki-map-placeholder">
-                <div style="font-size:28px; margin-bottom:6px;">🗺</div>
-                <div style="font-size:13.5px; font-weight:700; color:#334155; margin-bottom:4px;">Pratinjau peta belum tersedia</div>
-                <div style="font-size:12px; color:#64748b; max-width:360px; line-height:1.4;">Lengkapi lokasi dan alamat terlebih dahulu.</div>
+                <div style="font-size:26px; margin-bottom:4px;">🗺</div>
+                <div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:2px;">Pratinjau peta belum tersedia</div>
+                <div style="font-size:11.5px; color:#64748b; max-width:340px; line-height:1.4;">Lengkapi lokasi dan alamat terlebih dahulu.</div>
             </div>
             <div id="pki_googleMapWrapper" class="pki-map-wrapper" style="display:none; width:100%; height:100%;">
                 <iframe id="pki_gmapIframe" width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" src="about:blank"></iframe>
             </div>
         </div>
-        <div class="pki-field-helper" id="helper_map" style="margin-top:8px;">Peta muncul otomatis setelah lokasi dan alamat lengkap tersedia.</div>
+        <div class="pki-field-helper" id="helper_map" style="margin-top:6px;">Peta muncul otomatis setelah lokasi dan alamat lengkap tersedia.</div>
     </div>
 </div>
 
-<hr class="modal-section-hr">
-
-<!-- 3. FILE & BUKTI TEMPAT USAHA -->
-<div class="modal-section" style="margin-bottom:20px;">
-    <div class="section-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:16px;">3. FILE & BUKTI TEMPAT USAHA</div>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- LANGKAH 3: SECTION 3 (FILE BUKTI) & SECTION 4 (MEDIA SOSIAL)    -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="pki-step-pane" data-step="3" style="display:none;">
+    <div class="section-title" style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:12px;">3. FILE & BUKTI TEMPAT USAHA</div>
 
     <div class="pki-grid-2">
         <!-- Dokumen Perizinan Usaha -->
@@ -376,7 +396,7 @@ if (file_exists($pkiCssPath)) {
                     <?php if (!empty($vPermitDoc)): ?>
                         <i class="fa-solid fa-file-pdf" style="color:#ef4444; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($vPermitDoc)); ?></span>
                     <?php else: ?>
-                        <span>Pilih file untuk diunggah</span>
+                        <span>Klik dan letakkan file di sini atau <strong style="color:#2563eb;">Pilih File</strong></span>
                     <?php endif; ?>
                 </span>
                 <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
@@ -385,12 +405,12 @@ if (file_exists($pkiCssPath)) {
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     <?php endif; ?>
-                    <button type="button" class="pki-upload-btn" id="pki_btn_permit_document"><?php echo !empty($vPermitDoc) ? 'Ganti' : 'Upload'; ?></button>
+                    <button type="button" class="pki-upload-btn" id="pki_btn_permit_document"><?php echo !empty($vPermitDoc) ? 'Ganti' : 'Pilih File'; ?></button>
                 </div>
             </div>
             <input type="file" name="permit_document" id="pki_input_permit_document" accept=".pdf,.docx" style="display:none;" onchange="pkiHandleFileChange(this, 'permit_document')">
             <input type="hidden" name="existing_permit_document" id="pki_existing_permit_document" value="<?php echo e($vPermitDoc); ?>">
-            <div class="pki-field-helper" id="helper_permit_document">Format PDF, Docx. Ukuran Maksimal 2MB</div>
+            <div class="pki-field-helper" id="helper_permit_document">Ukuran maksimum 2 MB • Format PDF, Docx</div>
             <div class="pki-field-helper" id="helper_permit_document_size" style="<?php echo $vPermitDocSizeText !== '' ? '' : 'display:none;'; ?>">
                 <?php if ($vPermitDocSizeText !== ''): ?>
                     Ukuran file yang di upload: <?php echo e($vPermitDocSizeText); ?>
@@ -412,7 +432,7 @@ if (file_exists($pkiCssPath)) {
                     <?php if (!empty($vPhoto)): ?>
                         <i class="fa-solid fa-image" style="color:#0284c7; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($vPhoto)); ?></span>
                     <?php else: ?>
-                        <span>Pilih foto untuk diunggah</span>
+                        <span>Klik dan letakkan file di sini atau <strong style="color:#2563eb;">Pilih File</strong></span>
                     <?php endif; ?>
                 </span>
                 <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
@@ -421,12 +441,12 @@ if (file_exists($pkiCssPath)) {
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     <?php endif; ?>
-                    <button type="button" class="pki-upload-btn" id="pki_btn_workplace_photo"><?php echo !empty($vPhoto) ? 'Ganti' : 'Upload'; ?></button>
+                    <button type="button" class="pki-upload-btn" id="pki_btn_workplace_photo"><?php echo !empty($vPhoto) ? 'Ganti' : 'Pilih File'; ?></button>
                 </div>
             </div>
             <input type="file" name="workplace_photo" id="pki_input_workplace_photo" accept=".png,.jpg,.jpeg" style="display:none;" onchange="pkiHandleFileChange(this, 'workplace_photo')">
             <input type="hidden" name="existing_workplace_photo" id="pki_existing_workplace_photo" value="<?php echo e($vPhoto); ?>">
-            <div class="pki-field-helper" id="helper_workplace_photo">Format PNG, JPG. Ukuran Maksimal 2MB</div>
+            <div class="pki-field-helper" id="helper_workplace_photo">Ukuran maksimum 2 MB • Format PNG, JPG</div>
             <div class="pki-field-helper" id="helper_workplace_photo_size" style="<?php echo $vPhotoSizeText !== '' ? '' : 'display:none;'; ?>">
                 <?php if ($vPhotoSizeText !== ''): ?>
                     Ukuran file yang di upload: <?php echo e($vPhotoSizeText); ?>
@@ -434,17 +454,14 @@ if (file_exists($pkiCssPath)) {
             </div>
         </div>
     </div>
-</div>
 
-<hr class="modal-section-hr">
+    <hr class="modal-section-hr" style="margin:16px 0;">
 
-<!-- 4. MEDIA SOSIAL & DESKRIPSI -->
-<div class="modal-section" style="margin-bottom:20px;">
-    <div class="section-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+    <div class="section-title" style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
         <span>4. MEDIA SOSIAL</span>
         <span class="req" style="color:#ef4444 !important; font-weight:700;">*</span>
     </div>
-    <div style="font-size:12.5px; color:#64748b; margin-bottom:16px;">Wajib mengisi minimal salah satu akun media sosial (LinkedIn, Facebook, atau Instagram).</div>
+    <div style="font-size:12px; color:#64748b; margin-bottom:14px;">Wajib mengisi minimal salah satu akun media sosial (LinkedIn, Facebook, atau Instagram).</div>
 
     <div class="pki-grid-2">
         <div class="pki-field">
@@ -466,33 +483,32 @@ if (file_exists($pkiCssPath)) {
     </div>
 </div>
 
-<hr class="modal-section-hr">
-
-<!-- 5. PERNYATAAN -->
-<div class="modal-section" style="margin-bottom:12px;">
-    <div class="section-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:12px;">5. PERNYATAAN <span class="req" style="color:#ef4444 !important; font-weight:700;">*</span></div>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- LANGKAH 4: SECTION 5 (PERNYATAAN)                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="pki-step-pane" data-step="4" style="display:none;">
+    <div class="section-title" style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:12px;">5. PERNYATAAN <span class="req" style="color:#ef4444 !important; font-weight:700;">*</span></div>
     
-    <div class="pki-consent-box" id="pki_consent_statement_box" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; font-size:12.5px; color:#334155; line-height:1.6; margin-bottom:12px;">
+    <div class="pki-consent-box" id="pki_consent_statement_box" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 16px; font-size:12.5px; color:#334155; line-height:1.65; margin-bottom:14px;">
         Saya menyatakan bahwa seluruh informasi yang saya berikan benar, valid, dan dapat dipertanggungjawabkan. Saya berkomitmen untuk tidak melakukan penipuan, mempublikasikan lowongan palsu, atau tindakan lain yang merugikan pelamar maupun melanggar hukum. Apabila terbukti melakukan pelanggaran, saya bersedia menerima sanksi hukum sesuai dengan ketentuan peraturan perundang-undangan yang berlaku.
     </div>
 
     <div class="pki-field" style="margin-bottom:0;">
         <label style="display:inline-flex; align-items:flex-start; gap:9px; font-size:12.5px; color:#1e293b; font-weight:500; line-height:1.45; cursor:pointer; user-select:none;" id="label_user_consent_container">
-            <input type="checkbox" name="user_consent" id="pki_user_consent" value="1" style="margin-top:2px; flex-shrink:0; cursor:pointer;">
+            <input type="checkbox" name="user_consent" id="pki_user_consent" value="1" style="margin-top:2px; flex-shrink:0; cursor:pointer;" <?php echo $vConsent ? 'checked' : ''; ?>>
             <span id="label_user_consent_text">Saya telah membaca dan menyetujui pernyataan di atas. <span class="req" style="color:#ef4444 !important; font-weight:700;">*</span></span>
         </label>
         <div class="pki-field-helper" id="helper_user_consent" style="display:none;"></div>
     </div>
 </div>
 
-<!-- MODAL / FORM FOOTER -->
-<div class="modal-footer" style="padding:20px 0 0 0; display:flex; justify-content:flex-end; gap:12px; border-top:1px solid #e2e8f0; margin-top:24px;">
-    <?php if (!empty($cancelButtonHtml)): ?>
-        <?php echo $cancelButtonHtml; ?>
-    <?php else: ?>
-        <a href="employer-type.php" class="ghost-btn" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">Batal</a>
-    <?php endif; ?>
-    <button type="submit" class="primary-btn" id="btnSubmitProfile">
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- STEP NAVIGATION CONTROLS (SEBELUMNYA / SELANJUTNYA / AJUKAN)    -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="pki-step-footer" id="pkiStepFooter">
+    <button type="button" class="pki-btn-prev" id="pkiBtnPrev" style="display:none;">Kembali</button>
+    <button type="button" class="pki-btn-next" id="pkiBtnNext">Selanjutnya</button>
+    <button type="submit" class="pki-btn-submit" id="btnSubmitProfile" style="display:none;">
         <i class="fa-solid fa-paper-plane" style="margin-right:6px;"></i>
         <?php echo (!empty($isReverification) || !empty($isFullDisable) || in_array($verificationStatus ?? "", ["FULL_DISABLED", "INACTIVE_REVERIFICATION_REQUIRED"], true) || (($verificationStatus ?? "") === "PENDING" && !empty($profile["last_activated_at"]))) ? "Ajukan Verifikasi Ulang" : "Ajukan Profil"; ?>
     </button>
