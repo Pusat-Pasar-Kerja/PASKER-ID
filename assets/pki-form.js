@@ -862,9 +862,9 @@
 
     // ─── 6. Strict Per-Field Validation on Submit ───
     const DEFAULT_HELPERS = {
-        owner_name: 'Data nama pada produksi berasal dari akun SIAPKerja.',
-        nik: 'NIK terdiri dari 16 digit.',
-        phone: 'Gunakan nomor telepon aktif.',
+        owner_name: 'Terisi otomatis dari akun SIAPKerja.',
+        nik: 'Terisi otomatis dari akun SIAPKerja.',
+        phone: 'Terisi otomatis dari akun SIAPKerja.',
         whatsapp: 'Gunakan nomor WhatsApp aktif.',
         profession: 'Pilih jenis usaha individu yang paling sesuai dengan kegiatan utama Anda.',
         npwp: 'NPWP 15 atau 16 digit.',

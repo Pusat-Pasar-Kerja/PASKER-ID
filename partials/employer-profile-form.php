@@ -127,14 +127,14 @@ if (file_exists($pkiCssPath)) {
                 Nama Pemberi Kerja <span class="req">*</span>
             </label>
             <input type="text" name="owner_name" id="pki_owner_name" value="<?php echo $vOwnerName; ?>" placeholder="Masukkan nama lengkap">
-            <div class="pki-field-helper" id="helper_owner_name">Data nama terisi otomatis (prefill) dari akun SIAPKerja.</div>
+            <div class="pki-field-helper" id="helper_owner_name">Terisi otomatis dari akun SIAPKerja.</div>
         </div>
         <div class="pki-field">
             <label class="pki-field-label" id="label_nik" for="pki_nik">
                 NIK <span class="req">*</span>
             </label>
             <input type="text" name="nik" id="pki_nik" value="<?php echo $vNik; ?>" maxlength="16" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="Masukkan 16 digit NIK">
-            <div class="pki-field-helper" id="helper_nik">Data NIK terisi otomatis (prefill) dari akun SIAPKerja (16 digit angka).</div>
+            <div class="pki-field-helper" id="helper_nik">Terisi otomatis dari akun SIAPKerja.</div>
         </div>
     </div>
 
@@ -144,7 +144,7 @@ if (file_exists($pkiCssPath)) {
                 Nomor Telepon Aktif <span class="req">*</span>
             </label>
             <input type="text" name="phone" id="pki_phone" value="<?php echo $vPhone; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx">
-            <div class="pki-field-helper" id="helper_phone">Data nomor telepon terisi otomatis (prefill) dari akun SIAPKerja (10–15 digit angka).</div>
+            <div class="pki-field-helper" id="helper_phone">Terisi otomatis dari akun SIAPKerja.</div>
         </div>
         <div class="pki-field">
             <label class="pki-field-label" id="label_whatsapp" for="pki_whatsapp">
