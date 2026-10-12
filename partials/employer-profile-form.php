@@ -481,7 +481,7 @@ if (file_exists($pkiCssPath)) {
     <div class="section-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:12px;">5. PERNYATAAN <span class="req" style="color:#ef4444 !important; font-weight:700;">*</span></div>
     
     <div class="pki-consent-box" id="pki_consent_statement_box" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; font-size:12.5px; color:#334155; line-height:1.6; margin-bottom:12px;">
-        Saya menyatakan bahwa seluruh informasi yang saya berikan benar, valid, dan dapat dipertanggungjawabkan. Saya berkomitmen untuk tidak melakukan penipuan, mempublikasikan lowongan palsu, atau tindakan lain yang merugikan pelamar/kandidat maupun melanggar hukum. Apabila terbukti melakukan pelanggaran, saya bersedia menerima sanksi sesuai ketentuan yang berlaku.
+        Saya menyatakan bahwa seluruh informasi yang saya berikan benar, valid, dan dapat dipertanggungjawabkan. Saya berkomitmen untuk tidak melakukan penipuan, mempublikasikan lowongan palsu, atau tindakan lain yang merugikan pelamar maupun melanggar hukum. Apabila terbukti melakukan pelanggaran, saya bersedia menerima sanksi hukum sesuai dengan ketentuan peraturan perundang-undangan yang berlaku.
     </div>
 
     <div class="pki-field" style="margin-bottom:0;">
