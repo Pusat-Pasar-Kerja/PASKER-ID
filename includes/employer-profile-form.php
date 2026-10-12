@@ -157,7 +157,7 @@ if (file_exists($pkiCssPath)) {
                     <span>Samakan dengan Nomor Telepon Aktif</span>
                 </label>
             </div>
-            <div class="pki-field-helper" id="helper_whatsapp">Gunakan nomor WhatsApp aktif (10–15 digit angka).</div>
+            <div class="pki-field-helper" id="helper_whatsapp">Gunakan nomor WhatsApp aktif.</div>
         </div>
     </div>
 
