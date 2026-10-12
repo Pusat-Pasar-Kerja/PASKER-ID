@@ -251,11 +251,155 @@
 
         forms.forEach(f => f.setAttribute('novalidate', 'novalidate'));
         initLocationSelector();
+        initProfessionSelector();
         initDomicileCheckbox();
         initAddressListeners();
         initPhoneWhatsappSync();
         forms.forEach(f => initValidation(f));
         updateMapPreview();
+    }
+
+    // ─── 1b. Searchable Profession Selector (Matching Karirhub Look) ───
+    function initProfessionSelector() {
+        const trigger = document.getElementById('pki_profession_trigger');
+        const dropdown = document.getElementById('pki_profession_dropdown');
+        const searchInput = document.getElementById('pki_profession_search');
+        const hiddenInput = document.getElementById('pki_profession');
+        const display = document.getElementById('pki_profession_display');
+        const optionsList = document.getElementById('pki_profession_options');
+        const noResults = document.getElementById('pki_profession_no_results');
+
+        if (!trigger || !dropdown) return;
+
+        function openDropdown() {
+            dropdown.style.display = 'block';
+            trigger.classList.add('is-open');
+            trigger.setAttribute('aria-expanded', 'true');
+            if (searchInput) {
+                searchInput.value = '';
+                filterOptions('');
+                setTimeout(() => searchInput.focus(), 40);
+            }
+        }
+
+        function closeDropdown() {
+            dropdown.style.display = 'none';
+            trigger.classList.remove('is-open');
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        trigger.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (dropdown.style.display === 'block') {
+                closeDropdown();
+            } else {
+                openDropdown();
+            }
+        });
+
+        trigger.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                openDropdown();
+            }
+        });
+
+        dropdown.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+                closeDropdown();
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && dropdown.style.display === 'block') {
+                closeDropdown();
+                trigger.focus();
+            }
+        });
+
+        function filterOptions(query) {
+            const q = query.toLowerCase().trim();
+            if (!optionsList) return;
+            const groups = optionsList.querySelectorAll('.pki-select-group');
+            let totalVisible = 0;
+
+            groups.forEach(group => {
+                const options = group.querySelectorAll('.pki-select-option');
+                let groupVisible = 0;
+
+                options.forEach(opt => {
+                    const val = (opt.getAttribute('data-value') || opt.textContent).toLowerCase();
+                    if (!q || val.includes(q)) {
+                        opt.style.display = 'flex';
+                        groupVisible++;
+                        totalVisible++;
+                    } else {
+                        opt.style.display = 'none';
+                    }
+                });
+
+                if (groupVisible > 0) {
+                    group.style.display = 'block';
+                } else {
+                    group.style.display = 'none';
+                }
+            });
+
+            if (noResults) {
+                noResults.style.display = totalVisible === 0 ? 'block' : 'none';
+            }
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                filterOptions(this.value);
+            });
+            searchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const firstOpt = optionsList.querySelector('.pki-select-option:not([style*="display: none"])');
+                    if (firstOpt) {
+                        firstOpt.click();
+                    }
+                }
+            });
+        }
+
+        if (optionsList) {
+            optionsList.addEventListener('click', function (e) {
+                const opt = e.target.closest('.pki-select-option');
+                if (!opt) return;
+                const val = opt.getAttribute('data-value') || opt.textContent.trim();
+
+                if (hiddenInput) {
+                    hiddenInput.value = val;
+                }
+                if (display) {
+                    display.textContent = val;
+                    display.classList.remove('is-placeholder');
+                }
+
+                optionsList.querySelectorAll('.pki-select-option').forEach(o => {
+                    o.classList.remove('selected');
+                    const check = o.querySelector('.pki-select-check');
+                    if (check) check.remove();
+                });
+                opt.classList.add('selected');
+                if (!opt.querySelector('.pki-select-check')) {
+                    const check = document.createElement('i');
+                    check.className = 'fa-solid fa-check pki-select-check';
+                    opt.appendChild(check);
+                }
+
+                clearFieldError('profession');
+                closeDropdown();
+                trigger.focus();
+            });
+        }
     }
 
     // ─── 1. Hierarchical Location Selector ───
@@ -883,6 +1027,7 @@
     };
 
     function getFieldElement(fieldId) {
+        if (fieldId === 'profession') return document.getElementById('pki_profession_trigger') || document.getElementById('pki_profession');
         if (fieldId === 'location') return document.getElementById('pki_hierarchicalLocationInput');
         if (fieldId === 'address') return document.getElementById('pki_inputAddress');
         if (fieldId === 'postal_code') return document.getElementById('pki_selectPostalCode');
@@ -1120,7 +1265,7 @@
                 // 5. Jenis Usaha Individu
                 const profession = document.getElementById('pki_profession')?.value?.trim();
                 if (!profession) {
-                    flagError('profession', 'Pilih jenis usaha individu yang sesuai.', document.getElementById('pki_profession'));
+                    flagError('profession', 'Pilih jenis usaha individu yang sesuai.', document.getElementById('pki_profession_trigger') || document.getElementById('pki_profession'));
                 } else {
                     clearFieldError('profession');
                 }

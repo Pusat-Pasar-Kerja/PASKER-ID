@@ -90,7 +90,7 @@ if (!empty($vVillage) && !empty($vDistrict) && !empty($vCity) && !empty($vProvin
 $googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') ?: ($_ENV['GOOGLE_MAPS_API_KEY'] ?? '');
 $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
 ?>
-<link rel="stylesheet" href="assets/pki-form.css?v=20261012_v2">
+<link rel="stylesheet" href="assets/pki-form.css?v=20261012_v3">
 <style>
 <?php
 $pkiCssPath = __DIR__ . '/../assets/pki-form.css';
@@ -176,38 +176,169 @@ if (file_exists($pkiCssPath)) {
     </div>
 
     <div class="pki-grid-2">
-        <div class="pki-field">
-            <label class="pki-field-label" id="label_profession" for="pki_profession">
+        <div class="pki-field" style="position:relative;">
+            <label class="pki-field-label" id="label_profession" for="pki_profession_trigger">
                 Jenis Usaha Individu <span class="req">*</span>
                 <span class="pki-tooltip" tabindex="0" role="tooltip">
                     <?php echo $infoIconSvg; ?>
                     <span class="tooltip-popover">Pilih jenis usaha individu yang paling sesuai dengan kegiatan utama Anda.</span>
                 </span>
             </label>
-            <select name="profession" id="pki_profession">
-                <option value="">Pilih jenis usaha individu</option>
-                <?php
-                $professions = [
-                    'Praktik Dokter Umum',
-                    'Praktik Dokter Gigi',
-                    'Praktik Bidan',
-                    'Notaris',
-                    'Konsultan Hukum',
-                    'Psikolog',
-                    'Arsitek',
-                    'Konsultan Pajak',
-                    'Guru Privat',
-                    'Bimbingan Belajar (Bimbel)',
-                ];
-                foreach ($professions as $prof) {
-                    $selected = ($vProfession === $prof) ? 'selected' : '';
-                    echo "<option value=\"" . e($prof) . "\" $selected>" . e($prof) . "</option>";
-                }
-                if ($vProfession && !in_array($vProfession, $professions)) {
-                    echo "<option value=\"" . e($vProfession) . "\" selected>" . e($vProfession) . "</option>";
-                }
-                ?>
-            </select>
+
+            <input type="hidden" name="profession" id="pki_profession" value="<?php echo e($vProfession); ?>">
+
+            <div class="pki-custom-select-trigger" id="pki_profession_trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox">
+                <span class="pki-custom-select-text <?php echo empty($vProfession) ? 'is-placeholder' : ''; ?>" id="pki_profession_display">
+                    <?php echo !empty($vProfession) ? e($vProfession) : 'Pilih Jenis Usaha Individu'; ?>
+                </span>
+                <span class="pki-custom-select-caret">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m7 15 5 5 5-5"/>
+                        <path d="m7 9 5-5 5 5"/>
+                    </svg>
+                </span>
+            </div>
+
+            <div class="pki-custom-select-dropdown" id="pki_profession_dropdown" style="display:none;" role="listbox">
+                <div class="pki-custom-select-search-wrap">
+                    <input type="text" class="pki-custom-select-search" id="pki_profession_search" placeholder="Cari jenis usaha..." autocomplete="off">
+                </div>
+                <div class="pki-custom-select-options" id="pki_profession_options">
+                    <?php
+                    $professionGroups = [
+                        'Kesehatan & Terapi' => [
+                            'Praktik Dokter Umum',
+                            'Praktik Dokter Gigi',
+                            'Praktik Bidan',
+                            'Praktik Keperawatan Mandiri',
+                            'Praktik Psikolog',
+                            'Layanan Fisioterapi',
+                            'Praktik Terapis Wicara',
+                            'Layanan Akupunktur',
+                            'Layanan Terapi Tumbuh Kembang Anak',
+                            'Jasa Pijat dan Refleksi',
+                            'Layanan Terapi Okupasi',
+                            'Layanan Konsultasi Gizi/Nutrisionis',
+                        ],
+                        'Hukum, Keuangan & Jasa Profesional' => [
+                            'Praktik Notaris',
+                            'Praktik PPAT',
+                            'Praktik Advokat/Pengacara',
+                            'Konsultan Hukum',
+                            'Konsultan Pajak',
+                            'Jasa Akuntansi',
+                            'Jasa Pembukuan',
+                            'Konsultan Manajemen',
+                            'Jasa Administrasi dan Pengurusan Dokumen',
+                            'Jasa Penerjemah',
+                            'Konsultan SDM',
+                            'Jasa Sekretarial/Administrasi Perkantoran',
+                        ],
+                        'Teknik, Arsitektur & Desain' => [
+                            'Praktik Arsitek',
+                            'Konsultan Teknik Sipil',
+                            'Konsultan Mekanikal dan Elektrikal',
+                            'Jasa Desain Interior',
+                            'Jasa Desain Lanskap',
+                            'Jasa Drafter',
+                            'Jasa Survei dan Pemetaan',
+                            'Jasa Desain Produk',
+                            'Jasa Pembuatan Maket dan Prototipe',
+                            'Jasa Perbaikan/Bengkel Teknik',
+                            'Jasa Instalasi Listrik',
+                            'Jasa Teknisi Elektronik',
+                        ],
+                        'Pendidikan & Pelatihan' => [
+                            'Bimbingan Belajar',
+                            'Guru Privat',
+                            'Kursus Bahasa',
+                            'Kursus Musik',
+                            'Kursus Tari',
+                            'Kursus Seni Rupa',
+                            'Pelatihan Public Speaking',
+                            'Pelatihan Komputer dan Digital',
+                            'Pelatihan Keterampilan Vokasional',
+                            'Pelatih Olahraga/Kebugaran',
+                            'Pelatihan Kewirausahaan',
+                            'Pelatihan Kerja/Keterampilan Profesi',
+                        ],
+                        'Jasa Acara, Kreatif & Hewan Peliharaan' => [
+                            'Studio Foto dan Video',
+                            'Jasa Fotografi/Videografi',
+                            'Jasa Dekorasi Acara',
+                            'Wedding Organizer',
+                            'Event Organizer',
+                            'Jasa Penjahit/Atelier',
+                            'Jasa Grooming Hewan',
+                            'Jasa Penitipan Hewan',
+                            'Jasa Percetakan',
+                            'Jasa Desain Grafis',
+                            'Jasa Pembuatan Suvenir/Handicraft',
+                            'Jasa Florist/Dekorasi Bunga',
+                        ],
+                        'Digital, Media & Konten' => [
+                            'Konten Kreator/Digital Creator',
+                            'Jasa Pengelolaan Media Sosial',
+                            'Jasa Pembuatan Konten Digital',
+                            'Jasa Editing Video',
+                            'Jasa Copywriting/Content Writing',
+                            'Jasa Desain Konten Media Sosial',
+                            'Jasa Live Streaming',
+                            'Studio Podcast',
+                            'Jasa Produksi Audio/Video',
+                            'Jasa Digital Marketing',
+                        ],
+                        'Kuliner & Industri Pangan Rumah Tangga' => [
+                            'Usaha Makanan Rumahan',
+                            'Jasa Katering',
+                            'Bakery dan Pastry Rumahan',
+                            'Usaha Kue dan Makanan Ringan',
+                            'Produksi Minuman Rumahan',
+                            'Produksi Makanan Olahan',
+                            'Produksi Makanan Beku/Frozen Food',
+                            'Produksi Sambal/Bumbu Olahan',
+                            'Produksi Camilan/Keripik',
+                            'Usaha Jajanan/Pangan Siap Saji',
+                        ],
+                        'Kecantikan & Perawatan Pribadi' => [
+                            'Salon Kecantikan',
+                            'Barbershop/Pangkas Rambut',
+                            'Makeup Artist',
+                            'Jasa Tata Rambut',
+                            'Nail Art',
+                            'Jasa Perawatan Kecantikan Nonmedis',
+                            'Jasa Perawatan Pengantin',
+                        ],
+                        'Jasa Rumah Tangga, Pemeliharaan & Perbaikan' => [
+                            'Jasa Kebersihan Rumah',
+                            'Jasa Laundry',
+                            'Jasa Servis AC',
+                            'Jasa Perbaikan Peralatan Rumah Tangga',
+                            'Jasa Instalasi/Perbaikan Plumbing',
+                            'Jasa Perawatan Taman',
+                            'Jasa Pengecatan',
+                            'Jasa Pertukangan',
+                        ],
+                    ];
+                    foreach ($professionGroups as $groupName => $items):
+                    ?>
+                        <div class="pki-select-group" data-group="<?php echo e($groupName); ?>">
+                            <div class="pki-select-group-header"><?php echo e($groupName); ?></div>
+                            <?php foreach ($items as $item): ?>
+                                <div class="pki-select-option <?php echo ($vProfession === $item) ? 'selected' : ''; ?>" data-value="<?php echo e($item); ?>" role="option">
+                                    <span><?php echo e($item); ?></span>
+                                    <?php if ($vProfession === $item): ?>
+                                        <i class="fa-solid fa-check pki-select-check"></i>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endforeach; ?>
+                    <div class="pki-select-no-results" id="pki_profession_no_results" style="display:none;">
+                        Tidak ada jenis usaha yang sesuai
+                    </div>
+                </div>
+            </div>
             <div class="pki-field-helper" id="helper_profession">Pilih jenis usaha individu yang paling sesuai dengan kegiatan utama Anda.</div>
         </div>
         <div class="pki-field">
