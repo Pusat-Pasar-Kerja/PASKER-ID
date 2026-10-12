@@ -208,9 +208,9 @@ if (file_exists($pkiCssPath)) {
 
 <hr class="modal-section-hr">
 
-<!-- 2. TEMPAT USAHA / KEGIATAN PEMBERI KERJA -->
+<!-- 2. PROFIL USAHA / KEGIATAN PEMBERI KERJA -->
 <div class="modal-section" style="margin-bottom:20px;">
-    <div class="section-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:14px;">2. TEMPAT USAHA / KEGIATAN PEMBERI KERJA</div>
+    <div class="section-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:14px;">2. PROFIL USAHA / KEGIATAN PEMBERI KERJA</div>
 
     <div class="pki-grid-2">
         <div class="pki-field">
