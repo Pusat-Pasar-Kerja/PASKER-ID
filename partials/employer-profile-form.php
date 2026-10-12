@@ -100,14 +100,6 @@ if (file_exists($pkiCssPath)) {
 ?>
 </style>
 
-<!-- BANNER MODE DEMO -->
-<div class="pki-demo-banner">
-    <svg width="15" height="15" viewBox="0 0 512 512" fill="#0284c7" aria-hidden="true" style="display:inline-block; vertical-align:top; margin-top:2px; flex-shrink:0;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
-    <div>
-        <div class="pki-demo-banner-title">MODE DEMO</div>
-        <div class="pki-demo-banner-text">Pada implementasi produksi, data identitas akan terisi otomatis dari SIAPKerja. Pada demo ini, data dapat diisi manual untuk kebutuhan pengujian.</div>
-    </div>
-</div>
 
 <?php if (!empty($profileModalError)): ?>
 <div class="pki-alert-error" style="background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px 16px; margin-bottom:20px; display:flex; align-items:center; gap:10px; color:#991b1b; font-size:13.5px; font-weight:600;">
