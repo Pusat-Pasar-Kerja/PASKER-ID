@@ -90,7 +90,7 @@ if (!empty($vVillage) && !empty($vDistrict) && !empty($vCity) && !empty($vProvin
 $googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') ?: ($_ENV['GOOGLE_MAPS_API_KEY'] ?? '');
 $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
 ?>
-<link rel="stylesheet" href="assets/pki-form.css?v=20261012_v3">
+<link rel="stylesheet" href="assets/pki-form.css?v=20261013_v1">
 <style>
 <?php
 $pkiCssPath = __DIR__ . '/../assets/pki-form.css';
@@ -341,12 +341,22 @@ if (file_exists($pkiCssPath)) {
             </div>
             <div class="pki-field-helper" id="helper_profession">Pilih jenis usaha individu yang paling sesuai dengan kegiatan utama Anda.</div>
         </div>
-        <div class="pki-field">
-            <label class="pki-field-label" id="label_npwp" for="pki_npwp">
-                NPWP <span class="req">*</span>
+        <div class="pki-field" style="position:relative;">
+            <label class="pki-field-label" id="label_npwp" for="pki_npwp_status">
+                Status NPWP <span class="req">*</span>
+                <span class="pki-tooltip tooltip-right" tabindex="0" role="tooltip">
+                    <?php echo $infoIconSvg; ?>
+                    <span class="tooltip-popover">Informasi: Untuk Wajib Pajak Orang Pribadi yang merupakan penduduk Indonesia, NIK digunakan sebagai NPWP.</span>
+                </span>
             </label>
-            <input type="text" name="npwp" id="pki_npwp" value="<?php echo $vNpwp; ?>" maxlength="16" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="Masukkan 15 atau 16 digit NPWP">
-            <div class="pki-field-helper" id="helper_npwp">NPWP terdiri dari 15 atau 16 digit angka.</div>
+            <input type="hidden" name="npwp" id="pki_npwp" value="<?php echo $vNpwp ?: $vNik; ?>">
+            <div class="pki-checkbox-field" id="pki_box_npwp">
+                <label class="pki-checkbox-label" id="label_npwp_checkbox">
+                    <input type="checkbox" name="npwp_status" id="pki_npwp_status" value="1" <?php echo (!empty($vNpwp) || !empty($formData['npwp_status'])) ? 'checked' : ''; ?>>
+                    <span>Saya terdaftar sebagai Wajib Pajak Orang Pribadi dan menggunakan NIK sebagai NPWP</span>
+                </label>
+            </div>
+            <div class="pki-field-helper" id="helper_npwp" style="display:none;">Status NPWP wajib dicentang untuk melanjutkan.</div>
         </div>
     </div>
 </div>

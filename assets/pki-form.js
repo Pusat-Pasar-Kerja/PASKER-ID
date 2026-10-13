@@ -255,6 +255,7 @@
         initDomicileCheckbox();
         initAddressListeners();
         initPhoneWhatsappSync();
+        initNpwpStatusSync();
         forms.forEach(f => initValidation(f));
         updateMapPreview();
     }
@@ -743,7 +744,6 @@
         enforceDigitsOnly(document.getElementById('pki_nik'), 16);
         enforceDigitsOnly(document.getElementById('pki_phone'), 15);
         enforceDigitsOnly(document.getElementById('pki_whatsapp'), 15);
-        enforceDigitsOnly(document.getElementById('pki_npwp'), 16);
     }
 
     // ─── 2b. Sync Phone with WhatsApp Checkbox ───
@@ -786,6 +786,40 @@
                 }
             });
         });
+    }
+
+    // ─── 2c. Status NPWP Sync with NIK ───
+    function initNpwpStatusSync() {
+        const nikInput = document.getElementById('pki_nik');
+        const npwpHidden = document.getElementById('pki_npwp');
+        const npwpStatus = document.getElementById('pki_npwp_status');
+
+        if (!npwpStatus || !npwpHidden) return;
+
+        function syncNpwp() {
+            if (npwpStatus.checked) {
+                const nikVal = nikInput?.value?.trim() || '';
+                npwpHidden.value = nikVal;
+                clearFieldError('npwp');
+            } else {
+                npwpHidden.value = '';
+            }
+        }
+
+        npwpStatus.addEventListener('change', syncNpwp);
+        if (nikInput) {
+            ['input', 'change', 'paste'].forEach(ev => {
+                nikInput.addEventListener(ev, function () {
+                    if (npwpStatus.checked) {
+                        npwpHidden.value = this.value.trim();
+                    }
+                });
+            });
+        }
+
+        if (npwpStatus.checked) {
+            syncNpwp();
+        }
     }
 
     // ─── 3. Address Listeners for Live Map ───
@@ -1011,7 +1045,7 @@
         phone: 'Terisi otomatis dari akun SIAPKerja.',
         whatsapp: 'Gunakan nomor WhatsApp aktif.',
         profession: 'Pilih jenis usaha individu yang paling sesuai dengan kegiatan utama Anda.',
-        npwp: 'NPWP 15 atau 16 digit.',
+        npwp: '',
         brand_name: 'Nama brand atau merek usaha/kegiatan yang dijalankan.',
         business_logo: 'Format PNG, JPG. Ukuran Maksimal 2MB',
         location: 'Pilih lokasi secara berjenjang sampai Kelurahan/Desa.',
@@ -1028,6 +1062,7 @@
 
     function getFieldElement(fieldId) {
         if (fieldId === 'profession') return document.getElementById('pki_profession_trigger') || document.getElementById('pki_profession');
+        if (fieldId === 'npwp') return document.getElementById('pki_box_npwp') || document.getElementById('pki_npwp_status');
         if (fieldId === 'location') return document.getElementById('pki_hierarchicalLocationInput');
         if (fieldId === 'address') return document.getElementById('pki_inputAddress');
         if (fieldId === 'postal_code') return document.getElementById('pki_selectPostalCode');
@@ -1066,7 +1101,7 @@
         if (helper) {
             helper.classList.remove('error');
             helper.textContent = DEFAULT_HELPERS[fieldId] || '';
-            if (fieldId === 'user_consent') {
+            if (fieldId === 'user_consent' || fieldId === 'npwp') {
                 helper.style.display = 'none';
             }
         }
@@ -1074,12 +1109,22 @@
 
     function initValidation(form) {
         // Live clear on input
-        ['owner_name', 'phone', 'whatsapp', 'npwp', 'brand_name'].forEach(id => {
+        ['owner_name', 'phone', 'whatsapp', 'brand_name'].forEach(id => {
             const input = document.getElementById(`pki_${id}`);
             if (input) {
                 input.addEventListener('input', () => clearFieldError(id));
             }
         });
+
+        // NPWP Status Checkbox live clear
+        const npwpStatusCb = document.getElementById('pki_npwp_status');
+        if (npwpStatusCb) {
+            npwpStatusCb.addEventListener('change', function () {
+                if (this.checked) {
+                    clearFieldError('npwp');
+                }
+            });
+        }
 
         // Social media live clear
         ['linkedin', 'facebook', 'instagram'].forEach(id => {
@@ -1270,12 +1315,14 @@
                     clearFieldError('profession');
                 }
 
-                // 6. NPWP
-                const npwp = document.getElementById('pki_npwp')?.value?.trim();
-                const npwpDigits = (npwp || '').replace(/\D/g, '');
-                if (!npwp || npwpDigits.length < 15 || npwpDigits.length > 16) {
-                    flagError('npwp', 'NPWP wajib diisi (15 atau 16 digit angka).', document.getElementById('pki_npwp'));
+                // 6. Status NPWP
+                const npwpStatus = document.getElementById('pki_npwp_status');
+                if (!npwpStatus || !npwpStatus.checked) {
+                    flagError('npwp', 'Status NPWP wajib dicentang untuk melanjutkan.', document.getElementById('pki_npwp_status'));
                 } else {
+                    const nikVal = document.getElementById('pki_nik')?.value?.trim() || '';
+                    const npwpHidden = document.getElementById('pki_npwp');
+                    if (npwpHidden) npwpHidden.value = nikVal;
                     clearFieldError('npwp');
                 }
             } else if (stepNumber === 2) {

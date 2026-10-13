@@ -30,6 +30,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
         $whatsapp = trim($_POST['whatsapp'] ?? '');
         $profession = trim($_POST['profession'] ?? '');
         $npwp = trim($_POST['npwp'] ?? '');
+        $npwpStatus = !empty($_POST['npwp_status']);
+        if ($npwp === '' && $npwpStatus) {
+            $npwp = $nik;
+        }
         $linkedin = trim($_POST['linkedin'] ?? '');
         $facebook = trim($_POST['facebook'] ?? '');
         $instagram = trim($_POST['instagram'] ?? '');
@@ -534,7 +538,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
             <a class="primary-btn" href="dashboard.php#dashboard" style="width: 100%; text-align: center; justify-content: center; height: 42px; font-size: 13.5px; font-weight: 600; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center;">Menuju Dashboard Pemberi Kerja</a>
         </div>
     </div>
-    <script src="assets/pki-form.js?v=20261012_v3"></script>
+    <script src="assets/pki-form.js?v=20261013_v1"></script>
     <script>
     (function () {
         var modal = document.getElementById('modalPendaftaranBerhasil');

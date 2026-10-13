@@ -348,6 +348,49 @@ a {
     display: block !important;
 }
 
+/* Checkbox Field (for Status NPWP) */
+.pki-checkbox-field {
+    min-height: 38px !important;
+    padding: 8px 12px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+}
+.pki-checkbox-field:hover {
+    border-color: #94a3b8 !important;
+}
+.pki-checkbox-field.error,
+.pki-field.has-error .pki-checkbox-field {
+    border-color: #dc2626 !important;
+    background-color: #fffafb !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+}
+.pki-checkbox-label {
+    display: inline-flex !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: #1e293b !important;
+    line-height: 1.45 !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+}
+.pki-checkbox-label input[type="checkbox"] {
+    width: 15px !important;
+    height: 15px !important;
+    margin-top: 1.5px !important;
+    accent-color: #0284c7 !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+}
+
 /* Tooltip Popover */
 .pki-tooltip {
     position: relative !important;
@@ -416,6 +459,25 @@ a {
     visibility: visible !important;
     pointer-events: auto !important;
     transform: translateX(-50%) translateY(0) !important;
+}
+
+/* Tooltip Right Alignment for Right Grid Column */
+.pki-tooltip.tooltip-right .tooltip-popover {
+    left: auto !important;
+    right: -12px !important;
+    transform: translateY(4px) !important;
+    max-width: 290px !important;
+}
+.pki-tooltip.tooltip-right .tooltip-popover::after {
+    left: auto !important;
+    right: 14px !important;
+    transform: none !important;
+}
+.pki-tooltip.tooltip-right:hover .tooltip-popover,
+.pki-tooltip.tooltip-right:focus .tooltip-popover,
+.pki-tooltip.tooltip-right:focus-within .tooltip-popover,
+.pki-tooltip.tooltip-right.active .tooltip-popover {
+    transform: translateY(0) !important;
 }
 
 /* Hierarchical Location Picker */

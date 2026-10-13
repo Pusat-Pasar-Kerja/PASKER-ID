@@ -424,6 +424,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $whatsapp    = trim($_POST['whatsapp'] ?? '');
         $profession  = trim($_POST['profession'] ?? '');
         $npwp        = trim($_POST['npwp'] ?? '');
+        $npwpStatus  = !empty($_POST['npwp_status']);
+        if ($npwp === '' && $npwpStatus) {
+            $npwp = $nik;
+        }
 
         $linkedin    = trim($_POST['linkedin'] ?? '');
         $facebook    = trim($_POST['facebook'] ?? '');
