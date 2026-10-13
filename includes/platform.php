@@ -19,6 +19,7 @@ function ensure_platform_schema(): void
         'linkedin' => 'VARCHAR(255) NULL',
         'facebook' => 'VARCHAR(255) NULL',
         'instagram' => 'VARCHAR(255) NULL',
+        'tiktok' => 'VARCHAR(255) NULL',
         'npwp' => 'VARCHAR(40) NULL',
         'latitude' => 'VARCHAR(40) NULL',
         'longitude' => 'VARCHAR(40) NULL',

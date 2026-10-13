@@ -432,6 +432,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $linkedin    = trim($_POST['linkedin'] ?? '');
         $facebook    = trim($_POST['facebook'] ?? '');
         $instagram   = trim($_POST['instagram'] ?? '');
+        $tiktok      = trim($_POST['tiktok'] ?? '');
+
+        if (!empty($_POST['social_platform']) && is_array($_POST['social_platform'])) {
+            foreach ($_POST['social_platform'] as $idx => $plat) {
+                $h = trim($_POST['social_handle'][$idx] ?? '');
+                if ($h === '') continue;
+                $p = strtolower($plat);
+                if ($p === 'linkedin' && $linkedin === '') $linkedin = $h;
+                if ($p === 'facebook' && $facebook === '') $facebook = $h;
+                if ($p === 'instagram' && $instagram === '') $instagram = $h;
+                if ($p === 'tiktok' && $tiktok === '') $tiktok = $h;
+            }
+        }
 
         $sameLoc     = isset($_POST['same_location_siapkerja']) ? 1 : 0;
         $province    = trim($_POST['province'] ?? '');
@@ -450,7 +463,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $brandName   = trim($_POST['brand_name'] ?? '');
         $consent     = isset($_POST['user_consent']) ? 1 : 0;
 
-        if ($ownerName === '' || $nik === '' || $phone === '' || $whatsapp === '' || $profession === '' || $npwp === '' || ($linkedin === '' && $facebook === '' && $instagram === '') || !$consent) {
+        if ($ownerName === '' || $nik === '' || $phone === '' || $whatsapp === '' || $profession === '' || $npwp === '' || ($linkedin === '' && $facebook === '' && $instagram === '' && $tiktok === '') || !$consent) {
             flash('error', 'Lengkapi semua field wajib (termasuk minimal salah satu media sosial) dan centang persetujuan pengguna.');
             redirect('dashboard.php?open_profile=1');
             exit;

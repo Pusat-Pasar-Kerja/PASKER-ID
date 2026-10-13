@@ -182,6 +182,9 @@ function ensure_sqlite_extra_tables(PDO $pdo): void
             if (!in_array('facebook', $cols, true)) {
                 $pdo->exec('ALTER TABLE employer_profiles ADD COLUMN facebook TEXT');
             }
+            if (!in_array('tiktok', $cols, true)) {
+                $pdo->exec('ALTER TABLE employer_profiles ADD COLUMN tiktok TEXT');
+            }
             if (!in_array('social_media', $cols, true)) {
                 $pdo->exec('ALTER TABLE employer_profiles ADD COLUMN social_media TEXT');
             }

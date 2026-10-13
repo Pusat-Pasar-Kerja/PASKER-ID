@@ -1107,3 +1107,173 @@ a {
 .modal-panel[data-modal="modal-employer-profile"] .modal-footer {
     display: none !important; /* replaced by inside-form pki-step-footer */
 }
+
+/* ==========================================================================
+   PKI SOCIAL MEDIA REPEATER FIELD
+   ========================================================================== */
+.pki-social-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+    margin-top: 4px !important;
+}
+
+.pki-social-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.pki-social-select-wrap {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    flex: 0 0 170px !important;
+    min-width: 140px !important;
+}
+
+.pki-social-platform-icon {
+    position: absolute !important;
+    left: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    pointer-events: none !important;
+    font-size: 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 18px !important;
+    height: 18px !important;
+    z-index: 2 !important;
+}
+
+.pki-social-platform-select {
+    width: 100% !important;
+    height: 42px !important;
+    padding: 0 28px 0 38px !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #1e293b !important;
+    cursor: pointer !important;
+    outline: none !important;
+    transition: all 0.2s ease !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 10px center !important;
+}
+
+.pki-social-platform-select:hover {
+    border-color: #94a3b8 !important;
+}
+
+.pki-social-platform-select:focus {
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
+}
+
+.pki-social-input-wrap {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+
+.pki-social-handle-input {
+    width: 100% !important;
+    height: 42px !important;
+    padding: 0 14px !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    color: #1e293b !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.pki-social-handle-input:hover {
+    border-color: #94a3b8 !important;
+}
+
+.pki-social-handle-input:focus {
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
+}
+
+.pki-social-handle-input.is-invalid {
+    border-color: #ef4444 !important;
+    background-color: #fff5f5 !important;
+}
+
+.pki-social-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+}
+
+.pki-social-btn {
+    width: 42px !important;
+    height: 42px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    border: 1px solid transparent !important;
+    transition: all 0.18s ease !important;
+    outline: none !important;
+    user-select: none !important;
+    box-sizing: border-box !important;
+}
+
+.pki-social-btn-add {
+    background: #0284c7 !important;
+    border-color: #0284c7 !important;
+    color: #ffffff !important;
+}
+
+.pki-social-btn-add:hover {
+    background: #0369a1 !important;
+    border-color: #0369a1 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25) !important;
+}
+
+.pki-social-btn-del {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #dc2626 !important;
+}
+
+.pki-social-btn-del:hover {
+    background: #fee2e2 !important;
+    border-color: #fca5a5 !important;
+    color: #b91c1c !important;
+    transform: translateY(-1px) !important;
+}
+
+@media (max-width: 580px) {
+    .pki-social-row {
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        padding-bottom: 8px !important;
+        border-bottom: 1px dashed #e2e8f0 !important;
+    }
+    .pki-social-select-wrap {
+        flex: 1 1 140px !important;
+    }
+    .pki-social-input-wrap {
+        flex: 2 1 180px !important;
+    }
+}
+

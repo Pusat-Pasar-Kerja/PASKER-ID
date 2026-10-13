@@ -76,6 +76,17 @@ if (!empty($vLogo)) {
 $vLinkedin = e($formData['linkedin'] ?? '');
 $vFacebook = e($formData['facebook'] ?? '');
 $vInstagram = e($formData['instagram'] ?? '');
+$vTiktok = e($formData['tiktok'] ?? '');
+
+$existingSocials = [];
+if (!empty($vLinkedin)) $existingSocials[] = ['platform' => 'LinkedIn', 'handle' => $vLinkedin];
+if (!empty($vFacebook)) $existingSocials[] = ['platform' => 'Facebook', 'handle' => $vFacebook];
+if (!empty($vInstagram)) $existingSocials[] = ['platform' => 'Instagram', 'handle' => $vInstagram];
+if (!empty($vTiktok)) $existingSocials[] = ['platform' => 'TikTok', 'handle' => $vTiktok];
+if (empty($existingSocials)) {
+    $existingSocials[] = ['platform' => 'LinkedIn', 'handle' => ''];
+}
+
 $vDescription = e($formData['description'] ?? '');
 $vConsent = !empty($formData['user_consent']);
 
@@ -90,7 +101,7 @@ if (!empty($vVillage) && !empty($vDistrict) && !empty($vCity) && !empty($vProvin
 $googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') ?: ($_ENV['GOOGLE_MAPS_API_KEY'] ?? '');
 $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
 ?>
-<link rel="stylesheet" href="assets/pki-form.css?v=20261013_v2">
+<link rel="stylesheet" href="assets/pki-form.css?v=20261013_v4">
 <style>
 <?php
 $pkiCssPath = __DIR__ . '/../assets/pki-form.css';
@@ -602,25 +613,61 @@ if (file_exists($pkiCssPath)) {
         <span>4. MEDIA SOSIAL</span>
         <span class="req" style="color:#ef4444 !important; font-weight:700;">*</span>
     </div>
-    <div style="font-size:12px; color:#64748b; margin-bottom:14px;">Wajib mengisi minimal salah satu akun media sosial (LinkedIn, Facebook, atau Instagram).</div>
+    <div style="font-size:12px; color:#64748b; margin-bottom:14px;">Wajib mengisi minimal salah satu akun media sosial (LinkedIn, Facebook, Instagram, atau TikTok).</div>
 
-    <div class="pki-grid-2">
-        <div class="pki-field">
-            <label class="pki-field-label" id="label_linkedin" for="pki_linkedin">LinkedIn</label>
-            <input type="text" name="linkedin" id="pki_linkedin" value="<?php echo $vLinkedin; ?>" placeholder="username atau https://linkedin.com/in/...">
-            <div class="pki-field-helper" id="helper_linkedin">Isi minimal salah satu media sosial.</div>
+    <!-- Hidden compatibility fields synced by JS -->
+    <input type="hidden" name="linkedin" id="pki_linkedin" value="<?php echo $vLinkedin; ?>">
+    <input type="hidden" name="facebook" id="pki_facebook" value="<?php echo $vFacebook; ?>">
+    <input type="hidden" name="instagram" id="pki_instagram" value="<?php echo $vInstagram; ?>">
+    <input type="hidden" name="tiktok" id="pki_tiktok" value="<?php echo $vTiktok; ?>">
+
+    <div class="pki-social-container" id="pki_social_container">
+        <?php 
+        $socialIcons = [
+            'LinkedIn' => ['icon' => 'fa-brands fa-linkedin', 'color' => '#0a66c2', 'placeholder' => 'username atau https://linkedin.com/in/...'],
+            'Facebook' => ['icon' => 'fa-brands fa-facebook', 'color' => '#1877f2', 'placeholder' => '@username atau https://facebook.com/...'],
+            'Instagram' => ['icon' => 'fa-brands fa-instagram', 'color' => '#e1306c', 'placeholder' => '@username atau https://instagram.com/...'],
+            'TikTok' => ['icon' => 'fa-brands fa-tiktok', 'color' => '#000000', 'placeholder' => '@username atau https://tiktok.com/@...'],
+        ];
+        $totalSoc = count($existingSocials);
+        foreach ($existingSocials as $sIdx => $socItem): 
+            $curPlat = $socItem['platform'];
+            $curHandle = $socItem['handle'];
+            $platMeta = $socialIcons[$curPlat] ?? $socialIcons['LinkedIn'];
+            $isLast = ($sIdx === $totalSoc - 1);
+        ?>
+        <div class="pki-social-row" data-index="<?php echo $sIdx; ?>">
+            <div class="pki-social-select-wrap">
+                <span class="pki-social-platform-icon">
+                    <i class="<?php echo $platMeta['icon']; ?>" style="color:<?php echo $platMeta['color']; ?>;"></i>
+                </span>
+                <select name="social_platform[]" class="pki-social-platform-select" aria-label="Pilih platform media sosial">
+                    <option value="LinkedIn" <?php echo $curPlat === 'LinkedIn' ? 'selected' : ''; ?>>LinkedIn</option>
+                    <option value="Facebook" <?php echo $curPlat === 'Facebook' ? 'selected' : ''; ?>>Facebook</option>
+                    <option value="Instagram" <?php echo $curPlat === 'Instagram' ? 'selected' : ''; ?>>Instagram</option>
+                    <option value="TikTok" <?php echo $curPlat === 'TikTok' ? 'selected' : ''; ?>>TikTok</option>
+                </select>
+            </div>
+            <div class="pki-social-input-wrap">
+                <input type="text" name="social_handle[]" class="pki-social-handle-input" value="<?php echo $curHandle; ?>" placeholder="<?php echo $platMeta['placeholder']; ?>" autocomplete="off" aria-label="Username atau URL akun media sosial">
+            </div>
+            <div class="pki-social-actions">
+                <?php if ($totalSoc > 1): ?>
+                    <button type="button" class="pki-social-btn pki-social-btn-del" title="Hapus akun media sosial" aria-label="Hapus akun">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                <?php endif; ?>
+                <?php if ($isLast && $totalSoc < 4): ?>
+                    <button type="button" class="pki-social-btn pki-social-btn-add" title="Tambah akun media sosial" aria-label="Tambah akun">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                <?php endif; ?>
+            </div>
         </div>
-        <div class="pki-field">
-            <label class="pki-field-label" id="label_facebook" for="pki_facebook">Facebook</label>
-            <input type="text" name="facebook" id="pki_facebook" value="<?php echo $vFacebook; ?>" placeholder="@username atau https://facebook.com/...">
-            <div class="pki-field-helper" id="helper_facebook">Isi minimal salah satu media sosial.</div>
-        </div>
+        <?php endforeach; ?>
     </div>
-
-    <div class="pki-field">
-        <label class="pki-field-label" id="label_instagram" for="pki_instagram">Instagram</label>
-        <input type="text" name="instagram" id="pki_instagram" value="<?php echo $vInstagram; ?>" placeholder="@username atau https://instagram.com/...">
-        <div class="pki-field-helper" id="helper_instagram">Isi minimal salah satu media sosial.</div>
+    <div class="pki-field-helper" id="helper_social" style="display:none; color:#ef4444; font-size:12px; margin-top:6px; font-weight:500;">
+        Wajib mengisi minimal salah satu akun media sosial (LinkedIn, Facebook, Instagram, atau TikTok).
     </div>
 </div>
 

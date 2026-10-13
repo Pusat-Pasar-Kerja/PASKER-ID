@@ -256,6 +256,7 @@
         initAddressListeners();
         initPhoneWhatsappSync();
         initNpwpStatusSync();
+        initSocialMediaRepeater();
         forms.forEach(f => initValidation(f));
         updateMapPreview();
     }
@@ -1038,6 +1039,186 @@
         setUploadSizeInfo(fieldId, 0);
     };
 
+    // ─── 5b. Social Media Repeater Manager ───
+    function initSocialMediaRepeater() {
+        const container = document.getElementById('pki_social_container');
+        if (!container) return;
+
+        const SOCIAL_PLATFORMS = [
+            { name: 'LinkedIn', icon: 'fa-brands fa-linkedin', color: '#0a66c2', placeholder: 'username atau https://linkedin.com/in/...' },
+            { name: 'Facebook', icon: 'fa-brands fa-facebook', color: '#1877f2', placeholder: '@username atau https://facebook.com/...' },
+            { name: 'Instagram', icon: 'fa-brands fa-instagram', color: '#e1306c', placeholder: '@username atau https://instagram.com/...' },
+            { name: 'TikTok', icon: 'fa-brands fa-tiktok', color: '#000000', placeholder: '@username atau https://tiktok.com/@...' }
+        ];
+
+        function getPlatformMeta(name) {
+            return SOCIAL_PLATFORMS.find(p => p.name.toLowerCase() === (name || '').toLowerCase()) || SOCIAL_PLATFORMS[0];
+        }
+
+        function syncSocialValues() {
+            const rows = container.querySelectorAll('.pki-social-row');
+            let linkedin = '';
+            let facebook = '';
+            let instagram = '';
+            let tiktok = '';
+            let anyFilled = false;
+
+            rows.forEach(row => {
+                const select = row.querySelector('.pki-social-platform-select');
+                const input = row.querySelector('.pki-social-handle-input');
+                const plat = select ? select.value : '';
+                const val = input ? input.value.trim() : '';
+
+                if (val) {
+                    anyFilled = true;
+                    if (plat === 'LinkedIn' && !linkedin) linkedin = val;
+                    else if (plat === 'Facebook' && !facebook) facebook = val;
+                    else if (plat === 'Instagram' && !instagram) instagram = val;
+                    else if (plat === 'TikTok' && !tiktok) tiktok = val;
+                }
+            });
+
+            const elLi = document.getElementById('pki_linkedin');
+            const elFb = document.getElementById('pki_facebook');
+            const elIg = document.getElementById('pki_instagram');
+            const elTt = document.getElementById('pki_tiktok');
+            if (elLi) elLi.value = linkedin;
+            if (elFb) elFb.value = facebook;
+            if (elIg) elIg.value = instagram;
+            if (elTt) elTt.value = tiktok;
+
+            if (anyFilled) {
+                clearFieldError('social');
+            }
+        }
+
+        function updateActionButtons() {
+            const rows = container.querySelectorAll('.pki-social-row');
+            const total = rows.length;
+
+            rows.forEach((row, idx) => {
+                row.dataset.index = idx;
+                const actions = row.querySelector('.pki-social-actions');
+                if (!actions) return;
+
+                const isLast = (idx === total - 1);
+                let html = '';
+
+                if (total > 1) {
+                    html += `
+                        <button type="button" class="pki-social-btn pki-social-btn-del" title="Hapus akun media sosial" aria-label="Hapus akun">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    `;
+                }
+
+                if (isLast && total < 4) {
+                    html += `
+                        <button type="button" class="pki-social-btn pki-social-btn-add" title="Tambah akun media sosial" aria-label="Tambah akun">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    `;
+                }
+
+                actions.innerHTML = html;
+            });
+        }
+
+        function createRow(platformName, handleVal) {
+            const meta = getPlatformMeta(platformName);
+            const row = document.createElement('div');
+            row.className = 'pki-social-row';
+
+            let optionsHtml = '';
+            SOCIAL_PLATFORMS.forEach(p => {
+                const sel = (p.name === meta.name) ? ' selected' : '';
+                optionsHtml += `<option value="${p.name}"${sel}>${p.name}</option>`;
+            });
+
+            row.innerHTML = `
+                <div class="pki-social-select-wrap">
+                    <span class="pki-social-platform-icon">
+                        <i class="${meta.icon}" style="color:${meta.color};"></i>
+                    </span>
+                    <select name="social_platform[]" class="pki-social-platform-select" aria-label="Pilih platform media sosial">
+                        ${optionsHtml}
+                    </select>
+                </div>
+                <div class="pki-social-input-wrap">
+                    <input type="text" name="social_handle[]" class="pki-social-handle-input" value="${handleVal || ''}" placeholder="${meta.placeholder}" autocomplete="off" aria-label="Username atau URL akun media sosial">
+                </div>
+                <div class="pki-social-actions"></div>
+            `;
+            return row;
+        }
+
+        container.addEventListener('change', function (e) {
+            const select = e.target.closest('.pki-social-platform-select');
+            if (!select) return;
+            const row = select.closest('.pki-social-row');
+            if (!row) return;
+
+            const meta = getPlatformMeta(select.value);
+            const iconEl = row.querySelector('.pki-social-platform-icon');
+            if (iconEl) {
+                iconEl.innerHTML = `<i class="${meta.icon}" style="color:${meta.color};"></i>`;
+            }
+            const input = row.querySelector('.pki-social-handle-input');
+            if (input) {
+                input.placeholder = meta.placeholder;
+            }
+            syncSocialValues();
+        });
+
+        container.addEventListener('input', function (e) {
+            const input = e.target.closest('.pki-social-handle-input');
+            if (!input) return;
+            if (input.value.trim()) {
+                input.classList.remove('is-invalid');
+            }
+            syncSocialValues();
+        });
+
+        container.addEventListener('click', function (e) {
+            const addBtn = e.target.closest('.pki-social-btn-add');
+            const delBtn = e.target.closest('.pki-social-btn-del');
+
+            if (addBtn) {
+                e.preventDefault();
+                const rows = container.querySelectorAll('.pki-social-row');
+                if (rows.length >= 4) return;
+
+                const used = Array.from(rows).map(r => r.querySelector('.pki-social-platform-select')?.value);
+                const nextPlat = SOCIAL_PLATFORMS.find(p => !used.includes(p.name)) || SOCIAL_PLATFORMS[0];
+
+                const newRow = createRow(nextPlat.name, '');
+                container.appendChild(newRow);
+                updateActionButtons();
+                syncSocialValues();
+
+                const newInput = newRow.querySelector('.pki-social-handle-input');
+                if (newInput) newInput.focus();
+                return;
+            }
+
+            if (delBtn) {
+                e.preventDefault();
+                const row = delBtn.closest('.pki-social-row');
+                if (!row) return;
+                const rows = container.querySelectorAll('.pki-social-row');
+                if (rows.length > 1) {
+                    row.remove();
+                    updateActionButtons();
+                    syncSocialValues();
+                }
+                return;
+            }
+        });
+
+        updateActionButtons();
+        syncSocialValues();
+    }
+
     // ─── 6. Strict Per-Field Validation on Submit ───
     const DEFAULT_HELPERS = {
         owner_name: 'Terisi otomatis dari akun SIAPKerja.',
@@ -1054,9 +1235,7 @@
         address_detail: 'Opsional. Tambahkan informasi yang membantu mengenali lokasi.',
         permit_document: 'Format PDF, Docx. Ukuran Maksimal 2MB',
         workplace_photo: 'Format PNG, JPG. Ukuran Maksimal 2MB',
-        linkedin: 'Isi minimal salah satu media sosial.',
-        facebook: 'Isi minimal salah satu media sosial.',
-        instagram: 'Isi minimal salah satu media sosial.',
+        social: 'Wajib mengisi minimal salah satu akun media sosial (LinkedIn, Facebook, Instagram, atau TikTok).',
         description: 'Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen.'
     };
 
@@ -1069,11 +1248,26 @@
         if (fieldId === 'permit_document') return document.getElementById('pki_box_permit_document');
         if (fieldId === 'workplace_photo') return document.getElementById('pki_box_workplace_photo');
         if (fieldId === 'business_logo') return document.getElementById('pki_box_business_logo');
+        if (fieldId === 'social') return document.querySelector('.pki-social-row .pki-social-handle-input') || document.getElementById('pki_social_container');
         if (fieldId === 'user_consent') return document.getElementById('pki_user_consent');
         return document.getElementById(`pki_${fieldId}`) || document.getElementById(fieldId);
     }
 
     function setFieldError(fieldId, errorMsg) {
+        if (fieldId === 'social') {
+            const helper = document.getElementById('helper_social');
+            if (helper) {
+                helper.textContent = errorMsg;
+                helper.style.setProperty('display', 'block', 'important');
+                helper.classList.add('error');
+            }
+            document.querySelectorAll('.pki-social-handle-input').forEach(el => {
+                if (!el.value.trim()) el.classList.add('is-invalid');
+            });
+            document.getElementById('pki_social_container')?.classList.add('has-error');
+            return;
+        }
+
         const label = document.getElementById(`label_${fieldId}`);
         const helper = document.getElementById(`helper_${fieldId}`);
         const el = getFieldElement(fieldId);
@@ -1090,6 +1284,17 @@
     }
 
     function clearFieldError(fieldId) {
+        if (fieldId === 'social') {
+            const helper = document.getElementById('helper_social');
+            if (helper) {
+                helper.style.setProperty('display', 'none', 'important');
+                helper.classList.remove('error');
+            }
+            document.querySelectorAll('.pki-social-handle-input.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            document.getElementById('pki_social_container')?.classList.remove('has-error');
+            return;
+        }
+
         const label = document.getElementById(`label_${fieldId}`);
         const helper = document.getElementById(`helper_${fieldId}`);
         const el = getFieldElement(fieldId);
@@ -1126,22 +1331,7 @@
             });
         }
 
-        // Social media live clear
-        ['linkedin', 'facebook', 'instagram'].forEach(id => {
-            const input = document.getElementById(`pki_${id}`);
-            if (input) {
-                input.addEventListener('input', () => {
-                    const li = document.getElementById('pki_linkedin')?.value?.trim();
-                    const fb = document.getElementById('pki_facebook')?.value?.trim();
-                    const ig = document.getElementById('pki_instagram')?.value?.trim();
-                    if (li || fb || ig) {
-                        clearFieldError('linkedin');
-                        clearFieldError('facebook');
-                        clearFieldError('instagram');
-                    }
-                });
-            }
-        });
+
 
         // NIK special check
         const nikInput = document.getElementById('pki_nik');
@@ -1400,18 +1590,19 @@
                     clearFieldError('workplace_photo');
                 }
 
-                // 12. Media Sosial (Minimal 1 diisi)
-                const linkedinVal = document.getElementById('pki_linkedin')?.value?.trim();
-                const facebookVal = document.getElementById('pki_facebook')?.value?.trim();
-                const instagramVal = document.getElementById('pki_instagram')?.value?.trim();
-                if (!linkedinVal && !facebookVal && !instagramVal) {
-                    flagError('linkedin', 'Wajib mengisi minimal salah satu media sosial (LinkedIn, Facebook, atau Instagram).', document.getElementById('pki_linkedin'));
-                    setFieldError('facebook', 'Wajib mengisi minimal salah satu media sosial.');
-                    setFieldError('instagram', 'Wajib mengisi minimal salah satu media sosial.');
+                // 12. Media Sosial (Dropdown platform + satu field username/URL, minimal 1 akun)
+                const socialContainer = document.getElementById('pki_social_container');
+                const socialRows = socialContainer ? socialContainer.querySelectorAll('.pki-social-row') : [];
+                let hasFilledSocial = false;
+                socialRows.forEach(r => {
+                    const handle = r.querySelector('.pki-social-handle-input')?.value?.trim();
+                    if (handle) hasFilledSocial = true;
+                });
+                if (!hasFilledSocial) {
+                    const firstInput = socialRows[0]?.querySelector('.pki-social-handle-input') || socialContainer;
+                    flagError('social', 'Wajib mengisi minimal salah satu akun media sosial (LinkedIn, Facebook, Instagram, atau TikTok).', firstInput);
                 } else {
-                    clearFieldError('linkedin');
-                    clearFieldError('facebook');
-                    clearFieldError('instagram');
+                    clearFieldError('social');
                 }
             } else if (stepNumber === 4) {
                 // 13. Pernyataan
