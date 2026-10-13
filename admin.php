@@ -913,6 +913,7 @@ if ($view === 'directory_individual') {
         SELECT u.id as user_id, u.name, u.email, u.created_at, u.profile_complete,
                ep.id as profile_id, ep.owner_name, ep.nik, ep.phone, ep.whatsapp, ep.npwp, ep.profession, ep.address, ep.address_detail,
                ep.city, ep.province, ep.district, ep.village, ep.postal_code, ep.latitude, ep.longitude, ep.description,
+               ep.brand_name, ep.business_logo,
                ep.verified, ep.verification_status, ep.suspension_reason, ep.extension_status, ep.verifier_notes, ep.verification_checklist,
                ep.manual_review_status, ep.assigned_to, ep.assigned_at, ep.rejection_count, ep.entity_type,
                ep.active_until, ep.last_activated_at, ep.domicile_city_id,
@@ -1005,7 +1006,7 @@ if ($view === 'verifikasi_employer') {
         SELECT u.id as user_id, u.name, u.email, u.created_at,
                ep.id as profile_id, ep.owner_name, ep.nik, ep.profession, ep.phone, ep.whatsapp, ep.npwp,
                ep.province, ep.city, ep.district, ep.village, ep.postal_code, ep.address, ep.address_detail,
-               ep.latitude, ep.longitude, ep.description, ep.verified, ep.verification_status, ep.verifier_notes,
+               ep.latitude, ep.longitude, ep.description, ep.brand_name, ep.business_logo, ep.verified, ep.verification_status, ep.verifier_notes,
                ep.verification_checklist, ep.assigned_to, ep.assigned_at, ep.assignment_reason, ep.rejection_count,
                ep.manual_review_status, ep.consent_data_hash, ep.consent_given_at, ep.officer_statement, ep.officer_name, ep.entity_type,
                ep.doc_permission, ep.permit_document, ep.doc_location_photo, ep.workplace_photo, ep.social_media, ep.instagram, ep.linkedin, ep.facebook, ep.domicile_city_id
@@ -2100,6 +2101,12 @@ window.CITY_MASTER = [
                                         </div>
                                         <div style="font-size:13.5px; font-weight:600; color:#0f172a;"><?php echo e($selectedEmployer['profession'] ?: 'Jasa Desain Grafis'); ?></div>
                                     </div>
+                                    <div>
+                                        <div style="font-size:12px; color:#64748b; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                                            <i class="fa-solid fa-tag" style="color:#94a3b8;"></i> Nama Brand Usaha
+                                        </div>
+                                        <div style="font-size:13.5px; font-weight:600; color:#0f172a;"><?php echo e($selectedEmployer['brand_name'] ?: '-'); ?></div>
+                                    </div>
                                 </div>
 
                                 <!-- Sosial Media -->
@@ -2165,6 +2172,22 @@ window.CITY_MASTER = [
                                             <?php else: ?>
                                                 <span style="font-size:12px; color:#94a3b8; font-style:italic;">Belum diunggah</span>
                                             <?php endif; ?>
+                                        </div>
+
+                                        <!-- Logo Usaha Card -->
+                                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                            <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                                                <div style="width:36px; height:36px; border-radius:8px; background:#eff6ff; color:#0284c7; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden;">
+                                                    <img src="public/images/jobii.png" alt="Logo Usaha" style="width:100%; height:100%; object-fit:contain;">
+                                                </div>
+                                                <div style="min-width:0;">
+                                                    <div style="font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase;">Logo Usaha</div>
+                                                    <div style="font-size:12.5px; font-weight:700; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?php echo e(!empty($selectedEmployer['business_logo']) ? basename($selectedEmployer['business_logo']) : 'jobii.png'); ?></div>
+                                                </div>
+                                            </div>
+                                            <button type="button" class="btn-lihat-detail" data-open-modal="modal-doc-logo" style="padding:6px 14px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:6px; flex-shrink:0; background:#ffffff; border:1px solid #0284c7; color:#0284c7; cursor:pointer;">
+                                                <i class="fa-regular fa-eye"></i> Lihat Foto
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -2373,6 +2396,35 @@ window.CITY_MASTER = [
                                         <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Foto Asli
                                     </a>
                                 <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODAL LIHAT LOGO USAHA -->
+                    <div class="modal-backdrop" data-modal="modal-doc-logo">
+                        <div class="modal-panel" style="width:min(640px, 94vw); max-height:90vh; display:flex; flex-direction:column;">
+                            <div class="modal-header">
+                                <div>
+                                    <div class="modal-title">Logo Usaha</div>
+                                    <div class="modal-subtitle"><?php echo e(!empty($selectedEmployer['business_logo']) ? basename($selectedEmployer['business_logo']) : 'jobii.png'); ?> &bull; <?php echo e($displayName); ?></div>
+                                </div>
+                                <button type="button" data-close-modal="modal-doc-logo" style="background:none; border:none; color:#64748b; font-size:18px; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <div class="modal-body" style="flex:1; overflow-y:auto; padding:20px; text-align:center;">
+                                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; max-width:480px; margin:0 auto;">
+                                    <div style="border-radius:8px; overflow:hidden; background:#f8fafc; border:1px solid #e2e8f0; margin-bottom:12px; max-height:360px; display:flex; align-items:center; justify-content:center; padding:16px;">
+                                        <img src="public/images/jobii.png" alt="Logo Usaha" style="max-width:100%; max-height:340px; object-fit:contain;">
+                                    </div>
+                                    <div style="font-size:12.5px; color:#475569; text-align:left;">
+                                        <strong>Brand:</strong> <?php echo e($selectedEmployer['brand_name'] ?: $displayName); ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+                                <button type="button" class="ghost-btn" data-close-modal="modal-doc-logo">Tutup</button>
+                                <a href="public/images/jobii.png" target="_blank" class="primary-btn" style="background:#0284c7; display:inline-flex; align-items:center; gap:8px; text-decoration:none; padding:8px 16px; border-radius:8px; font-size:13px;">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Foto Asli
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -3514,6 +3566,7 @@ document.addEventListener('click', function(e) {
                                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 14px; font-weight:600; color:#334155;">Alamat Lengkap</td><td style="padding:10px 14px; color:#0f172a;"><?php echo e($selectedEmployer['address'] ?: 'Jl. Ir. H. Juanda No. 25'); ?></td></tr>
                                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 14px; font-weight:600; color:#334155;">Detail Alamat / Patokan</td><td style="padding:10px 14px; color:#0f172a;"><?php echo e($selectedEmployer['address_detail'] ?: 'Dekat persimpangan utama'); ?></td></tr>
                                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 14px; font-weight:600; color:#334155;">Kode Pos</td><td style="padding:10px 14px; color:#0f172a;"><?php echo e($selectedEmployer['postal_code'] ?: '40135'); ?></td></tr>
+                                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 14px; font-weight:600; color:#334155;">Nama Brand Usaha</td><td style="padding:10px 14px; color:#0f172a;"><?php echo e($selectedEmployer['brand_name'] ?: '-'); ?></td></tr>
                                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 14px; font-weight:600; color:#334155;">Deskripsi Singkat Usaha / Rekrutmen</td><td style="padding:10px 14px; color:#0f172a;"><?php echo e($selectedEmployer['description'] ?: 'Usaha jasa desain grafis dan digital'); ?></td></tr>
                                                 <?php
                                                     $vDocPath = $selectedEmployer['permit_document'] ?: ($selectedEmployer['doc_permission'] ?: '');
@@ -3551,7 +3604,7 @@ document.addEventListener('click', function(e) {
                                                         <?php endif; ?>
                                                     </td>
                                                 </tr>
-                                                <tr>
+                                                <tr style="border-bottom:1px solid #f1f5f9;">
                                                     <td style="padding:10px 14px; font-weight:600; color:#334155;">Foto Bukti Tempat Usaha / Lokasi</td>
                                                     <td style="padding:10px 14px; color:#0f172a;">
                                                         <?php if ($vHasPhoto): ?>
@@ -3564,6 +3617,20 @@ document.addEventListener('click', function(e) {
                                                         <?php else: ?>
                                                             <span style="color:#94a3b8; font-style:italic;">Belum ada foto diunggah</span>
                                                         <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding:10px 14px; font-weight:600; color:#334155;">Logo Usaha</td>
+                                                    <td style="padding:10px 14px; color:#0f172a;">
+                                                        <div style="display:flex; align-items:center; gap:10px;">
+                                                            <div style="width:28px; height:28px; border-radius:6px; overflow:hidden; border:1px solid #e2e8f0; background:#f8fafc; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                                                <img src="public/images/jobii.png" alt="Logo Usaha" style="width:100%; height:100%; object-fit:contain;">
+                                                            </div>
+                                                            <span style="font-weight:600; color:#0f172a;"><i class="fa-solid fa-image" style="color:#0284c7; margin-right:4px;"></i> <?php echo e(!empty($selectedEmployer['business_logo']) ? basename($selectedEmployer['business_logo']) : 'jobii.png'); ?></span>
+                                                            <button type="button" data-open-modal="modal-view-logo" style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; color:#0284c7; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                                                                <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:11px;"></i> Lihat Foto
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             </tbody>
@@ -4289,6 +4356,35 @@ document.addEventListener('click', function(e) {
                                         <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Foto Asli
                                     </a>
                                 <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODAL LIHAT FOTO LOGO USAHA -->
+                    <div class="modal-backdrop" data-modal="modal-view-logo">
+                        <div class="modal-panel" style="width:min(640px, 94vw); max-height:90vh; display:flex; flex-direction:column;">
+                            <div class="modal-header">
+                                <div>
+                                    <div class="modal-title">Logo Usaha</div>
+                                    <div class="modal-subtitle"><?php echo e(!empty($selectedEmployer['business_logo']) ? basename($selectedEmployer['business_logo']) : 'jobii.png'); ?> &bull; <?php echo e($selectedEmployer['brand_name'] ?: ($selectedEmployer['owner_name'] ?: $selectedEmployer['name'])); ?></div>
+                                </div>
+                                <button type="button" data-close-modal="modal-view-logo" style="background:none; border:none; color:#64748b; font-size:18px; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <div class="modal-body" style="flex:1; overflow-y:auto; padding:20px; background:#f8fafc; text-align:center;">
+                                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:20px; max-width:480px; margin:0 auto; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+                                    <div style="border-radius:10px; overflow:hidden; background:#f8fafc; border:1px solid #e2e8f0; margin-bottom:14px; min-height:240px; display:flex; align-items:center; justify-content:center; padding:16px;">
+                                        <img src="public/images/jobii.png" alt="Logo Usaha Jobii" style="max-width:100%; max-height:360px; object-fit:contain;">
+                                    </div>
+                                    <div style="text-align:left; font-size:13px; color:#475569;">
+                                        <strong>Nama Brand:</strong> <?php echo e($selectedEmployer['brand_name'] ?: ($selectedEmployer['owner_name'] ?: $selectedEmployer['name'])); ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+                                <button type="button" class="ghost-btn" data-close-modal="modal-view-logo">Tutup</button>
+                                <a href="public/images/jobii.png" target="_blank" class="primary-btn" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px; height:38px; padding:0 16px; font-size:13px;">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Foto Asli
+                                </a>
                             </div>
                         </div>
                     </div>
