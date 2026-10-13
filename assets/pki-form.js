@@ -1044,7 +1044,7 @@
         nik: 'Terisi otomatis dari akun SIAPKerja.',
         phone: 'Terisi otomatis dari akun SIAPKerja.',
         whatsapp: 'Gunakan nomor WhatsApp aktif.',
-        profession: 'Pilih jenis usaha individu yang paling sesuai dengan kegiatan utama Anda.',
+        profession: 'Pilih jenis usaha perorangan yang Anda jalankan.',
         npwp: '',
         brand_name: 'Nama brand atau merek usaha/kegiatan yang dijalankan.',
         business_logo: 'Format PNG, JPG. Ukuran Maksimal 2MB',

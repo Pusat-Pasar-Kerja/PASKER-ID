@@ -90,7 +90,7 @@ if (!empty($vVillage) && !empty($vDistrict) && !empty($vCity) && !empty($vProvin
 $googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') ?: ($_ENV['GOOGLE_MAPS_API_KEY'] ?? '');
 $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
 ?>
-<link rel="stylesheet" href="assets/pki-form.css?v=20261013_v1">
+<link rel="stylesheet" href="assets/pki-form.css?v=20261013_v2">
 <style>
 <?php
 $pkiCssPath = __DIR__ . '/../assets/pki-form.css';
@@ -339,7 +339,7 @@ if (file_exists($pkiCssPath)) {
                     </div>
                 </div>
             </div>
-            <div class="pki-field-helper" id="helper_profession">Pilih jenis usaha individu yang paling sesuai dengan kegiatan utama Anda.</div>
+            <div class="pki-field-helper" id="helper_profession">Pilih jenis usaha perorangan yang Anda jalankan.</div>
         </div>
         <div class="pki-field" style="position:relative;">
             <label class="pki-field-label" id="label_npwp" for="pki_npwp_status">
