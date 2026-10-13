@@ -1299,20 +1299,20 @@
                     clearFieldError('phone');
                 }
 
-                // 4. Nomor WhatsApp
-                const whatsapp = document.getElementById('pki_whatsapp')?.value?.trim();
-                if (!whatsapp || whatsapp.length < 10 || whatsapp.length > 15) {
-                    flagError('whatsapp', 'Nomor WhatsApp aktif wajib diisi (10–15 digit angka).', document.getElementById('pki_whatsapp'));
-                } else {
-                    clearFieldError('whatsapp');
-                }
-
-                // 5. Jenis Usaha Individu
+                // 4. Jenis Usaha Individu
                 const profession = document.getElementById('pki_profession')?.value?.trim();
                 if (!profession) {
                     flagError('profession', 'Pilih jenis usaha individu yang sesuai.', document.getElementById('pki_profession_trigger') || document.getElementById('pki_profession'));
                 } else {
                     clearFieldError('profession');
+                }
+
+                // 5. Nomor WhatsApp
+                const whatsapp = document.getElementById('pki_whatsapp')?.value?.trim();
+                if (!whatsapp || whatsapp.length < 10 || whatsapp.length > 15) {
+                    flagError('whatsapp', 'Nomor WhatsApp aktif wajib diisi (10–15 digit angka).', document.getElementById('pki_whatsapp'));
+                } else {
+                    clearFieldError('whatsapp');
                 }
 
                 // 6. Status NPWP

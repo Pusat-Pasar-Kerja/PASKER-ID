@@ -160,28 +160,12 @@ if (file_exists($pkiCssPath)) {
             <input type="text" name="phone" id="pki_phone" value="<?php echo $vPhone; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx">
             <div class="pki-field-helper" id="helper_phone">Terisi otomatis dari akun SIAPKerja.</div>
         </div>
-        <div class="pki-field">
-            <label class="pki-field-label" id="label_whatsapp" for="pki_whatsapp">
-                Nomor WhatsApp <span class="req">*</span>
-            </label>
-            <input type="text" name="whatsapp" id="pki_whatsapp" value="<?php echo $vWhatsapp; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx">
-            <div class="pki-field-helper" id="helper_whatsapp">Gunakan nomor WhatsApp aktif.</div>
-            <div style="margin-top:6px; margin-bottom:2px;">
-                <label style="font-size:12px; font-weight:500; color:#334155; display:inline-flex; align-items:center; gap:6px; cursor:pointer; user-select:none;">
-                    <input type="checkbox" id="pki_same_as_phone" style="width:14px; height:14px; accent-color:#0284c7; cursor:pointer;" <?php echo (!empty($vPhone) && $vPhone === $vWhatsapp) ? 'checked' : ''; ?>>
-                    <span>Samakan dengan Nomor Telepon Aktif</span>
-                </label>
-            </div>
-        </div>
-    </div>
-
-    <div class="pki-grid-2">
         <div class="pki-field" style="position:relative;">
             <label class="pki-field-label" id="label_profession" for="pki_profession_trigger">
                 Jenis Usaha Individu <span class="req">*</span>
-                <span class="pki-tooltip" tabindex="0" role="tooltip">
+                <span class="pki-tooltip tooltip-right" tabindex="0" role="tooltip">
                     <?php echo $infoIconSvg; ?>
-                    <span class="tooltip-popover">Pilih jenis usaha individu yang paling sesuai dengan kegiatan utama Anda.</span>
+                    <span class="tooltip-popover">Pilih jenis usaha perorangan yang Anda jalankan.</span>
                 </span>
             </label>
 
@@ -340,6 +324,22 @@ if (file_exists($pkiCssPath)) {
                 </div>
             </div>
             <div class="pki-field-helper" id="helper_profession">Pilih jenis usaha perorangan yang Anda jalankan.</div>
+        </div>
+    </div>
+
+    <div class="pki-grid-2">
+        <div class="pki-field">
+            <label class="pki-field-label" id="label_whatsapp" for="pki_whatsapp">
+                Nomor WhatsApp <span class="req">*</span>
+            </label>
+            <input type="text" name="whatsapp" id="pki_whatsapp" value="<?php echo $vWhatsapp; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx">
+            <div class="pki-field-helper" id="helper_whatsapp">Gunakan nomor WhatsApp aktif.</div>
+            <div style="margin-top:6px; margin-bottom:2px;">
+                <label style="font-size:12px; font-weight:500; color:#334155; display:inline-flex; align-items:center; gap:6px; cursor:pointer; user-select:none;">
+                    <input type="checkbox" id="pki_same_as_phone" style="width:14px; height:14px; accent-color:#0284c7; cursor:pointer;" <?php echo (!empty($vPhone) && $vPhone === $vWhatsapp) ? 'checked' : ''; ?>>
+                    <span>Samakan dengan Nomor Telepon Aktif</span>
+                </label>
+            </div>
         </div>
         <div class="pki-field" style="position:relative;">
             <label class="pki-field-label" id="label_npwp" for="pki_npwp_status">
