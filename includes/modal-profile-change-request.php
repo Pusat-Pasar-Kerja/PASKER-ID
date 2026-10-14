@@ -1,63 +1,101 @@
 <?php
 /**
  * Modal Permintaan Perubahan Profil Pemberi Kerja Individu
- * Ditampilkan saat Profil Terverifikasi ingin mengajukan perubahan data.
- * Tampilan field mengikuti Form Daftar Sebagai Pemberi Kerja dengan data terisi otomatis.
+ * Menampilkan struktur field yang identik dengan Form Profil Pemberi Kerja Individu (Langkah 1 - 4).
+ * Seluruh data profil yang tersimpan sebelumnya diisi secara otomatis (pre-filled).
  */
+
 $showPcrModal = isset($_GET['open_pcr']) && $_GET['open_pcr'] == '1';
-$pcrCurrentData = $profile ?? [];
+$pcrData = $profile ?? [];
 
-// Helper values pre-filled dari data profil yang tersimpan
-$pcrOwnerName = e($pcrCurrentData['owner_name'] ?? ($user['name'] ?? ''));
-$pcrNik = e($pcrCurrentData['nik'] ?? '');
-$pcrPhone = e($pcrCurrentData['phone'] ?? '');
-$pcrWhatsapp = e($pcrCurrentData['whatsapp'] ?? '');
-$pcrProfession = $pcrCurrentData['profession'] ?? '';
-$pcrNpwp = e($pcrCurrentData['npwp'] ?? '');
-$pcrNpwpStatus = !empty($pcrCurrentData['npwp_status']) || !empty($pcrCurrentData['npwp']);
+// Helper values dari data profil yang tersimpan sebelumnya
+$vOwnerName = e($pcrData['owner_name'] ?? ($user['name'] ?? ''));
+$vNik = e($pcrData['nik'] ?? '');
+$vPhone = e($pcrData['phone'] ?? '');
+$vWhatsapp = e($pcrData['whatsapp'] ?? '');
+$vProfession = $pcrData['profession'] ?? '';
+$vNpwp = e($pcrData['npwp'] ?? '');
 
-$pcrBrandName = e($pcrCurrentData['brand_name'] ?? '');
-$pcrLogo = $pcrCurrentData['business_logo'] ?? ($pcrCurrentData['brand_logo'] ?? '');
-$pcrDescription = e($pcrCurrentData['description'] ?? '');
+$vSameLoc = !empty($pcrData['same_location_siapkerja']);
+$vProvince = e($pcrData['province'] ?? '');
+$vCity = e($pcrData['city'] ?? '');
+$vDistrict = e($pcrData['district'] ?? '');
+$vVillage = e($pcrData['village'] ?? '');
+$vPostalCode = e($pcrData['postal_code'] ?? '');
+$vAddress = e($pcrData['address'] ?? '');
+$vAddressDetail = e($pcrData['address_detail'] ?? ($pcrData['address_notes'] ?? ''));
+$vLat = e($pcrData['latitude'] ?? '-6.887844');
+$vLng = e($pcrData['longitude'] ?? '107.613038');
 
-$pcrProvince = e($pcrCurrentData['province'] ?? '');
-$pcrCity = e($pcrCurrentData['city'] ?? '');
-$pcrDistrict = e($pcrCurrentData['district'] ?? '');
-$pcrVillage = e($pcrCurrentData['village'] ?? '');
-$pcrPostalCode = e($pcrCurrentData['postal_code'] ?? '');
-$pcrAddress = e($pcrCurrentData['address'] ?? '');
-$pcrAddressDetail = e($pcrCurrentData['address_detail'] ?? ($pcrCurrentData['address_notes'] ?? ''));
-
-$pcrPermitDoc = $pcrCurrentData['permit_document'] ?? ($pcrCurrentData['doc_permission'] ?? '');
-$pcrPhoto = $pcrCurrentData['workplace_photo'] ?? ($pcrCurrentData['doc_location_photo'] ?? '');
-
-$pcrLinkedin = e($pcrCurrentData['linkedin'] ?? '');
-$pcrFacebook = e($pcrCurrentData['facebook'] ?? '');
-$pcrInstagram = e($pcrCurrentData['instagram'] ?? '');
-$pcrTiktok = e($pcrCurrentData['tiktok'] ?? '');
-
-// Helper hitung ukuran berkas
-function pcr_format_filesize(?string $relativePath): string {
-    if (empty($relativePath)) return '';
+$vBrandName = e($pcrData['brand_name'] ?? '');
+$vLogo = $pcrData['business_logo'] ?? ($pcrData['brand_logo'] ?? '');
+$vLogoSizeText = '';
+if (!empty($vLogo)) {
     $baseDir = realpath(__DIR__ . '/..');
-    $cleanRel = ltrim(str_replace('\\', '/', (string)$relativePath), '/');
-    $abs = realpath($baseDir . '/' . $cleanRel);
-    if ($baseDir && $abs && str_starts_with($abs, $baseDir) && is_file($abs)) {
-        $bytes = (int)filesize($abs);
+    $logoRelative = ltrim(str_replace('\\', '/', (string) $vLogo), '/');
+    $logoAbsolute = realpath(__DIR__ . '/../' . $logoRelative);
+    if ($baseDir && $logoAbsolute && str_starts_with($logoAbsolute, $baseDir) && is_file($logoAbsolute)) {
+        $bytes = (int) filesize($logoAbsolute);
         if ($bytes > 0) {
-            return $bytes >= 1024 * 1024
-                ? number_format($bytes / (1024 * 1024), 2) . ' MB'
-                : number_format($bytes / 1024, 2) . ' KB';
+            $vLogoSizeText = $bytes >= 1024 * 1024 ? number_format($bytes / (1024 * 1024), 2) . ' MB' : number_format($bytes / 1024, 2) . ' KB';
         }
     }
-    return '';
 }
 
-$pcrLogoSizeText = pcr_format_filesize($pcrLogo);
-$pcrPermitDocSizeText = pcr_format_filesize($pcrPermitDoc);
-$pcrPhotoSizeText = pcr_format_filesize($pcrPhoto);
+$vDescription = e($pcrData['description'] ?? '');
 
-$pcrProfessionGroups = [
+$vPermitDoc = $pcrData['permit_document'] ?? ($pcrData['doc_permission'] ?? '');
+$vPermitDocSizeText = '';
+if (!empty($vPermitDoc)) {
+    $baseDir = realpath(__DIR__ . '/..');
+    $docRelative = ltrim(str_replace('\\', '/', (string) $vPermitDoc), '/');
+    $docAbsolute = realpath(__DIR__ . '/../' . $docRelative);
+    if ($baseDir && $docAbsolute && str_starts_with($docAbsolute, $baseDir) && is_file($docAbsolute)) {
+        $bytes = (int) filesize($docAbsolute);
+        if ($bytes > 0) {
+            $vPermitDocSizeText = $bytes >= 1024 * 1024 ? number_format($bytes / (1024 * 1024), 2) . ' MB' : number_format($bytes / 1024, 2) . ' KB';
+        }
+    }
+}
+
+$vPhoto = $pcrData['workplace_photo'] ?? ($pcrData['doc_location_photo'] ?? '');
+$vPhotoSizeText = '';
+if (!empty($vPhoto)) {
+    $baseDir = realpath(__DIR__ . '/..');
+    $photoRelative = ltrim(str_replace('\\', '/', (string) $vPhoto), '/');
+    $photoAbsolute = realpath(__DIR__ . '/../' . $photoRelative);
+    if ($baseDir && $photoAbsolute && str_starts_with($photoAbsolute, $baseDir) && is_file($photoAbsolute)) {
+        $bytes = (int) filesize($photoAbsolute);
+        if ($bytes > 0) {
+            $vPhotoSizeText = $bytes >= 1024 * 1024 ? number_format($bytes / (1024 * 1024), 2) . ' MB' : number_format($bytes / 1024, 2) . ' KB';
+        }
+    }
+}
+
+$vLinkedin = e($pcrData['linkedin'] ?? '');
+$vFacebook = e($pcrData['facebook'] ?? '');
+$vInstagram = e($pcrData['instagram'] ?? '');
+$vTiktok = e($pcrData['tiktok'] ?? '');
+
+$existingSocials = [];
+if (!empty($vLinkedin)) $existingSocials[] = ['platform' => 'LinkedIn', 'handle' => $vLinkedin];
+if (!empty($vFacebook)) $existingSocials[] = ['platform' => 'Facebook', 'handle' => $vFacebook];
+if (!empty($vInstagram)) $existingSocials[] = ['platform' => 'Instagram', 'handle' => $vInstagram];
+if (!empty($vTiktok)) $existingSocials[] = ['platform' => 'TikTok', 'handle' => $vTiktok];
+if (empty($existingSocials)) {
+    $existingSocials[] = ['platform' => 'LinkedIn', 'handle' => ''];
+}
+
+$locDisplayText = 'Pilih lokasi tempat usaha / kegiatan';
+$hasLocSelected = false;
+if (!empty($vVillage) && !empty($vDistrict) && !empty($vCity) && !empty($vProvince)) {
+    $locDisplayText = $vVillage . ', ' . $vDistrict . ', ' . $vCity . ', ' . $vProvince;
+    $hasLocSelected = true;
+}
+
+$infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
+
+$professionGroups = [
     'Kesehatan & Terapi' => [
         'Praktik Dokter Umum', 'Praktik Dokter Gigi', 'Praktik Bidan', 'Praktik Keperawatan Mandiri',
         'Praktik Psikolog', 'Layanan Fisioterapi', 'Praktik Terapis Wicara', 'Layanan Akupunktur',
@@ -103,8 +141,6 @@ $pcrProfessionGroups = [
         'Jasa Instalasi/Perbaikan Plumbing', 'Jasa Perawatan Taman', 'Jasa Pengecatan', 'Jasa Pertukangan',
     ],
 ];
-
-$infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
 ?>
 
 <div class="modal-backdrop <?php echo $showPcrModal ? 'open' : ''; ?>" data-modal="modal-profile-change-request" id="modal-profile-change-request" style="z-index: 1050;">
@@ -127,10 +163,10 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
             
             <div class="modal-body" style="padding: 24px 28px; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;">
 
-                <!-- 1. BAGIAN PROFIL YANG DIUBAH (CHECKBOX SESUAI GAMBAR) -->
+                <!-- 1. BAGIAN PROFIL YANG DIUBAH (CHECKBOX) -->
                 <div style="margin-bottom: 24px;">
                     <label style="display: block; font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
-                        Bagian Profil yang Diubah <span class="req" style="color: #ef4444;">*</span>
+                        Bagian Profil yang Diubah <span style="color: #ef4444;">*</span>
                     </label>
                     <div style="font-size: 12.5px; color: #64748b; margin-bottom: 12px;">Pilih bagian profil yang ingin Anda ubah.</div>
 
@@ -164,7 +200,7 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
                 <!-- 2. ALASAN PERUBAHAN -->
                 <div style="margin-bottom: 24px;">
                     <label for="pcr_reason" style="display: block; font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
-                        Alasan Perubahan <span class="req" style="color: #ef4444;">*</span>
+                        Alasan Perubahan <span style="color: #ef4444;">*</span>
                     </label>
                     <div style="position: relative;">
                         <textarea name="pcr_reason" id="pcr_reason" maxlength="500" rows="3" required placeholder="Saya ingin memperbarui alamat tempat usaha karena sudah pindah lokasi, serta memperbarui informasi media sosial (Instagram dan LinkedIn) yang terbaru." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; font-size: 13.5px; color: #1e293b; line-height: 1.5; resize: vertical; box-sizing: border-box; font-family: inherit; outline: none; transition: border-color 0.2s;"></textarea>
@@ -174,99 +210,115 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
                     </div>
                 </div>
 
-                <!-- 3. FIELD PROFIL TERPILIH (SESUAI FORM DAFTAR PEMBERI KERJA DENGAN DATA TERISI) -->
+                <!-- 3. FIELD PROFIL TERPILIH CONTAINER -->
                 <div style="margin-bottom: 24px;">
                     <label style="display: block; font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 10px;">
                         Field Profil Terpilih
                     </label>
 
-                    <!-- PLACEHOLDER JIKA BELUM ADA CHECKBOX YANG DIPILIH -->
+                    <!-- PLACEHOLDER IF NO SECTION CHECKED -->
                     <div id="pcr_fields_empty_placeholder" style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 24px; text-align: center; color: #64748b; font-size: 13.5px;">
                         <i class="fa-regular fa-hand-pointer" style="font-size: 22px; color: #94a3b8; margin-bottom: 8px; display: block;"></i>
                         Pilih minimal satu bagian profil di atas untuk menampilkan field yang ingin diubah.
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <!-- SECTION 1: IDENTITAS PERORANGAN                                 -->
+                    <!-- SECTION 1: IDENTITAS PERORANGAN (SESUAI LANGKAH 1 FORM PROFIL)  -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div id="pcr_box_identity" style="display: none; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                        <div style="background: #f1f5f9; padding: 12px 18px; font-weight: 700; font-size: 13.5px; color: #0369a1; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e8f0;">
+                    <div id="pcr_box_identity" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
+                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1; display: flex; align-items: center; justify-content: space-between;">
                             <span>Identitas Perorangan</span>
-                            <span style="font-size: 11.5px; font-weight: 600; color: #0369a1; background: #e0f2fe; padding: 3px 10px; border-radius: 999px; border: 1px solid #bae6fd;">Jenis Usaha &amp; WhatsApp dapat diedit</span>
+                            <span style="font-size: 11.5px; font-weight: 600; color: #0369a1; background: #e0f2fe; padding: 2px 10px; border-radius: 999px; border: 1px solid #bae6fd;">Jenis Usaha &amp; WhatsApp dapat diedit</span>
                         </div>
-                        <div style="padding: 20px; background: #ffffff;">
-
-                            <!-- Helper Info Read-only -->
-                            <div style="font-size: 12px; color: #64748b; margin-bottom: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; line-height: 1.45; display: flex; align-items: center; gap: 8px;">
-                                <i class="fa-solid fa-lock" style="color: #94a3b8; font-size: 13px;"></i>
-                                <span>Field Nama Pemberi Kerja, NIK, Nomor Telepon Aktif, dan Status NPWP berstatus <strong>Read-Only (Disabled)</strong> karena terverifikasi secara resmi dari akun SIAPKerja.</span>
+                        <div style="padding: 18px 20px; background: #ffffff;">
+                            
+                            <!-- KETERANGAN FIELD READ ONLY -->
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 9px 14px; line-height: 1.45;">
+                                <i class="fa-solid fa-lock" style="color: #94a3b8; margin-right: 5px;"></i> Field Nama Pemberi Kerja, NIK, Nomor Telepon Aktif, dan Status NPWP berstatus <strong>Read-Only</strong> dan terverifikasi dari akun SIAPKerja.
                             </div>
 
-                            <!-- Baris 1: Nama Lengkap & NIK (Read-Only) -->
+                            <!-- Baris 1: Nama & NIK (Read-Only) -->
                             <div class="pki-grid-2">
                                 <div class="pki-field">
-                                    <label class="pki-field-label">
-                                        Nama Pemberi Kerja <span class="req">*</span>
-                                    </label>
-                                    <input type="text" value="<?php echo $pcrOwnerName; ?>" readonly disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;">
-                                    <div class="pki-field-helper">Terisi otomatis dari akun SIAPKerja (Read-Only).</div>
+                                    <label class="pki-field-label">Nama Pemberi Kerja <span class="req">*</span></label>
+                                    <input type="text" value="<?php echo $vOwnerName; ?>" readonly style="background: #f8fafc; color: #64748b; cursor: not-allowed;">
+                                    <div class="pki-field-helper">Terisi otomatis dari akun SIAPKerja.</div>
                                 </div>
                                 <div class="pki-field">
-                                    <label class="pki-field-label">
-                                        NIK <span class="req">*</span>
-                                    </label>
-                                    <input type="text" value="<?php echo $pcrNik; ?>" readonly disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;">
-                                    <div class="pki-field-helper">Terisi otomatis dari akun SIAPKerja (Read-Only).</div>
+                                    <label class="pki-field-label">NIK <span class="req">*</span></label>
+                                    <input type="text" value="<?php echo $vNik; ?>" readonly style="background: #f8fafc; color: #64748b; cursor: not-allowed;">
+                                    <div class="pki-field-helper">Terisi otomatis dari akun SIAPKerja.</div>
                                 </div>
                             </div>
 
-                            <!-- Baris 2: Nomor Telepon Aktif & Jenis Usaha Individu -->
+                            <!-- Baris 2: No Telp (Read-Only) & Jenis Usaha (EDITABLE) -->
                             <div class="pki-grid-2">
                                 <div class="pki-field">
-                                    <label class="pki-field-label">
-                                        Nomor Telepon Aktif <span class="req">*</span>
-                                    </label>
-                                    <input type="text" value="<?php echo $pcrPhone; ?>" readonly disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;">
-                                    <div class="pki-field-helper">Terisi otomatis dari akun SIAPKerja (Read-Only).</div>
+                                    <label class="pki-field-label">Nomor Telepon Aktif <span class="req">*</span></label>
+                                    <input type="text" value="<?php echo $vPhone; ?>" readonly style="background: #f8fafc; color: #64748b; cursor: not-allowed;">
+                                    <div class="pki-field-helper">Terisi otomatis dari akun SIAPKerja.</div>
                                 </div>
-
-                                <!-- Jenis Usaha Individu (BISA DIEDIT) -->
+                                
+                                <!-- Jenis Usaha Individu (EDITABLE DENGAN CUSTOM SELECT SEARCHABLE IDENTIK) -->
                                 <div class="pki-field" style="position:relative;">
-                                    <label class="pki-field-label" for="pcr_select_profession">
+                                    <label class="pki-field-label" for="pcr_profession_trigger">
                                         Jenis Usaha Individu <span class="req">*</span>
                                         <span class="pki-tooltip tooltip-right" tabindex="0" role="tooltip">
                                             <?php echo $infoIconSvg; ?>
-                                            <span class="tooltip-popover">Pilih jenis usaha perorangan yang Anda jalankan saat ini.</span>
+                                            <span class="tooltip-popover">Pilih jenis usaha perorangan yang Anda jalankan.</span>
                                         </span>
                                     </label>
-                                    <select name="pcr_profession" id="pcr_select_profession" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; font-size: 13.5px; color: #0f172a; font-weight: 600; background: #ffffff; outline: none; cursor: pointer; transition: border-color 0.2s;">
-                                        <option value="">Pilih Jenis Usaha Individu</option>
-                                        <?php foreach ($pcrProfessionGroups as $groupName => $items): ?>
-                                            <optgroup label="<?php echo e($groupName); ?>" style="font-weight: 700; color: #0284c7;">
-                                                <?php foreach ($items as $item): ?>
-                                                    <option value="<?php echo e($item); ?>" <?php echo ($pcrProfession === $item) ? 'selected' : ''; ?> style="color: #1e293b; font-weight: normal;">
-                                                        <?php echo e($item); ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </optgroup>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <div class="pki-field-helper" style="color: #0284c7; font-weight: 500;">Dapat diedit: pilih jenis usaha perorangan yang Anda jalankan.</div>
+
+                                    <input type="hidden" name="pcr_profession" id="pcr_profession" value="<?php echo e($vProfession); ?>">
+
+                                    <div class="pki-custom-select-trigger" id="pcr_profession_trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox" style="border: 1px solid #0284c7; background: #f0fdf4;">
+                                        <span class="pki-custom-select-text <?php echo empty($vProfession) ? 'is-placeholder' : ''; ?>" id="pcr_profession_display" style="font-weight: 600; color: #1e293b;">
+                                            <?php echo !empty($vProfession) ? e($vProfession) : 'Pilih Jenis Usaha Individu'; ?>
+                                        </span>
+                                        <span class="pki-custom-select-caret">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="m7 15 5 5 5-5"/>
+                                                <path d="m7 9 5-5 5 5"/>
+                                            </svg>
+                                        </span>
+                                    </div>
+
+                                    <div class="pki-custom-select-dropdown" id="pcr_profession_dropdown" style="display:none;" role="listbox">
+                                        <div class="pki-custom-select-search-wrap">
+                                            <input type="text" class="pki-custom-select-search" id="pcr_profession_search" placeholder="Cari jenis usaha..." autocomplete="off">
+                                        </div>
+                                        <div class="pki-custom-select-options" id="pcr_profession_options">
+                                            <?php foreach ($professionGroups as $groupName => $items): ?>
+                                                <div class="pki-select-group" data-group="<?php echo e($groupName); ?>">
+                                                    <div class="pki-select-group-header"><?php echo e($groupName); ?></div>
+                                                    <?php foreach ($items as $item): ?>
+                                                        <div class="pki-select-option <?php echo ($vProfession === $item) ? 'selected' : ''; ?>" data-value="<?php echo e($item); ?>" role="option">
+                                                            <span><?php echo e($item); ?></span>
+                                                            <?php if ($vProfession === $item): ?>
+                                                                <i class="fa-solid fa-check pki-select-check"></i>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php endforeach; ?>
+                                            <div class="pki-select-no-results" id="pcr_profession_no_results" style="display:none;">
+                                                Tidak ada jenis usaha yang sesuai
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pki-field-helper">Pilih jenis usaha perorangan yang Anda jalankan.</div>
                                 </div>
                             </div>
 
-                            <!-- Baris 3: Nomor WhatsApp (BISA DIEDIT) & Status NPWP (Read-Only) -->
+                            <!-- Baris 3: Nomor WhatsApp (EDITABLE) & Status NPWP (Read-Only) -->
                             <div class="pki-grid-2">
-                                <!-- Nomor WhatsApp -->
                                 <div class="pki-field">
                                     <label class="pki-field-label" for="pcr_whatsapp">
                                         Nomor WhatsApp <span class="req">*</span>
                                     </label>
-                                    <input type="text" name="pcr_whatsapp" id="pcr_whatsapp" value="<?php echo $pcrWhatsapp; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx" style="border: 1px solid #0284c7; background: #f0fdf4; font-weight: 600;">
-                                    <div class="pki-field-helper" style="color: #166534; font-weight: 500;">Dapat diedit: gunakan nomor WhatsApp aktif yang dapat dihubungi.</div>
+                                    <input type="text" name="pcr_whatsapp" id="pcr_whatsapp" value="<?php echo $vWhatsapp; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx" style="border: 1px solid #0284c7; background: #f0fdf4; font-weight: 600;">
+                                    <div class="pki-field-helper">Gunakan nomor WhatsApp aktif.</div>
                                 </div>
-
-                                <!-- Status NPWP (Read-Only) -->
                                 <div class="pki-field" style="position:relative;">
                                     <label class="pki-field-label">
                                         Status NPWP <span class="req">*</span>
@@ -275,13 +327,13 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
                                             <span class="tooltip-popover">Informasi: Untuk Wajib Pajak Orang Pribadi yang merupakan penduduk Indonesia, NIK digunakan sebagai NPWP.</span>
                                         </span>
                                     </label>
-                                    <div class="pki-checkbox-field" style="opacity: 0.85; background: #f8fafc; border-color: #e2e8f0; cursor: not-allowed;">
-                                        <label class="pki-checkbox-label" style="cursor: not-allowed;">
-                                            <input type="checkbox" checked disabled style="cursor: not-allowed; accent-color: #0284c7;">
+                                    <div class="pki-checkbox-field">
+                                        <label class="pki-checkbox-label">
+                                            <input type="checkbox" checked disabled>
                                             <span>Saya terdaftar sebagai Wajib Pajak Orang Pribadi dan menggunakan NIK sebagai NPWP</span>
                                         </label>
                                     </div>
-                                    <div class="pki-field-helper">Status NPWP terverifikasi mengikuti akun SIAPKerja (Read-Only).</div>
+                                    <div class="pki-field-helper">Status NPWP terverifikasi otomatis dari akun.</div>
                                 </div>
                             </div>
 
@@ -289,15 +341,15 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <!-- SECTION 2: TEMPAT USAHA / KEGIATAN & DESKRIPSI USAHA            -->
+                    <!-- SECTION 2: TEMPAT USAHA & DESKRIPSI (IDENTIK LANGKAH 2)        -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div id="pcr_box_workplace" style="display: none; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                        <div style="background: #f1f5f9; padding: 12px 18px; font-weight: 700; font-size: 13.5px; color: #0369a1; border-bottom: 1px solid #e2e8f0;">
+                    <div id="pcr_box_workplace" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
+                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1;">
                             Tempat Usaha / Kegiatan Pemberi Kerja &amp; Deskripsi Usaha
                         </div>
-                        <div style="padding: 20px; background: #ffffff;">
-
-                            <!-- Baris 1: Nama Brand & Logo Usaha -->
+                        <div style="padding: 18px 20px; background: #ffffff;">
+                            
+                            <!-- Nama Brand Usaha & Logo Usaha -->
                             <div class="pki-grid-2">
                                 <div class="pki-field">
                                     <label class="pki-field-label" for="pcr_brand_name">
@@ -307,10 +359,9 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
                                             <span class="tooltip-popover">Nama merek dagang, brand, atau nama komersial tempat usaha/kegiatan Anda.</span>
                                         </span>
                                     </label>
-                                    <input type="text" name="pcr_brand_name" id="pcr_brand_name" value="<?php echo $pcrBrandName; ?>" placeholder="Masukkan nama brand usaha">
+                                    <input type="text" name="pcr_brand_name" id="pcr_brand_name" value="<?php echo $vBrandName; ?>" placeholder="Masukkan nama brand usaha">
                                     <div class="pki-field-helper">Nama brand atau merek usaha/kegiatan yang dijalankan.</div>
                                 </div>
-
                                 <div class="pki-field">
                                     <label class="pki-field-label">
                                         Logo Usaha
@@ -319,23 +370,31 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
                                             <span class="tooltip-popover">Unggah logo resmi atau foto identitas visual usaha/kegiatan Anda.</span>
                                         </span>
                                     </label>
-                                    <div class="pki-upload-box" id="pcr_box_business_logo" onclick="pcrTriggerUpload('business_logo')">
-                                        <span class="pki-upload-text <?php echo !empty($pcrLogo) ? 'has-file' : ''; ?>" id="pcr_text_business_logo">
-                                            <?php if (!empty($pcrLogo)): ?>
-                                                <i class="fa-solid fa-image" style="color:#0284c7; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($pcrLogo)); ?></span>
+                                    <div class="pki-upload-box" id="pcr_box_business_logo" onclick="pcrTriggerUpload('pcr_business_logo')">
+                                        <span class="pki-upload-text <?php echo !empty($vLogo) ? 'has-file' : ''; ?>" id="pcr_text_business_logo">
+                                            <?php if (!empty($vLogo)): ?>
+                                                <i class="fa-solid fa-image" style="color:#0284c7; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($vLogo)); ?></span>
                                             <?php else: ?>
                                                 <span>Klik dan letakkan file di sini atau <strong style="color:#2563eb;">Pilih File</strong></span>
                                             <?php endif; ?>
                                         </span>
                                         <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                                            <button type="button" class="pki-upload-btn" id="pcr_btn_business_logo"><?php echo !empty($pcrLogo) ? 'Ganti' : 'Pilih File'; ?></button>
+                                            <?php if (!empty($vLogo)): ?>
+                                                <button type="button" class="pki-upload-clear-btn" title="Hapus logo" onclick="pcrClearUpload(event, 'pcr_business_logo')">
+                                                    <i class="fa-solid fa-xmark"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                            <button type="button" class="pki-upload-btn" id="pcr_btn_business_logo"><?php echo !empty($vLogo) ? 'Ganti' : 'Pilih File'; ?></button>
                                         </div>
                                     </div>
-                                    <input type="file" name="pcr_business_logo" id="pcr_input_business_logo" accept=".png,.jpg,.jpeg" style="display:none;" onchange="pcrHandleFileChange(this, 'business_logo')">
+                                    <input type="file" name="pcr_business_logo" id="pcr_input_business_logo" accept=".png,.jpg,.jpeg" style="display:none;" onchange="pcrHandleFileChange(this, 'pcr_business_logo')">
+                                    <input type="hidden" name="pcr_existing_business_logo" id="pcr_existing_business_logo" value="<?php echo e($vLogo); ?>">
                                     <div class="pki-field-helper">Ukuran maksimum 2 MB • Format PNG, JPG</div>
-                                    <?php if ($pcrLogoSizeText !== ''): ?>
-                                        <div class="pki-field-helper" style="color: #64748b;">Ukuran file saat ini: <?php echo e($pcrLogoSizeText); ?></div>
-                                    <?php endif; ?>
+                                    <div class="pki-field-helper" id="pcr_helper_business_logo_size" style="<?php echo $vLogoSizeText !== '' ? '' : 'display:none;'; ?>">
+                                        <?php if ($vLogoSizeText !== ''): ?>
+                                            Ukuran file saat ini: <?php echo e($vLogoSizeText); ?>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
 
@@ -345,92 +404,116 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
                                     Deskripsi Singkat Usaha / Rekrutmen
                                     <span class="pki-tooltip" tabindex="0" role="tooltip">
                                         <?php echo $infoIconSvg; ?>
-                                        <span class="tooltip-popover">Jelaskan secara singkat usaha atau kegiatan yang dijalankan serta gambaran kebutuhan rekrutmen.</span>
+                                        <span class="tooltip-popover">Jelaskan secara singkat usaha atau kegiatan yang dijalankan serta gambaran kebutuhan rekrutmen yang dilakukan.</span>
                                     </span>
                                 </label>
-                                <textarea name="pcr_description" id="pcr_description" placeholder="Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen..." style="min-height:85px;"><?php echo $pcrDescription; ?></textarea>
+                                <textarea name="pcr_description" id="pcr_description" placeholder="Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen..." style="min-height:85px;"><?php echo $vDescription; ?></textarea>
                                 <div class="pki-field-helper">Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen.</div>
+                            </div>
+
+                            <!-- Checkbox Gunakan Alamat Domisili SIAPKerja -->
+                            <div style="margin-bottom:14px;">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+                                    <input type="checkbox" name="pcr_same_location_siapkerja" id="pcr_cbSameLocation" value="1" <?php echo $vSameLoc ? 'checked' : ''; ?> style="accent-color:#0284c7; cursor:pointer;" onchange="pcrHandleSameLocationToggle(this)">
+                                    <span>Gunakan alamat domisili di SIAPKerja sebagai lokasi tempat usaha/kegiatan</span>
+                                </label>
+                            </div>
+
+                            <!-- Hidden Location Fields -->
+                            <input type="hidden" name="pcr_province" id="pcr_hiddenProvince" value="<?php echo $vProvince; ?>">
+                            <input type="hidden" name="pcr_city" id="pcr_hiddenCity" value="<?php echo $vCity; ?>">
+                            <input type="hidden" name="pcr_district" id="pcr_hiddenDistrict" value="<?php echo $vDistrict; ?>">
+                            <input type="hidden" name="pcr_village" id="pcr_hiddenVillage" value="<?php echo $vVillage; ?>">
+                            <input type="hidden" name="pcr_domicile_city_id" id="pcr_hiddenDomicileCityId" value="<?php echo $vCity; ?>">
+                            <input type="hidden" name="pcr_latitude" id="pcr_inputLat" value="<?php echo $vLat; ?>">
+                            <input type="hidden" name="pcr_longitude" id="pcr_inputLng" value="<?php echo $vLng; ?>">
+
+                            <!-- Lokasi Tempat Usaha / Kegiatan: HIERARCHICAL LOCATION SELECTOR BERJENJANG -->
+                            <div class="pki-field" style="position:relative;">
+                                <label class="pki-field-label" for="pcr_hierarchicalLocationInput">
+                                    Lokasi Tempat Usaha / Kegiatan <span class="req">*</span>
+                                    <span class="pki-tooltip" tabindex="0" role="tooltip">
+                                        <?php echo $infoIconSvg; ?>
+                                        <span class="tooltip-popover">Lokasi tempat Anda menjalankan usaha atau kegiatan sebagai Pemberi Kerja Individu.</span>
+                                    </span>
+                                </label>
+                                <div id="pcr_hierarchicalLocationInput" class="hierarchical-loc-field" tabindex="0">
+                                    <span id="pcr_locDisplayValue" class="<?php echo $hasLocSelected ? '' : 'placeholder'; ?>"><?php echo e($locDisplayText); ?></span>
+                                    <i id="pcr_locCaret" class="fa-solid fa-chevron-down" style="color:#64748b; font-size:12px;"></i>
+                                </div>
+                                <div id="pcr_hierarchicalLocDropdown" class="loc-dropdown-popup" style="display:none;">
+                                    <div id="pcr_locBreadcrumbs" class="loc-breadcrumbs">
+                                        <span class="crumb-btn active" data-level="1">Pilih Provinsi</span>
+                                    </div>
+                                    <div id="pcr_locOptionsList" class="loc-options-list"></div>
+                                </div>
+                                <div class="pki-field-helper">Pilih lokasi secara berjenjang sampai Kelurahan/Desa.</div>
                             </div>
 
                             <!-- Alamat Lengkap Tempat Usaha -->
                             <div class="pki-field">
-                                <label class="pki-field-label" for="pcr_address">
+                                <label class="pki-field-label" for="pcr_inputAddress">
                                     Alamat Lengkap Tempat Usaha <span class="req">*</span>
                                 </label>
-                                <input type="text" name="pcr_address" id="pcr_address" value="<?php echo $pcrAddress; ?>" placeholder="Masukkan nama jalan, nomor bangunan, RT/RW, dan alamat lengkap...">
+                                <input type="text" name="pcr_address" id="pcr_inputAddress" value="<?php echo $vAddress; ?>" placeholder="Masukkan nama jalan, nomor bangunan, RT/RW, dan alamat lengkap...">
                                 <div class="pki-field-helper">Tuliskan alamat lengkap tempat usaha/kegiatan.</div>
                             </div>
 
-                            <!-- Wilayah: Provinsi & Kota/Kabupaten -->
-                            <div class="pki-grid-2">
-                                <div class="pki-field">
-                                    <label class="pki-field-label" for="pcr_province">
-                                        Provinsi <span class="req">*</span>
-                                    </label>
-                                    <input type="text" name="pcr_province" id="pcr_province" value="<?php echo $pcrProvince; ?>" placeholder="Masukkan provinsi">
-                                    <div class="pki-field-helper">Provinsi lokasi usaha / kegiatan.</div>
-                                </div>
-                                <div class="pki-field">
-                                    <label class="pki-field-label" for="pcr_city">
-                                        Kota / Kabupaten <span class="req">*</span>
-                                    </label>
-                                    <input type="text" name="pcr_city" id="pcr_city" value="<?php echo $pcrCity; ?>" placeholder="Masukkan kota/kabupaten">
-                                    <div class="pki-field-helper">Kota/Kabupaten lokasi usaha / kegiatan.</div>
-                                </div>
+                            <!-- Kode Pos -->
+                            <div class="pki-field">
+                                <label class="pki-field-label" for="pcr_selectPostalCode">
+                                    Kode Pos <span class="req">*</span>
+                                </label>
+                                <select name="pcr_postal_code" id="pcr_selectPostalCode">
+                                    <option value="">Pilih kode pos</option>
+                                    <?php if (!empty($vPostalCode)): ?>
+                                        <option value="<?php echo $vPostalCode; ?>" selected><?php echo $vPostalCode; ?></option>
+                                    <?php endif; ?>
+                                </select>
+                                <div class="pki-field-helper">Pilihan kode pos mengikuti lokasi yang dipilih.</div>
                             </div>
 
-                            <!-- Wilayah: Kecamatan & Kelurahan -->
-                            <div class="pki-grid-2">
-                                <div class="pki-field">
-                                    <label class="pki-field-label" for="pcr_district">
-                                        Kecamatan <span class="req">*</span>
-                                    </label>
-                                    <input type="text" name="pcr_district" id="pcr_district" value="<?php echo $pcrDistrict; ?>" placeholder="Masukkan kecamatan">
-                                    <div class="pki-field-helper">Kecamatan lokasi usaha / kegiatan.</div>
-                                </div>
-                                <div class="pki-field">
-                                    <label class="pki-field-label" for="pcr_village">
-                                        Kelurahan / Desa <span class="req">*</span>
-                                    </label>
-                                    <input type="text" name="pcr_village" id="pcr_village" value="<?php echo $pcrVillage; ?>" placeholder="Masukkan kelurahan/desa">
-                                    <div class="pki-field-helper">Kelurahan/Desa lokasi usaha / kegiatan.</div>
-                                </div>
+                            <!-- Detail Alamat / Patokan (Opsional) -->
+                            <div class="pki-field">
+                                <label class="pki-field-label" for="pcr_inputAddressDetail">
+                                    Detail Alamat / Patokan (Opsional)
+                                    <span class="pki-tooltip" tabindex="0" role="tooltip">
+                                        <?php echo $infoIconSvg; ?>
+                                        <span class="tooltip-popover">Tambahkan informasi yang membantu mengenali lokasi, seperti nomor bangunan, blok, lantai, atau patokan terdekat.</span>
+                                    </span>
+                                </label>
+                                <input type="text" name="pcr_address_detail" id="pcr_inputAddressDetail" value="<?php echo $vAddressDetail; ?>" placeholder="Contoh: Ruko lantai 2, sebelah Kantor Kelurahan">
+                                <div class="pki-field-helper">Opsional. Tambahkan informasi yang membantu mengenali lokasi.</div>
                             </div>
 
-                            <!-- Kode Pos & Detail Patokan -->
-                            <div class="pki-grid-2">
-                                <div class="pki-field">
-                                    <label class="pki-field-label" for="pcr_postal_code">
-                                        Kode Pos <span class="req">*</span>
-                                    </label>
-                                    <input type="text" name="pcr_postal_code" id="pcr_postal_code" value="<?php echo $pcrPostalCode; ?>" placeholder="Kode Pos">
-                                    <div class="pki-field-helper">Kode pos mengikuti lokasi usaha.</div>
+                            <!-- Peta Lokasi (Google Maps) -->
+                            <div class="pki-field">
+                                <label class="pki-field-label" style="margin-bottom:6px;">Peta Lokasi</label>
+                                <div class="pki-map-container" style="height:170px;">
+                                    <div id="pcr_mapPlaceholder" class="pki-map-placeholder" style="<?php echo $hasLocSelected ? 'display:none;' : ''; ?>">
+                                        <div style="font-size:24px; margin-bottom:4px;">🗺</div>
+                                        <div style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:2px;">Pratinjau peta belum tersedia</div>
+                                        <div style="font-size:11px; color:#64748b;">Lengkapi lokasi dan alamat terlebih dahulu.</div>
+                                    </div>
+                                    <div id="pcr_googleMapWrapper" class="pki-map-wrapper" style="<?php echo $hasLocSelected ? 'display:block;' : 'display:none;'; ?> width:100%; height:100%;">
+                                        <iframe id="pcr_gmapIframe" width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" src="<?php echo $hasLocSelected ? 'https://www.google.com/maps?q=' . urlencode($vAddress . ', ' . $vVillage . ', ' . $vCity) . '&output=embed' : 'about:blank'; ?>"></iframe>
+                                    </div>
                                 </div>
-                                <div class="pki-field">
-                                    <label class="pki-field-label" for="pcr_address_detail">
-                                        Detail Alamat / Patokan (Opsional)
-                                        <span class="pki-tooltip" tabindex="0" role="tooltip">
-                                            <?php echo $infoIconSvg; ?>
-                                            <span class="tooltip-popover">Informasi tambahan seperti nomor gedung, blok, lantai, atau patokan terdekat.</span>
-                                        </span>
-                                    </label>
-                                    <input type="text" name="pcr_address_detail" id="pcr_address_detail" value="<?php echo $pcrAddressDetail; ?>" placeholder="Contoh: Ruko lantai 2, sebelah Kantor Pos">
-                                    <div class="pki-field-helper">Opsional. Informasi pengenal lokasi.</div>
-                                </div>
+                                <div class="pki-field-helper" style="margin-top:6px;">Peta muncul otomatis setelah lokasi dan alamat lengkap tersedia.</div>
                             </div>
 
                         </div>
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <!-- SECTION 3: DOKUMEN & BUKTI TEMPAT USAHA                         -->
+                    <!-- SECTION 3: DOKUMEN & BUKTI TEMPAT USAHA (IDENTIK LANGKAH 3)     -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div id="pcr_box_documents" style="display: none; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                        <div style="background: #f1f5f9; padding: 12px 18px; font-weight: 700; font-size: 13.5px; color: #0369a1; border-bottom: 1px solid #e2e8f0;">
+                    <div id="pcr_box_documents" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
+                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1;">
                             Dokumen &amp; Bukti Tempat Usaha
                         </div>
-                        <div style="padding: 20px; background: #ffffff;">
-
+                        <div style="padding: 18px 20px; background: #ffffff;">
+                            
                             <div class="pki-grid-2">
                                 <!-- Dokumen Perizinan Usaha -->
                                 <div class="pki-field">
@@ -438,26 +521,34 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
                                         Dokumen Perizinan Usaha <span class="req">*</span>
                                         <span class="pki-tooltip" tabindex="0" role="tooltip">
                                             <?php echo $infoIconSvg; ?>
-                                            <span class="tooltip-popover">Unggah file pendukung identitas atau kegiatan usaha (NIB, SIUP, SKDU, atau surat keterangan terkait).</span>
+                                            <span class="tooltip-popover">Unggah file yang mendukung validitas identitas atau kegiatan usaha Pemberi Kerja Individu.</span>
                                         </span>
                                     </label>
-                                    <div class="pki-upload-box" id="pcr_box_permit_document" onclick="pcrTriggerUpload('permit_document')">
-                                        <span class="pki-upload-text <?php echo !empty($pcrPermitDoc) ? 'has-file' : ''; ?>" id="pcr_text_permit_document">
-                                            <?php if (!empty($pcrPermitDoc)): ?>
-                                                <i class="fa-solid fa-file-pdf" style="color:#ef4444; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($pcrPermitDoc)); ?></span>
+                                    <div class="pki-upload-box" id="pcr_box_permit_document" onclick="pcrTriggerUpload('pcr_permit_document')">
+                                        <span class="pki-upload-text <?php echo !empty($vPermitDoc) ? 'has-file' : ''; ?>" id="pcr_text_permit_document">
+                                            <?php if (!empty($vPermitDoc)): ?>
+                                                <i class="fa-solid fa-file-pdf" style="color:#ef4444; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($vPermitDoc)); ?></span>
                                             <?php else: ?>
                                                 <span>Klik dan letakkan file di sini atau <strong style="color:#2563eb;">Pilih File</strong></span>
                                             <?php endif; ?>
                                         </span>
                                         <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                                            <button type="button" class="pki-upload-btn" id="pcr_btn_permit_document"><?php echo !empty($pcrPermitDoc) ? 'Ganti' : 'Pilih File'; ?></button>
+                                            <?php if (!empty($vPermitDoc)): ?>
+                                                <button type="button" class="pki-upload-clear-btn" title="Hapus berkas" onclick="pcrClearUpload(event, 'pcr_permit_document')">
+                                                    <i class="fa-solid fa-xmark"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                            <button type="button" class="pki-upload-btn" id="pcr_btn_permit_document"><?php echo !empty($vPermitDoc) ? 'Ganti' : 'Pilih File'; ?></button>
                                         </div>
                                     </div>
-                                    <input type="file" name="pcr_permit_document" id="pcr_input_permit_document" accept=".pdf,.docx" style="display:none;" onchange="pcrHandleFileChange(this, 'permit_document')">
+                                    <input type="file" name="pcr_permit_document" id="pcr_input_permit_document" accept=".pdf,.docx" style="display:none;" onchange="pcrHandleFileChange(this, 'pcr_permit_document')">
+                                    <input type="hidden" name="pcr_existing_permit_document" id="pcr_existing_permit_document" value="<?php echo e($vPermitDoc); ?>">
                                     <div class="pki-field-helper">Ukuran maksimum 2 MB • Format PDF, Docx</div>
-                                    <?php if ($pcrPermitDocSizeText !== ''): ?>
-                                        <div class="pki-field-helper" style="color: #64748b;">Ukuran file saat ini: <?php echo e($pcrPermitDocSizeText); ?></div>
-                                    <?php endif; ?>
+                                    <div class="pki-field-helper" id="pcr_helper_permit_document_size" style="<?php echo $vPermitDocSizeText !== '' ? '' : 'display:none;'; ?>">
+                                        <?php if ($vPermitDocSizeText !== ''): ?>
+                                            Ukuran file saat ini: <?php echo e($vPermitDocSizeText); ?>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
 
                                 <!-- Foto Bukti Tempat Usaha / Lokasi -->
@@ -466,26 +557,34 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
                                         Foto Bukti Tempat Usaha / Lokasi <span class="req">*</span>
                                         <span class="pki-tooltip" tabindex="0" role="tooltip">
                                             <?php echo $infoIconSvg; ?>
-                                            <span class="tooltip-popover">Unggah foto bagian depan tempat usaha atau lokasi kegiatan yang sesuai dengan alamat tempat usaha.</span>
+                                            <span class="tooltip-popover">Unggah foto bagian depan rumah, tempat usaha, atau lokasi kegiatan yang sesuai dengan alamat tempat usaha/kegiatan.</span>
                                         </span>
                                     </label>
-                                    <div class="pki-upload-box" id="pcr_box_workplace_photo" onclick="pcrTriggerUpload('workplace_photo')">
-                                        <span class="pki-upload-text <?php echo !empty($pcrPhoto) ? 'has-file' : ''; ?>" id="pcr_text_workplace_photo">
-                                            <?php if (!empty($pcrPhoto)): ?>
-                                                <i class="fa-solid fa-image" style="color:#0284c7; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($pcrPhoto)); ?></span>
+                                    <div class="pki-upload-box" id="pcr_box_workplace_photo" onclick="pcrTriggerUpload('pcr_workplace_photo')">
+                                        <span class="pki-upload-text <?php echo !empty($vPhoto) ? 'has-file' : ''; ?>" id="pcr_text_workplace_photo">
+                                            <?php if (!empty($vPhoto)): ?>
+                                                <i class="fa-solid fa-image" style="color:#0284c7; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($vPhoto)); ?></span>
                                             <?php else: ?>
                                                 <span>Klik dan letakkan file di sini atau <strong style="color:#2563eb;">Pilih File</strong></span>
                                             <?php endif; ?>
                                         </span>
                                         <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                                            <button type="button" class="pki-upload-btn" id="pcr_btn_workplace_photo"><?php echo !empty($pcrPhoto) ? 'Ganti' : 'Pilih File'; ?></button>
+                                            <?php if (!empty($vPhoto)): ?>
+                                                <button type="button" class="pki-upload-clear-btn" title="Hapus foto" onclick="pcrClearUpload(event, 'pcr_workplace_photo')">
+                                                    <i class="fa-solid fa-xmark"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                            <button type="button" class="pki-upload-btn" id="pcr_btn_workplace_photo"><?php echo !empty($vPhoto) ? 'Ganti' : 'Pilih File'; ?></button>
                                         </div>
                                     </div>
-                                    <input type="file" name="pcr_workplace_photo" id="pcr_input_workplace_photo" accept=".png,.jpg,.jpeg" style="display:none;" onchange="pcrHandleFileChange(this, 'workplace_photo')">
+                                    <input type="file" name="pcr_workplace_photo" id="pcr_input_workplace_photo" accept=".png,.jpg,.jpeg" style="display:none;" onchange="pcrHandleFileChange(this, 'pcr_workplace_photo')">
+                                    <input type="hidden" name="pcr_existing_workplace_photo" id="pcr_existing_workplace_photo" value="<?php echo e($vPhoto); ?>">
                                     <div class="pki-field-helper">Ukuran maksimum 2 MB • Format PNG, JPG</div>
-                                    <?php if ($pcrPhotoSizeText !== ''): ?>
-                                        <div class="pki-field-helper" style="color: #64748b;">Ukuran file saat ini: <?php echo e($pcrPhotoSizeText); ?></div>
-                                    <?php endif; ?>
+                                    <div class="pki-field-helper" id="pcr_helper_workplace_photo_size" style="<?php echo $vPhotoSizeText !== '' ? '' : 'display:none;'; ?>">
+                                        <?php if ($vPhotoSizeText !== ''): ?>
+                                            Ukuran file saat ini: <?php echo e($vPhotoSizeText); ?>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
 
@@ -493,56 +592,62 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <!-- SECTION 4: MEDIA SOSIAL                                         -->
+                    <!-- SECTION 4: MEDIA SOSIAL (IDENTIK LANGKAH 4)                     -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div id="pcr_box_social" style="display: none; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                        <div style="background: #f1f5f9; padding: 12px 18px; font-weight: 700; font-size: 13.5px; color: #0369a1; border-bottom: 1px solid #e2e8f0;">
+                    <div id="pcr_box_social" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
+                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1;">
                             Media Sosial
                         </div>
-                        <div style="padding: 20px; background: #ffffff;">
+                        <div style="padding: 18px 20px; background: #ffffff;">
+                            
+                            <div style="font-size:12px; color:#64748b; margin-bottom:14px;">Wajib mengisi minimal salah satu akun media sosial (LinkedIn, Facebook, Instagram, atau TikTok).</div>
 
-                            <div style="font-size: 12.5px; color: #64748b; margin-bottom: 16px;">
-                                Perbarui akun media sosial resmi yang digunakan untuk tempat usaha / kegiatan Anda:
-                            </div>
+                            <!-- Hidden compatibility fields synced by JS -->
+                            <input type="hidden" name="pcr_linkedin" id="pcr_linkedin" value="<?php echo $vLinkedin; ?>">
+                            <input type="hidden" name="pcr_facebook" id="pcr_facebook" value="<?php echo $vFacebook; ?>">
+                            <input type="hidden" name="pcr_instagram" id="pcr_instagram" value="<?php echo $vInstagram; ?>">
+                            <input type="hidden" name="pcr_tiktok" id="pcr_tiktok" value="<?php echo $vTiktok; ?>">
 
-                            <div class="pki-grid-2">
-                                <!-- Instagram -->
-                                <div class="pki-field">
-                                    <label class="pki-field-label" for="pcr_instagram">
-                                        <i class="fa-brands fa-instagram" style="color:#e1306c; margin-right:4px;"></i> Instagram
-                                    </label>
-                                    <input type="text" name="pcr_instagram" id="pcr_instagram" value="<?php echo $pcrInstagram; ?>" placeholder="@username atau https://instagram.com/...">
-                                    <div class="pki-field-helper">Akun profil Instagram resmi usaha Anda.</div>
+                            <div class="pki-social-container" id="pcr_social_container">
+                                <?php 
+                                $socialIcons = [
+                                    'LinkedIn' => ['icon' => 'fa-brands fa-linkedin', 'color' => '#0a66c2', 'placeholder' => 'username atau https://linkedin.com/in/...'],
+                                    'Facebook' => ['icon' => 'fa-brands fa-facebook', 'color' => '#1877f2', 'placeholder' => '@username atau https://facebook.com/...'],
+                                    'Instagram' => ['icon' => 'fa-brands fa-instagram', 'color' => '#e1306c', 'placeholder' => '@username atau https://instagram.com/...'],
+                                    'TikTok' => ['icon' => 'fa-brands fa-tiktok', 'color' => '#000000', 'placeholder' => '@username atau https://tiktok.com/@...'],
+                                ];
+                                $totalSoc = count($existingSocials);
+                                foreach ($existingSocials as $sIdx => $socItem): 
+                                    $curPlat = $socItem['platform'];
+                                    $curHandle = $socItem['handle'];
+                                    $platMeta = $socialIcons[$curPlat] ?? $socialIcons['LinkedIn'];
+                                    $isLast = ($sIdx === $totalSoc - 1);
+                                ?>
+                                <div class="pki-social-row" data-index="<?php echo $sIdx; ?>">
+                                    <div class="pki-social-select-wrap">
+                                        <span class="pki-social-platform-icon">
+                                            <i class="<?php echo $platMeta['icon']; ?>" style="color:<?php echo $platMeta['color']; ?>;"></i>
+                                        </span>
+                                        <select name="pcr_social_platform[]" class="pki-social-platform-select" onchange="pcrUpdateSocialIcon(this)">
+                                            <option value="LinkedIn" <?php echo $curPlat === 'LinkedIn' ? 'selected' : ''; ?>>LinkedIn</option>
+                                            <option value="Facebook" <?php echo $curPlat === 'Facebook' ? 'selected' : ''; ?>>Facebook</option>
+                                            <option value="Instagram" <?php echo $curPlat === 'Instagram' ? 'selected' : ''; ?>>Instagram</option>
+                                            <option value="TikTok" <?php echo $curPlat === 'TikTok' ? 'selected' : ''; ?>>TikTok</option>
+                                        </select>
+                                    </div>
+                                    <div class="pki-social-input-wrap">
+                                        <input type="text" name="pcr_social_handle[]" class="pki-social-handle-input" value="<?php echo $curHandle; ?>" placeholder="<?php echo $platMeta['placeholder']; ?>" autocomplete="off" oninput="pcrSyncSocialFields()">
+                                    </div>
+                                    <div class="pki-social-actions">
+                                        <?php if ($totalSoc > 1): ?>
+                                            <button type="button" class="pki-social-btn pki-social-btn-del" onclick="pcrRemoveSocialRow(this)" title="Hapus akun"><i class="fa-solid fa-trash-can"></i></button>
+                                        <?php endif; ?>
+                                        <?php if ($isLast && $totalSoc < 4): ?>
+                                            <button type="button" class="pki-social-btn pki-social-btn-add" onclick="pcrAddSocialRow()" title="Tambah akun"><i class="fa-solid fa-plus"></i></button>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
-
-                                <!-- LinkedIn -->
-                                <div class="pki-field">
-                                    <label class="pki-field-label" for="pcr_linkedin">
-                                        <i class="fa-brands fa-linkedin" style="color:#0a66c2; margin-right:4px;"></i> LinkedIn
-                                    </label>
-                                    <input type="text" name="pcr_linkedin" id="pcr_linkedin" value="<?php echo $pcrLinkedin; ?>" placeholder="https://linkedin.com/in/... atau username">
-                                    <div class="pki-field-helper">Tautan akun atau profil LinkedIn usaha Anda.</div>
-                                </div>
-                            </div>
-
-                            <div class="pki-grid-2" style="margin-top: 6px;">
-                                <!-- Facebook -->
-                                <div class="pki-field">
-                                    <label class="pki-field-label" for="pcr_facebook">
-                                        <i class="fa-brands fa-facebook" style="color:#1877f2; margin-right:4px;"></i> Facebook
-                                    </label>
-                                    <input type="text" name="pcr_facebook" id="pcr_facebook" value="<?php echo $pcrFacebook; ?>" placeholder="@username atau https://facebook.com/...">
-                                    <div class="pki-field-helper">Halaman atau profil Facebook resmi usaha Anda.</div>
-                                </div>
-
-                                <!-- TikTok -->
-                                <div class="pki-field">
-                                    <label class="pki-field-label" for="pcr_tiktok">
-                                        <i class="fa-brands fa-tiktok" style="color:#000000; margin-right:4px;"></i> TikTok
-                                    </label>
-                                    <input type="text" name="pcr_tiktok" id="pcr_tiktok" value="<?php echo $pcrTiktok; ?>" placeholder="@username atau https://tiktok.com/@...">
-                                    <div class="pki-field-helper">Akun TikTok resmi tempat usaha Anda.</div>
-                                </div>
+                                <?php endforeach; ?>
                             </div>
 
                         </div>
@@ -550,7 +655,7 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
 
                 </div>
 
-                <!-- 4. KONFIRMASI PERUBAHAN CALLOUT BOX (SESUAI GAMBAR) -->
+                <!-- 4. KONFIRMASI PERUBAHAN CALLOUT BOX -->
                 <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 14px;">
                     <i class="fa-solid fa-circle-info" style="color: #0284c7; font-size: 20px; flex-shrink: 0; margin-top: 2px;"></i>
                     <div style="font-size: 13px; line-height: 1.5; color: #1e3a8a;">
@@ -563,7 +668,7 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
                 <div style="margin-bottom: 8px;">
                     <label style="display: inline-flex; align-items: flex-start; gap: 10px; font-size: 13px; color: #1e293b; font-weight: 500; cursor: pointer; user-select: none;">
                         <input type="checkbox" name="pcr_consent" id="pcr_consent" value="1" required style="width: 17px; height: 17px; accent-color: #0284c7; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
-                        <span>Saya telah membaca dan menyetujui pengajuan perubahan profil untuk diperiksa oleh Admin. <span class="req" style="color: #ef4444;">*</span></span>
+                        <span>Saya telah membaca dan menyetujui pengajuan perubahan profil untuk diperiksa oleh Admin. <span style="color: #ef4444;">*</span></span>
                     </label>
                 </div>
 
@@ -583,6 +688,218 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
 </div>
 
 <script>
+// ─── PCR FILE UPLOAD HELPERS ──────────────────────────────────────────────────
+function pcrTriggerUpload(fieldId) {
+    const input = document.getElementById('pcr_input_' + fieldId.replace('pcr_', ''));
+    if (input) input.click();
+}
+
+function pcrHandleFileChange(input, fieldId) {
+    const rawId = fieldId.replace('pcr_', '');
+    const textBox = document.getElementById('pcr_text_' + rawId);
+    const clearBtnWrapper = document.getElementById('pcr_box_' + rawId)?.querySelector('div');
+    const btn = document.getElementById('pcr_btn_' + rawId);
+
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const isPdf = file.name.endsWith('.pdf') || file.name.endsWith('.docx');
+        const iconClass = isPdf ? 'fa-solid fa-file-pdf' : 'fa-solid fa-image';
+        const iconColor = isPdf ? '#ef4444' : '#0284c7';
+
+        if (textBox) {
+            textBox.className = 'pki-upload-text has-file';
+            textBox.innerHTML = `<i class="${iconClass}" style="color:${iconColor}; flex-shrink:0;"></i> <span class="pki-upload-filename">${file.name}</span>`;
+        }
+        if (btn) btn.textContent = 'Ganti';
+    }
+}
+
+function pcrClearUpload(event, fieldId) {
+    if (event) event.stopPropagation();
+    const rawId = fieldId.replace('pcr_', '');
+    const input = document.getElementById('pcr_input_' + rawId);
+    const existing = document.getElementById('pcr_existing_' + rawId);
+    const textBox = document.getElementById('pcr_text_' + rawId);
+    const btn = document.getElementById('pcr_btn_' + rawId);
+
+    if (input) input.value = '';
+    if (existing) existing.value = '';
+    if (textBox) {
+        textBox.className = 'pki-upload-text';
+        textBox.innerHTML = '<span>Klik dan letakkan file di sini atau <strong style="color:#2563eb;">Pilih File</strong></span>';
+    }
+    if (btn) btn.textContent = 'Pilih File';
+    if (event && event.target) {
+        const clearBtn = event.target.closest('.pki-upload-clear-btn');
+        if (clearBtn) clearBtn.remove();
+    }
+}
+
+// ─── PCR SOCIAL MEDIA ROW HELPERS ─────────────────────────────────────────────
+const PCR_SOCIAL_ICONS = {
+    'LinkedIn': { icon: 'fa-brands fa-linkedin', color: '#0a66c2', placeholder: 'username atau https://linkedin.com/in/...' },
+    'Facebook': { icon: 'fa-brands fa-facebook', color: '#1877f2', placeholder: '@username atau https://facebook.com/...' },
+    'Instagram': { icon: 'fa-brands fa-instagram', color: '#e1306c', placeholder: '@username atau https://instagram.com/...' },
+    'TikTok': { icon: 'fa-brands fa-tiktok', color: '#000000', placeholder: '@username atau https://tiktok.com/@...' }
+};
+
+function pcrUpdateSocialIcon(select) {
+    const row = select.closest('.pki-social-row');
+    if (!row) return;
+    const plat = select.value;
+    const meta = PCR_SOCIAL_ICONS[plat] || PCR_SOCIAL_ICONS['LinkedIn'];
+    const icon = row.querySelector('.pki-social-platform-icon i');
+    if (icon) {
+        icon.className = meta.icon;
+        icon.style.color = meta.color;
+    }
+    const input = row.querySelector('.pki-social-handle-input');
+    if (input) {
+        input.placeholder = meta.placeholder;
+    }
+    pcrSyncSocialFields();
+}
+
+function pcrSyncSocialFields() {
+    let li = '', fb = '', ig = '', tt = '';
+    const rows = document.querySelectorAll('#pcr_social_container .pki-social-row');
+    rows.forEach(r => {
+        const plat = r.querySelector('.pki-social-platform-select')?.value?.toLowerCase();
+        const handle = r.querySelector('.pki-social-handle-input')?.value?.trim();
+        if (!handle) return;
+        if (plat === 'linkedin' && !li) li = handle;
+        if (plat === 'facebook' && !fb) fb = handle;
+        if (plat === 'instagram' && !ig) ig = handle;
+        if (plat === 'tiktok' && !tt) tt = handle;
+    });
+    const elLi = document.getElementById('pcr_linkedin');
+    const elFb = document.getElementById('pcr_facebook');
+    const elIg = document.getElementById('pcr_instagram');
+    const elTt = document.getElementById('pcr_tiktok');
+    if (elLi) elLi.value = li;
+    if (elFb) elFb.value = fb;
+    if (elIg) elIg.value = ig;
+    if (elTt) elTt.value = tt;
+}
+
+function pcrAddSocialRow() {
+    const container = document.getElementById('pcr_social_container');
+    if (!container) return;
+    const rows = container.querySelectorAll('.pki-social-row');
+    if (rows.length >= 4) return;
+
+    const used = Array.from(rows).map(r => r.querySelector('.pki-social-platform-select')?.value);
+    const available = ['LinkedIn', 'Facebook', 'Instagram', 'TikTok'].filter(p => !used.includes(p));
+    const nextPlat = available[0] || 'Instagram';
+    const meta = PCR_SOCIAL_ICONS[nextPlat] || PCR_SOCIAL_ICONS['Instagram'];
+    const newIdx = rows.length;
+
+    const row = document.createElement('div');
+    row.className = 'pki-social-row';
+    row.dataset.index = newIdx;
+    row.innerHTML = `
+        <div class="pki-social-select-wrap">
+            <span class="pki-social-platform-icon">
+                <i class="${meta.icon}" style="color:${meta.color};"></i>
+            </span>
+            <select name="pcr_social_platform[]" class="pki-social-platform-select" onchange="pcrUpdateSocialIcon(this)">
+                <option value="LinkedIn" ${nextPlat === 'LinkedIn' ? 'selected' : ''}>LinkedIn</option>
+                <option value="Facebook" ${nextPlat === 'Facebook' ? 'selected' : ''}>Facebook</option>
+                <option value="Instagram" ${nextPlat === 'Instagram' ? 'selected' : ''}>Instagram</option>
+                <option value="TikTok" ${nextPlat === 'TikTok' ? 'selected' : ''}>TikTok</option>
+            </select>
+        </div>
+        <div class="pki-social-input-wrap">
+            <input type="text" name="pcr_social_handle[]" class="pki-social-handle-input" placeholder="${meta.placeholder}" autocomplete="off" oninput="pcrSyncSocialFields()">
+        </div>
+        <div class="pki-social-actions">
+            <button type="button" class="pki-social-btn pki-social-btn-del" onclick="pcrRemoveSocialRow(this)" title="Hapus akun"><i class="fa-solid fa-trash-can"></i></button>
+            <button type="button" class="pki-social-btn pki-social-btn-add" onclick="pcrAddSocialRow()" title="Tambah akun"><i class="fa-solid fa-plus"></i></button>
+        </div>
+    `;
+    container.appendChild(row);
+    pcrRefreshSocialActionButtons();
+}
+
+function pcrRemoveSocialRow(btn) {
+    const row = btn.closest('.pki-social-row');
+    if (!row) return;
+    row.remove();
+    pcrRefreshSocialActionButtons();
+    pcrSyncSocialFields();
+}
+
+function pcrRefreshSocialActionButtons() {
+    const container = document.getElementById('pcr_social_container');
+    if (!container) return;
+    const rows = container.querySelectorAll('.pki-social-row');
+    rows.forEach((r, idx) => {
+        const actions = r.querySelector('.pki-social-actions');
+        if (!actions) return;
+        const isLast = (idx === rows.length - 1);
+        let html = '';
+        if (rows.length > 1) {
+            html += `<button type="button" class="pki-social-btn pki-social-btn-del" onclick="pcrRemoveSocialRow(this)" title="Hapus akun"><i class="fa-solid fa-trash-can"></i></button>`;
+        }
+        if (isLast && rows.length < 4) {
+            html += `<button type="button" class="pki-social-btn pki-social-btn-add" onclick="pcrAddSocialRow()" title="Tambah akun"><i class="fa-solid fa-plus"></i></button>`;
+        }
+        actions.innerHTML = html;
+    });
+}
+
+// ─── PCR DOMISILI AUTOFIL CHECKBOX ───────────────────────────────────────────
+function pcrHandleSameLocationToggle(cb) {
+    if (!cb.checked) return;
+    const dom = window.PKI_SIAPKERJA_DOMICILE;
+    if (!dom) return;
+
+    const elProv = document.getElementById('pcr_hiddenProvince');
+    const elCity = document.getElementById('pcr_hiddenCity');
+    const elDist = document.getElementById('pcr_hiddenDistrict');
+    const elVill = document.getElementById('pcr_hiddenVillage');
+    const elDom = document.getElementById('pcr_hiddenDomicileCityId');
+    const elAddr = document.getElementById('pcr_inputAddress');
+    const elDisp = document.getElementById('pcr_locDisplayValue');
+    const elPost = document.getElementById('pcr_selectPostalCode');
+
+    if (elProv) elProv.value = dom.province;
+    if (elCity) elCity.value = dom.city;
+    if (elDom) elDom.value = dom.city;
+    if (elDist) elDist.value = dom.district;
+    if (elVill) elVill.value = dom.village;
+    if (elAddr && !elAddr.value.trim()) elAddr.value = dom.address;
+
+    if (elDisp) {
+        elDisp.textContent = `${dom.village}, ${dom.district}, ${dom.city}, ${dom.province}`;
+        elDisp.classList.remove('placeholder');
+    }
+
+    if (elPost && dom.postal_code) {
+        elPost.innerHTML = `<option value="${dom.postal_code}" selected>${dom.postal_code}</option>`;
+    }
+
+    // Refresh map
+    pcrUpdateMapPreview();
+}
+
+function pcrUpdateMapPreview() {
+    const addr = document.getElementById('pcr_inputAddress')?.value?.trim() || '';
+    const vill = document.getElementById('pcr_hiddenVillage')?.value?.trim() || '';
+    const city = document.getElementById('pcr_hiddenCity')?.value?.trim() || '';
+    const iframe = document.getElementById('pcr_gmapIframe');
+    const wrapper = document.getElementById('pcr_googleMapWrapper');
+    const placeholder = document.getElementById('pcr_mapPlaceholder');
+
+    if (iframe && (addr || vill || city)) {
+        const query = [addr, vill, city].filter(Boolean).join(', ');
+        iframe.src = 'https://www.google.com/maps?q=' + encodeURIComponent(query) + '&output=embed';
+        if (wrapper) wrapper.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+    }
+}
+
+// ─── INITIALIZATION ON MODAL LOAD ─────────────────────────────────────────────
 (function() {
     // Alasan counter
     const reasonTextarea = document.getElementById('pcr_reason');
@@ -650,59 +967,273 @@ $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 51
         cb.addEventListener('change', updatePcrSections);
     });
 
-    // Form submit validation
-    const form = document.getElementById('formProfileChangeRequest');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            const checkedAny = Array.from(sectionCheckboxes).some(cb => cb.checked);
-            if (!checkedAny) {
-                e.preventDefault();
-                alert('Pilih minimal satu bagian profil yang ingin Anda ubah.');
-                return false;
-            }
-            const consent = document.getElementById('pcr_consent');
-            if (consent && !consent.checked) {
-                e.preventDefault();
-                alert('Anda wajib menyetujui pernyataan pengajuan perubahan profil.');
-                return false;
+    // ─── PCR PROFESSION CUSTOM DROPDOWN (SEARCHABLE IDENTIK) ───
+    const profTrigger = document.getElementById('pcr_profession_trigger');
+    const profDropdown = document.getElementById('pcr_profession_dropdown');
+    const profSearch = document.getElementById('pcr_profession_search');
+    const profOptions = document.getElementById('pcr_profession_options');
+    const profDisplay = document.getElementById('pcr_profession_display');
+    const profHidden = document.getElementById('pcr_profession');
+
+    if (profTrigger && profDropdown) {
+        profTrigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const isOpen = profDropdown.style.display === 'block';
+            profDropdown.style.display = isOpen ? 'none' : 'block';
+            profTrigger.setAttribute('aria-expanded', !isOpen);
+            if (!isOpen && profSearch) {
+                setTimeout(() => profSearch.focus(), 50);
             }
         });
-    }
 
-    // Custom upload trigger & handle
-    window.pcrTriggerUpload = function(fieldKey) {
-        const fileInput = document.getElementById(`pcr_input_${fieldKey}`);
-        if (fileInput) fileInput.click();
-    };
-
-    window.pcrHandleFileChange = function(input, fieldKey) {
-        if (!input.files || input.files.length === 0) return;
-        const file = input.files[0];
-        const textBox = document.getElementById(`pcr_text_${fieldKey}`);
-        const btn = document.getElementById(`pcr_btn_${fieldKey}`);
-        if (!textBox) return;
-
-        const ext = (file.name.split('.').pop() || '').toLowerCase();
-        let iconClass = 'fa-file';
-        let iconColor = '#0284c7';
-
-        if (fieldKey === 'permit_document') {
-            if (ext === 'pdf') {
-                iconClass = 'fa-file-pdf';
-                iconColor = '#ef4444';
-            } else if (ext === 'docx' || ext === 'doc') {
-                iconClass = 'fa-file-word';
-                iconColor = '#2563eb';
+        document.addEventListener('click', function(e) {
+            if (!profTrigger.contains(e.target) && !profDropdown.contains(e.target)) {
+                profDropdown.style.display = 'none';
+                profTrigger.setAttribute('aria-expanded', 'false');
             }
-        } else {
-            iconClass = 'fa-image';
-            iconColor = '#0284c7';
+        });
+
+        if (profSearch) {
+            profSearch.addEventListener('input', function() {
+                const q = this.value.toLowerCase().trim();
+                const groups = profOptions.querySelectorAll('.pki-select-group');
+                let totalVis = 0;
+                groups.forEach(g => {
+                    let groupVis = 0;
+                    g.querySelectorAll('.pki-select-option').forEach(opt => {
+                        const val = (opt.getAttribute('data-value') || opt.textContent).toLowerCase();
+                        if (!q || val.includes(q)) {
+                            opt.style.display = 'flex';
+                            groupVis++;
+                            totalVis++;
+                        } else {
+                            opt.style.display = 'none';
+                        }
+                    });
+                    g.style.display = groupVis > 0 ? 'block' : 'none';
+                });
+                const noRes = document.getElementById('pcr_profession_no_results');
+                if (noRes) noRes.style.display = totalVis === 0 ? 'block' : 'none';
+            });
         }
 
-        textBox.classList.add('has-file');
-        textBox.innerHTML = `<i class="fa-solid ${iconClass}" style="color:${iconColor}; flex-shrink:0;"></i> <span class="pki-upload-filename">${file.name}</span>`;
-        if (btn) btn.textContent = 'Ganti';
-    };
+        if (profOptions) {
+            profOptions.addEventListener('click', function(e) {
+                const opt = e.target.closest('.pki-select-option');
+                if (!opt) return;
+                const val = opt.getAttribute('data-value') || opt.textContent.trim();
+                if (profHidden) profHidden.value = val;
+                if (profDisplay) {
+                    profDisplay.textContent = val;
+                    profDisplay.classList.remove('is-placeholder');
+                }
+                profOptions.querySelectorAll('.pki-select-option').forEach(o => {
+                    o.classList.remove('selected');
+                    const c = o.querySelector('.pki-select-check');
+                    if (c) c.remove();
+                });
+                opt.classList.add('selected');
+                if (!opt.querySelector('.pki-select-check')) {
+                    const check = document.createElement('i');
+                    check.className = 'fa-solid fa-check pki-select-check';
+                    opt.appendChild(check);
+                }
+                profDropdown.style.display = 'none';
+                profTrigger.setAttribute('aria-expanded', 'false');
+                profTrigger.focus();
+            });
+        }
+    }
+
+    // ─── PCR HIERARCHICAL LOCATION SELECTOR (IDENTIK PKI-FORM) ───
+    const locInput = document.getElementById('pcr_hierarchicalLocationInput');
+    const locDropdown = document.getElementById('pcr_hierarchicalLocDropdown');
+    const locDisplay = document.getElementById('pcr_locDisplayValue');
+    const locCaret = document.getElementById('pcr_locCaret');
+    const breadcrumbs = document.getElementById('pcr_locBreadcrumbs');
+    const optionsList = document.getElementById('pcr_locOptionsList');
+
+    let pcrLocLevel = 1;
+    let pcrSelProv = document.getElementById('pcr_hiddenProvince')?.value || '';
+    let pcrSelCity = document.getElementById('pcr_hiddenCity')?.value || '';
+    let pcrSelDistrict = document.getElementById('pcr_hiddenDistrict')?.value || '';
+    let pcrSelVillage = document.getElementById('pcr_hiddenVillage')?.value || '';
+
+    function getDb() {
+        return window.PKI_LOCATION_DATABASE || {};
+    }
+
+    if (locInput && locDropdown) {
+        locInput.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (locDropdown.style.display === 'block') {
+                closeLocDropdown();
+            } else {
+                openLocDropdown();
+            }
+        });
+
+        locDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!locInput.contains(e.target) && !locDropdown.contains(e.target)) {
+                closeLocDropdown();
+            }
+        });
+
+        function openLocDropdown() {
+            locDropdown.style.display = 'block';
+            if (locCaret) {
+                locCaret.classList.remove('fa-chevron-down');
+                locCaret.classList.add('fa-chevron-up');
+            }
+            const db = getDb();
+            if (pcrSelProv && pcrSelCity && pcrSelDistrict && db[pcrSelProv]?.[pcrSelCity]?.[pcrSelDistrict]) {
+                pcrLocLevel = 4;
+            } else if (pcrSelProv && pcrSelCity && db[pcrSelProv]?.[pcrSelCity]) {
+                pcrLocLevel = 3;
+            } else if (pcrSelProv && db[pcrSelProv]) {
+                pcrLocLevel = 2;
+            } else {
+                pcrLocLevel = 1;
+            }
+            renderLocView();
+        }
+
+        function closeLocDropdown() {
+            locDropdown.style.display = 'none';
+            if (locCaret) {
+                locCaret.classList.remove('fa-chevron-up');
+                locCaret.classList.add('fa-chevron-down');
+            }
+        }
+
+        function renderLocView() {
+            renderBreadcrumbs();
+            renderOptions();
+        }
+
+        function renderBreadcrumbs() {
+            if (!breadcrumbs) return;
+            let html = '';
+            if (pcrLocLevel === 1) {
+                html = '<span class="crumb-btn active" onclick="window.pcrSwitchLevel(1)">Pilih Provinsi</span>';
+            } else if (pcrLocLevel === 2) {
+                html = `<span class="crumb-btn" onclick="window.pcrSwitchLevel(1)">${pcrSelProv}</span> &gt; <span class="crumb-btn active" onclick="window.pcrSwitchLevel(2)">Pilih Kota/Kabupaten</span>`;
+            } else if (pcrLocLevel === 3) {
+                html = `<span class="crumb-btn" onclick="window.pcrSwitchLevel(1)">${pcrSelProv}</span> &gt; <span class="crumb-btn" onclick="window.pcrSwitchLevel(2)">${pcrSelCity}</span> &gt; <span class="crumb-btn active" onclick="window.pcrSwitchLevel(3)">Pilih Kecamatan</span>`;
+            } else if (pcrLocLevel === 4) {
+                html = `<span class="crumb-btn" onclick="window.pcrSwitchLevel(1)">${pcrSelProv}</span> &gt; <span class="crumb-btn" onclick="window.pcrSwitchLevel(2)">${pcrSelCity}</span> &gt; <span class="crumb-btn" onclick="window.pcrSwitchLevel(3)">${pcrSelDistrict}</span> &gt; <span class="crumb-btn active" onclick="window.pcrSwitchLevel(4)">Pilih Kelurahan</span>`;
+            }
+            breadcrumbs.innerHTML = html;
+        }
+
+        function renderOptions() {
+            if (!optionsList) return;
+            optionsList.innerHTML = '';
+            const db = getDb();
+
+            if (pcrLocLevel === 1) {
+                Object.keys(db).forEach(prov => {
+                    const btn = document.createElement('div');
+                    btn.className = 'loc-option-item' + (prov === pcrSelProv ? ' selected' : '');
+                    btn.textContent = prov;
+                    btn.onclick = () => window.pcrSelectProv(prov);
+                    optionsList.appendChild(btn);
+                });
+            } else if (pcrLocLevel === 2) {
+                const cities = db[pcrSelProv] || {};
+                Object.keys(cities).forEach(city => {
+                    const btn = document.createElement('div');
+                    btn.className = 'loc-option-item' + (city === pcrSelCity ? ' selected' : '');
+                    btn.textContent = city;
+                    btn.onclick = () => window.pcrSelectCity(city);
+                    optionsList.appendChild(btn);
+                });
+            } else if (pcrLocLevel === 3) {
+                const districts = db[pcrSelProv]?.[pcrSelCity] || {};
+                Object.keys(districts).forEach(dist => {
+                    const btn = document.createElement('div');
+                    btn.className = 'loc-option-item' + (dist === pcrSelDistrict ? ' selected' : '');
+                    btn.textContent = dist;
+                    btn.onclick = () => window.pcrSelectDistrict(dist);
+                    optionsList.appendChild(btn);
+                });
+            } else if (pcrLocLevel === 4) {
+                const villages = db[pcrSelProv]?.[pcrSelCity]?.[pcrSelDistrict] || {};
+                Object.keys(villages).forEach(vill => {
+                    const postal = villages[vill];
+                    const btn = document.createElement('div');
+                    btn.className = 'loc-option-item' + (vill === pcrSelVillage ? ' selected' : '');
+                    btn.innerHTML = `<span>${vill}</span> <span class="postal-tag">${postal}</span>`;
+                    btn.onclick = () => window.pcrSelectVillage(vill, postal);
+                    optionsList.appendChild(btn);
+                });
+            }
+        }
+
+        window.pcrSwitchLevel = function(lvl) {
+            pcrLocLevel = lvl;
+            renderLocView();
+        };
+
+        window.pcrSelectProv = function(prov) {
+            pcrSelProv = prov;
+            pcrSelCity = '';
+            pcrSelDistrict = '';
+            pcrSelVillage = '';
+            document.getElementById('pcr_hiddenProvince').value = prov;
+            document.getElementById('pcr_hiddenCity').value = '';
+            document.getElementById('pcr_hiddenDistrict').value = '';
+            document.getElementById('pcr_hiddenVillage').value = '';
+            pcrLocLevel = 2;
+            renderLocView();
+        };
+
+        window.pcrSelectCity = function(city) {
+            pcrSelCity = city;
+            pcrSelDistrict = '';
+            pcrSelVillage = '';
+            document.getElementById('pcr_hiddenCity').value = city;
+            document.getElementById('pcr_hiddenDomicileCityId').value = city;
+            document.getElementById('pcr_hiddenDistrict').value = '';
+            document.getElementById('pcr_hiddenVillage').value = '';
+            pcrLocLevel = 3;
+            renderLocView();
+        };
+
+        window.pcrSelectDistrict = function(dist) {
+            pcrSelDistrict = dist;
+            pcrSelVillage = '';
+            document.getElementById('pcr_hiddenDistrict').value = dist;
+            document.getElementById('pcr_hiddenVillage').value = '';
+            pcrLocLevel = 4;
+            renderLocView();
+        };
+
+        window.pcrSelectVillage = function(vill, postal) {
+            pcrSelVillage = vill;
+            document.getElementById('pcr_hiddenVillage').value = vill;
+            if (locDisplay) {
+                locDisplay.textContent = `${vill}, ${pcrSelDistrict}, ${pcrSelCity}, ${pcrSelProv}`;
+                locDisplay.classList.remove('placeholder');
+            }
+            const postSelect = document.getElementById('pcr_selectPostalCode');
+            if (postSelect && postal) {
+                postSelect.innerHTML = `<option value="${postal}" selected>${postal}</option>`;
+            }
+            closeLocDropdown();
+            pcrUpdateMapPreview();
+        };
+    }
+
+    // Address input triggers map update
+    const addrInput = document.getElementById('pcr_inputAddress');
+    if (addrInput) {
+        addrInput.addEventListener('input', pcrUpdateMapPreview);
+    }
 
     // Default trigger on init
     updatePcrSections();

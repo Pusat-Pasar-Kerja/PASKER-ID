@@ -230,6 +230,9 @@
         postal_code: '40135'
     };
 
+    window.PKI_LOCATION_DATABASE = PKI_LOCATION_DATABASE;
+    window.PKI_SIAPKERJA_DOMICILE = SIAPKERJA_DOMICILE;
+
     let currentLocLevel = 1;
     let selProv = '';
     let selCity = '';

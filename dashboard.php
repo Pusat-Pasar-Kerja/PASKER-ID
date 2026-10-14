@@ -696,13 +696,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if (in_array('workplace', $sections, true)) {
             $proposedData['brand_name'] = trim($_POST['pcr_brand_name'] ?? '');
             $proposedData['description'] = trim($_POST['pcr_description'] ?? '');
+            $proposedData['same_location_siapkerja'] = isset($_POST['pcr_same_location_siapkerja']) ? 1 : 0;
             $proposedData['province'] = trim($_POST['pcr_province'] ?? '');
             $proposedData['city'] = trim($_POST['pcr_city'] ?? '');
+            $proposedData['domicile_city_id'] = trim($_POST['pcr_domicile_city_id'] ?? ($_POST['pcr_city'] ?? ''));
             $proposedData['district'] = trim($_POST['pcr_district'] ?? '');
             $proposedData['village'] = trim($_POST['pcr_village'] ?? '');
             $proposedData['postal_code'] = trim($_POST['pcr_postal_code'] ?? '');
             $proposedData['address'] = trim($_POST['pcr_address'] ?? '');
             $proposedData['address_detail'] = trim($_POST['pcr_address_detail'] ?? '');
+            $proposedData['latitude'] = trim($_POST['pcr_latitude'] ?? '');
+            $proposedData['longitude'] = trim($_POST['pcr_longitude'] ?? '');
 
             // Handle logo jika diupload
             if (!empty($_FILES['pcr_business_logo']['name'])) {
@@ -737,6 +741,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $proposedData['linkedin'] = trim($_POST['pcr_linkedin'] ?? '');
             $proposedData['facebook'] = trim($_POST['pcr_facebook'] ?? '');
             $proposedData['tiktok'] = trim($_POST['pcr_tiktok'] ?? '');
+
+            if (!empty($_POST['pcr_social_platform']) && is_array($_POST['pcr_social_platform'])) {
+                foreach ($_POST['pcr_social_platform'] as $idx => $plat) {
+                    $h = trim($_POST['pcr_social_handle'][$idx] ?? '');
+                    if ($h === '') continue;
+                    $p = strtolower($plat);
+                    if ($p === 'linkedin' && empty($proposedData['linkedin'])) $proposedData['linkedin'] = $h;
+                    if ($p === 'facebook' && empty($proposedData['facebook'])) $proposedData['facebook'] = $h;
+                    if ($p === 'instagram' && empty($proposedData['instagram'])) $proposedData['instagram'] = $h;
+                    if ($p === 'tiktok' && empty($proposedData['tiktok'])) $proposedData['tiktok'] = $h;
+                }
+            }
         }
 
         // Buat record Profile Change Request baru
