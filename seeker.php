@@ -479,8 +479,7 @@ $initials = strtoupper(mb_substr($user['name'], 0, 1));
                         </section>
 
                         <div class="job-facts" style="border-radius:18px;border:1px solid #e8ebf2;box-shadow:var(--shadow-soft);background:#fff;">
-                            <div><span>Bidang pekerjaan</span><strong><?php echo e($detailData['job_field'] ?: '-'); ?></strong></div>
-                            <div><span>Jenis Usaha Individu</span><strong><?php echo e($detailJob['industry'] ?: '-'); ?></strong></div>
+                            <div><span>Bidang pekerjaan</span><strong><?php echo e($detailData['job_field'] ?: $detailJob['industry'] ?: '-'); ?></strong></div>
                             <div><span>Jenis pekerjaan</span><strong><?php echo e($detailJob['job_type'] ?: '-'); ?></strong></div>
                             <div><span>Tipe lowongan</span><strong>Dalam negeri</strong></div>
                             <div><span>Jenis kelamin</span><strong><?php echo e($genderText); ?></strong></div>

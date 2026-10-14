@@ -1231,6 +1231,156 @@ function initJobCreateWizard() {
 
     initJobLocationPicker(modal);
 
+    const initJobIndustryPicker = (modalEl) => {
+        const hiddenInput = modalEl.querySelector('#jobIndustryInput');
+        const trigger = modalEl.querySelector('#jobIndustryTrigger');
+        const display = modalEl.querySelector('#jobIndustryDisplay');
+        const dropdown = modalEl.querySelector('#jobIndustryDropdown');
+        const searchInput = modalEl.querySelector('#jobIndustrySearch');
+        const optionsList = modalEl.querySelector('#jobIndustryOptions');
+        const noResults = modalEl.querySelector('#jobIndustryNoResults');
+
+        if (!hiddenInput || !trigger || !dropdown) return;
+
+        const openDropdown = () => {
+            dropdown.style.display = 'block';
+            trigger.classList.add('is-open');
+            trigger.setAttribute('aria-expanded', 'true');
+            if (searchInput) {
+                searchInput.value = '';
+                filterOptions('');
+                setTimeout(() => searchInput.focus(), 40);
+            }
+        };
+
+        const closeDropdown = () => {
+            dropdown.style.display = 'none';
+            trigger.classList.remove('is-open');
+            trigger.setAttribute('aria-expanded', 'false');
+        };
+
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (dropdown.style.display === 'block') {
+                closeDropdown();
+            } else {
+                openDropdown();
+            }
+        });
+
+        trigger.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                openDropdown();
+            }
+        });
+
+        dropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+                closeDropdown();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && dropdown.style.display === 'block') {
+                closeDropdown();
+                trigger.focus();
+            }
+        });
+
+        const filterOptions = (query) => {
+            const q = query.toLowerCase().trim();
+            if (!optionsList) return;
+            const groups = optionsList.querySelectorAll('.pki-select-group');
+            let totalVisible = 0;
+
+            groups.forEach((group) => {
+                const options = group.querySelectorAll('.pki-select-option');
+                let groupVisible = 0;
+
+                options.forEach((opt) => {
+                    const val = (opt.getAttribute('data-value') || opt.textContent).toLowerCase();
+                    if (!q || val.includes(q)) {
+                        opt.style.display = 'flex';
+                        groupVisible++;
+                        totalVisible++;
+                    } else {
+                        opt.style.display = 'none';
+                    }
+                });
+
+                group.style.display = groupVisible > 0 ? 'block' : 'none';
+            });
+
+            if (noResults) {
+                noResults.style.display = totalVisible === 0 ? 'block' : 'none';
+            }
+        };
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                filterOptions(this.value);
+            });
+            searchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const firstOpt = optionsList?.querySelector('.pki-select-option:not([style*="display: none"])');
+                    if (firstOpt) {
+                        firstOpt.click();
+                    }
+                }
+            });
+        }
+
+        const setVal = (val) => {
+            const v = val ? String(val).trim() : '';
+            hiddenInput.value = v;
+            if (display) {
+                if (v) {
+                    display.textContent = v;
+                    display.classList.remove('is-placeholder');
+                } else {
+                    display.textContent = 'Pilih Jenis Usaha Individu';
+                    display.classList.add('is-placeholder');
+                }
+            }
+            if (optionsList) {
+                optionsList.querySelectorAll('.pki-select-option').forEach((o) => {
+                    const optVal = o.getAttribute('data-value') || o.textContent.trim();
+                    const isSelected = optVal === v;
+                    o.classList.toggle('selected', isSelected);
+                    const check = o.querySelector('.pki-select-check');
+                    if (check) check.remove();
+                    if (isSelected) {
+                        const checkIcon = document.createElement('i');
+                        checkIcon.className = 'fa-solid fa-check pki-select-check';
+                        o.appendChild(checkIcon);
+                    }
+                });
+            }
+            trigger.classList.remove('has-error');
+        };
+
+        if (optionsList) {
+            optionsList.addEventListener('click', (e) => {
+                const opt = e.target.closest('.pki-select-option');
+                if (!opt) return;
+                const val = opt.getAttribute('data-value') || opt.textContent.trim();
+                setVal(val);
+                closeDropdown();
+                trigger.focus();
+            });
+        }
+
+        hiddenInput.setCustomValue = setVal;
+    };
+
+    initJobIndustryPicker(modal);
+
     const chkDisability = modal.querySelector('#chkDisability');
     const disabilityGroup = modal.querySelector('#disabilityExcludedGroup');
 
@@ -1324,6 +1474,13 @@ function initJobCreateWizard() {
             else if (num === 2) valStr = '60';
             else if (num === 3) valStr = '90';
             else if (!valStr) valStr = '30';
+        }
+        if (name === 'industry') {
+            const indInput = form?.querySelector('#jobIndustryInput');
+            if (indInput && typeof indInput.setCustomValue === 'function') {
+                indInput.setCustomValue(valStr);
+                return;
+            }
         }
         if (field.tagName === 'SELECT' && valStr) {
             const exists = Array.from(field.options).some((opt) => opt.value === valStr);
@@ -1460,10 +1617,18 @@ function initJobCreateWizard() {
 
         if (stepNumber === 1) {
             const jobLocInput = modal.querySelector('#jobLocationInput');
-            const trigger = modal.querySelector('#jobLocationTrigger');
+            const locTrigger = modal.querySelector('#jobLocationTrigger');
             if (jobLocInput && !jobLocInput.value.trim()) {
-                trigger?.focus();
-                trigger?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                locTrigger?.focus();
+                locTrigger?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return false;
+            }
+            const jobIndustryInput = modal.querySelector('#jobIndustryInput');
+            const indTrigger = modal.querySelector('#jobIndustryTrigger');
+            if (jobIndustryInput && !jobIndustryInput.value.trim()) {
+                indTrigger?.focus();
+                indTrigger?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                indTrigger?.classList.add('has-error');
                 return false;
             }
         }
@@ -1565,6 +1730,10 @@ function initJobCreateWizard() {
         const jobLocInput = form?.querySelector('#jobLocationInput');
         if (jobLocInput && typeof jobLocInput.updateDisplay === 'function') {
             jobLocInput.updateDisplay();
+        }
+        const jobIndInput = form?.querySelector('#jobIndustryInput');
+        if (jobIndInput && typeof jobIndInput.setCustomValue === 'function') {
+            jobIndInput.setCustomValue('');
         }
         setStep(1);
     });

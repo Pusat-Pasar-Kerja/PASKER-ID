@@ -639,7 +639,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $title = trim($_POST['job_title'] ?? $_POST['title'] ?? '');
         $location = trim($_POST['job_location'] ?? $_POST['location'] ?? '');
         $jobType = trim($_POST['job_type'] ?? '');
-        $industry = trim($_POST['industry'] ?? $_POST['job_field'] ?? '');
+        $industry = trim($_POST['industry'] ?? $_POST['profession'] ?? $_POST['job_field'] ?? '');
         $kbjiCode = trim($_POST['kbji_code'] ?? '');
         $minEducation = trim($_POST['min_education'] ?? $_POST['education_required'] ?? '');
         $minExperience = trim($_POST['min_experience'] ?? $_POST['experience_required'] ?? '');
@@ -1956,6 +1956,10 @@ $modalStyles = <<<'CSS'
             box-shadow: 0 1px 3px rgba(14,165,233,0.3);
         }
         .btn-primary-custom:hover { background: #0284c7; }
+        .pki-custom-select-trigger.has-error {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 2.5px rgba(239, 68, 68, 0.15) !important;
+        }
 CSS;
 
 // Inject drawer CSS just before </body> so it loads AFTER app.css and wins the cascade
@@ -1989,26 +1993,24 @@ if (!empty($kbjiList)) {
         . '<option value="5322.00">5322.00 - Pengasuh Anak / Babysitter</option>'
         . '<option value="5414.01">5414.01 - Penjaga Keamanan / Satpam</option>';
 }
+
+$jobProfessionGroups = function_exists('individual_business_types') ? individual_business_types() : [];
+$jobIndustryOptionsHtml = '';
+foreach ($jobProfessionGroups as $groupName => $items) {
+    $jobIndustryOptionsHtml .= '<div class="pki-select-group" data-group="' . htmlspecialchars($groupName, ENT_QUOTES, 'UTF-8') . '">';
+    $jobIndustryOptionsHtml .= '<div class="pki-select-group-header">' . htmlspecialchars($groupName, ENT_QUOTES, 'UTF-8') . '</div>';
+    foreach ($items as $item) {
+        $jobIndustryOptionsHtml .= '<div class="pki-select-option" data-value="' . htmlspecialchars($item, ENT_QUOTES, 'UTF-8') . '" role="option">';
+        $jobIndustryOptionsHtml .= '<span>' . htmlspecialchars($item, ENT_QUOTES, 'UTF-8') . '</span>';
+        $jobIndustryOptionsHtml .= '</div>';
+    }
+    $jobIndustryOptionsHtml .= '</div>';
+}
+$jobIndustryOptionsHtml .= '<div class="pki-select-no-results" id="jobIndustryNoResults" style="display:none;">Tidak ada jenis usaha yang sesuai</div>';
+
 $exp1 = format_indo_date(date('Y-m-d', strtotime('+1 month')), 'short');
 $exp2 = format_indo_date(date('Y-m-d', strtotime('+2 month')), 'short');
 $exp3 = format_indo_date(date('Y-m-d', strtotime('+3 month')), 'short');
-
-$professionGroups = function_exists('individual_business_types') ? individual_business_types() : [];
-$defaultProfession = trim((string)($profile['profession'] ?? ''));
-$industryOptionsHtml = '<option value="">Pilih jenis usaha individu</option>';
-$hasSelected = false;
-foreach ($professionGroups as $groupName => $items) {
-    $industryOptionsHtml .= '<optgroup label="' . htmlspecialchars($groupName, ENT_QUOTES, 'UTF-8') . '">';
-    foreach ($items as $item) {
-        $selected = (!$hasSelected && $defaultProfession !== '' && $defaultProfession === $item) ? ' selected' : '';
-        if ($selected) $hasSelected = true;
-        $industryOptionsHtml .= '<option value="' . htmlspecialchars($item, ENT_QUOTES, 'UTF-8') . '"' . $selected . '>' . htmlspecialchars($item, ENT_QUOTES, 'UTF-8') . '</option>';
-    }
-    $industryOptionsHtml .= '</optgroup>';
-}
-if (!$hasSelected && $defaultProfession !== '') {
-    $industryOptionsHtml .= '<optgroup label="Lainnya / Sesuai Profil"><option value="' . htmlspecialchars($defaultProfession, ENT_QUOTES, 'UTF-8') . '" selected>' . htmlspecialchars($defaultProfession, ENT_QUOTES, 'UTF-8') . '</option></optgroup>';
-}
 
 $modal = <<<HTML
     <div class="modal-backdrop" data-modal="job-create">
@@ -2161,11 +2163,29 @@ $modal = <<<HTML
                                 </div>
                             </div>
 
-                            <div class="form-group">
+                            <div class="form-group" style="position:relative;">
                                 <label>Jenis Usaha Individu <span class="req">*</span></label>
-                                <select name="industry" class="form-control-custom" required>
-                                    {$industryOptionsHtml}
-                                </select>
+                                <input type="hidden" name="industry" id="jobIndustryInput" value="" required>
+
+                                <div class="pki-custom-select-trigger" id="jobIndustryTrigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox">
+                                    <span class="pki-custom-select-text is-placeholder" id="jobIndustryDisplay">Pilih Jenis Usaha Individu</span>
+                                    <span class="pki-custom-select-caret">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="m7 15 5 5 5-5"/>
+                                            <path d="m7 9 5-5 5 5"/>
+                                        </svg>
+                                    </span>
+                                </div>
+
+                                <div class="pki-custom-select-dropdown" id="jobIndustryDropdown" style="display:none;" role="listbox">
+                                    <div class="pki-custom-select-search-wrap">
+                                        <input type="text" class="pki-custom-select-search" id="jobIndustrySearch" placeholder="Cari jenis usaha..." autocomplete="off">
+                                    </div>
+                                    <div class="pki-custom-select-options" id="jobIndustryOptions">
+                                        {$jobIndustryOptionsHtml}
+                                    </div>
+                                </div>
+                                <div class="field-hint">Pilih jenis usaha perorangan yang Anda jalankan.</div>
                             </div>
 
                             <div class="form-grid-2">
