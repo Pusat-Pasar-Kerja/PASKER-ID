@@ -267,7 +267,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/app.css">
-    <link rel="stylesheet" href="assets/pki-form.css?v=20261013_v4">
+    <link rel="stylesheet" href="assets/pki-form.css?v=<?php echo time(); ?>">
     <style>
         * { box-sizing: border-box; }
         body {
@@ -553,7 +553,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
             <a class="primary-btn" href="dashboard.php#dashboard" style="width: 100%; text-align: center; justify-content: center; height: 42px; font-size: 13.5px; font-weight: 600; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center;">Menuju Dashboard Pemberi Kerja</a>
         </div>
     </div>
-    <script src="assets/pki-form.js?v=20261013_v4"></script>
+    <script src="assets/pki-form.js?v=<?php echo time(); ?>"></script>
     <script>
     (function () {
         var modal = document.getElementById('modalPendaftaranBerhasil');

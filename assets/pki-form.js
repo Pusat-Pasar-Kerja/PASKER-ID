@@ -1405,7 +1405,8 @@
             // Update Header Title & Counter
             const titleEl = document.getElementById('pkiStepTitle');
             if (titleEl) {
-                titleEl.textContent = STEP_TITLES[step] || 'Identitas Perorangan';
+                const activePane = document.querySelector(`.pki-step-pane[data-step="${step}"]`);
+                titleEl.textContent = activePane?.getAttribute('data-step-title') || STEP_TITLES[step] || 'Identitas Perorangan';
             }
 
             const counterEl = document.getElementById('pkiStepCounter');

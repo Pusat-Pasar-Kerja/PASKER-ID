@@ -101,7 +101,7 @@ if (!empty($vVillage) && !empty($vDistrict) && !empty($vCity) && !empty($vProvin
 $googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') ?: ($_ENV['GOOGLE_MAPS_API_KEY'] ?? '');
 $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
 ?>
-<link rel="stylesheet" href="assets/pki-form.css?v=20261013_v4">
+<link rel="stylesheet" href="assets/pki-form.css?v=<?php echo time(); ?>">
 <style>
 <?php
 $pkiCssPath = __DIR__ . '/../assets/pki-form.css';
@@ -530,7 +530,7 @@ if (file_exists($pkiCssPath)) {
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- LANGKAH 3: SECTION 3 (FILE BUKTI) & SECTION 4 (MEDIA SOSIAL)    -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="pki-step-pane" data-step="3" style="display:none;">
+<div class="pki-step-pane" data-step="3" data-step-title="Dokumen & Bukti Tempat Usaha & Media Sosial" style="display:none;">
     <div class="section-title" style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:12px;">3. DOKUMEN & BUKTI TEMPAT USAHA</div>
 
     <div class="pki-grid-2">
