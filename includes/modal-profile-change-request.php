@@ -7,23 +7,24 @@
 
 $showPcrModal = isset($_GET['open_pcr']) && $_GET['open_pcr'] == '1';
 $pcrData = $profile ?? [];
+$sData = $seekerProfile ?? [];
 
 // Helper values dari data profil yang tersimpan sebelumnya
 $vOwnerName = e($pcrData['owner_name'] ?? ($user['name'] ?? ''));
-$vNik = e($pcrData['nik'] ?? '');
-$vPhone = e($pcrData['phone'] ?? '');
-$vWhatsapp = e($pcrData['whatsapp'] ?? '');
+$vNik = e($pcrData['nik'] ?? ($sData['nik'] ?? ''));
+$vPhone = e($pcrData['phone'] ?? ($sData['phone'] ?? ''));
+$vWhatsapp = e($pcrData['whatsapp'] ?? ($pcrData['phone'] ?? ($sData['phone'] ?? '')));
 $vProfession = $pcrData['profession'] ?? '';
 $vNpwp = e($pcrData['npwp'] ?? '');
 
-$vSameLoc = !empty($pcrData['same_location_siapkerja']);
-$vProvince = e($pcrData['province'] ?? '');
-$vCity = e($pcrData['city'] ?? '');
-$vDistrict = e($pcrData['district'] ?? '');
-$vVillage = e($pcrData['village'] ?? '');
-$vPostalCode = e($pcrData['postal_code'] ?? '');
-$vAddress = e($pcrData['address'] ?? '');
-$vAddressDetail = e($pcrData['address_detail'] ?? ($pcrData['address_notes'] ?? ''));
+$vSameLoc = !empty($pcrData['same_location_siapkerja']) || !empty($pcrData['same_address_siapkerja']) || !empty($pcrData['workplace_same_as_domicile']);
+$vProvince = e($pcrData['province'] ?? ($sData['province'] ?? ''));
+$vCity = e($pcrData['city'] ?? ($sData['city'] ?? ($user['city'] ?? '')));
+$vDistrict = e($pcrData['district'] ?? ($sData['district'] ?? ''));
+$vVillage = e($pcrData['village'] ?? ($sData['village'] ?? ''));
+$vPostalCode = e($pcrData['postal_code'] ?? ($sData['postal_code'] ?? ''));
+$vAddress = e($pcrData['address'] ?? ($sData['address'] ?? ''));
+$vAddressDetail = e($pcrData['address_detail'] ?? ($pcrData['address_notes'] ?? ($sData['address_detail'] ?? '')));
 $vLat = e($pcrData['latitude'] ?? '-6.887844');
 $vLng = e($pcrData['longitude'] ?? '107.613038');
 
@@ -93,6 +94,13 @@ if (!empty($vVillage) && !empty($vDistrict) && !empty($vCity) && !empty($vProvin
     $hasLocSelected = true;
 }
 
+$hasAddress = !empty($vAddress);
+$hasFullLocation = ($hasLocSelected && $hasAddress) || (!empty($vAddress) && (!empty($vCity) || !empty($vProvince)));
+$initialMapQuery = '';
+if ($hasFullLocation) {
+    $initialMapQuery = implode(', ', array_filter([$vAddress, $vVillage, $vDistrict, $vCity, $vProvince, 'Indonesia']));
+}
+
 $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
 
 $professionGroups = [
@@ -143,11 +151,123 @@ $professionGroups = [
 ];
 ?>
 
-<div class="modal-backdrop <?php echo $showPcrModal ? 'open' : ''; ?>" data-modal="modal-profile-change-request" id="modal-profile-change-request" style="z-index: 1050;">
-    <div class="modal-panel" style="width: min(780px, 95vw); max-height: 90vh; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; background: #ffffff; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+<link rel="stylesheet" href="assets/pki-form.css?v=<?php echo time(); ?>">
+<style>
+<?php
+$pkiCssPath = __DIR__ . '/../assets/pki-form.css';
+if (file_exists($pkiCssPath)) {
+    echo file_get_contents($pkiCssPath);
+}
+?>
+
+/* ─── MODAL PROFILE CHANGE REQUEST RESPONSIVE DESIGN ─────────────────────────── */
+#modal-profile-change-request {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+    z-index: 1050 !important;
+}
+
+#modal-profile-change-request.open {
+    display: flex !important;
+}
+
+#modal-profile-change-request .modal-panel {
+    width: 100% !important;
+    max-width: 780px !important;
+    max-height: 90vh !important;
+    border-radius: 16px !important;
+    background: #ffffff !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    margin: auto !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+}
+
+#modal-profile-change-request .modal-header {
+    background: #ffffff !important;
+    padding: 20px 24px 16px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    flex-shrink: 0 !important;
+}
+
+#modal-profile-change-request .modal-body {
+    padding: 20px 24px !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+#modal-profile-change-request .modal-footer {
+    padding: 16px 24px !important;
+    background: #ffffff !important;
+    border-top: 1px solid #f1f5f9 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 12px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Ensure dropdown popups sit properly inside the modal */
+#modal-profile-change-request .loc-dropdown-popup {
+    z-index: 1200 !important;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1) !important;
+}
+#modal-profile-change-request .pki-custom-select-dropdown {
+    z-index: 1200 !important;
+}
+
+/* Mobile & Tablet Responsiveness */
+@media (max-width: 720px) {
+    #modal-profile-change-request {
+        padding: 0 !important;
+    }
+    #modal-profile-change-request .modal-panel {
+        max-width: 100vw !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+    }
+    #modal-profile-change-request .modal-header {
+        padding: 16px 18px 12px !important;
+    }
+    #modal-profile-change-request .modal-body {
+        padding: 16px 18px !important;
+    }
+    #modal-profile-change-request .modal-footer {
+        padding: 14px 18px !important;
+        flex-direction: column-reverse !important;
+        gap: 8px !important;
+    }
+    #modal-profile-change-request .modal-footer button {
+        width: 100% !important;
+    }
+}
+</style>
+
+<div class="modal-backdrop <?php echo $showPcrModal ? 'open' : ''; ?>" data-modal="modal-profile-change-request" id="modal-profile-change-request">
+    <div class="modal-panel">
         
         <!-- MODAL HEADER -->
-        <div class="modal-header" style="background:#ffffff; padding: 22px 28px 18px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: flex-start;">
+        <div class="modal-header">
             <div>
                 <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 6px 0; line-height: 1.3;">Permintaan Perubahan Profil</h2>
                 <div style="font-size: 13.5px; color: #64748b; line-height: 1.45;">Ajukan perubahan data profil yang telah terverifikasi. Perubahan akan diperiksa oleh Admin sebelum diterapkan.</div>
@@ -161,11 +281,11 @@ $professionGroups = [
         <form method="post" action="dashboard.php" enctype="multipart/form-data" id="formProfileChangeRequest" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; margin:0;">
             <input type="hidden" name="submit_profile_change_request" value="1">
             
-            <div class="modal-body" style="padding: 24px 28px; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+            <div class="modal-body">
 
                 <!-- 1. BAGIAN PROFIL YANG DIUBAH (CHECKBOX) -->
-                <div style="margin-bottom: 24px;">
-                    <label style="display: block; font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
+                <div style="margin-bottom: 22px;">
+                    <label style="display: block; font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
                         Bagian Profil yang Diubah <span style="color: #ef4444;">*</span>
                     </label>
                     <div style="font-size: 12.5px; color: #64748b; margin-bottom: 12px;">Pilih bagian profil yang ingin Anda ubah.</div>
@@ -198,26 +318,26 @@ $professionGroups = [
                 </div>
 
                 <!-- 2. ALASAN PERUBAHAN -->
-                <div style="margin-bottom: 24px;">
-                    <label for="pcr_reason" style="display: block; font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
+                <div style="margin-bottom: 22px;">
+                    <label for="pcr_reason" style="display: block; font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
                         Alasan Perubahan <span style="color: #ef4444;">*</span>
                     </label>
                     <div style="position: relative;">
-                        <textarea name="pcr_reason" id="pcr_reason" maxlength="500" rows="3" required placeholder="Saya ingin memperbarui alamat tempat usaha karena sudah pindah lokasi, serta memperbarui informasi media sosial (Instagram dan LinkedIn) yang terbaru." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; font-size: 13.5px; color: #1e293b; line-height: 1.5; resize: vertical; box-sizing: border-box; font-family: inherit; outline: none; transition: border-color 0.2s;"></textarea>
-                        <div style="text-align: right; font-size: 12px; color: #94a3b8; margin-top: 4px;">
+                        <textarea name="pcr_reason" id="pcr_reason" maxlength="500" rows="3" required placeholder="Saya ingin memperbarui alamat tempat usaha karena sudah pindah lokasi, serta memperbarui informasi media sosial (Instagram dan LinkedIn) yang terbaru." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #1e293b; line-height: 1.5; resize: vertical; box-sizing: border-box; font-family: inherit; outline: none; transition: border-color 0.2s;"></textarea>
+                        <div style="text-align: right; font-size: 11.5px; color: #94a3b8; margin-top: 4px;">
                             <span id="pcr_reason_counter">0</span>/500
                         </div>
                     </div>
                 </div>
 
                 <!-- 3. FIELD PROFIL TERPILIH CONTAINER -->
-                <div style="margin-bottom: 24px;">
-                    <label style="display: block; font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 10px;">
+                <div style="margin-bottom: 22px;">
+                    <label style="display: block; font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 10px;">
                         Field Profil Terpilih
                     </label>
 
                     <!-- PLACEHOLDER IF NO SECTION CHECKED -->
-                    <div id="pcr_fields_empty_placeholder" style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 24px; text-align: center; color: #64748b; font-size: 13.5px;">
+                    <div id="pcr_fields_empty_placeholder" style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 24px; text-align: center; color: #64748b; font-size: 13px;">
                         <i class="fa-regular fa-hand-pointer" style="font-size: 22px; color: #94a3b8; margin-bottom: 8px; display: block;"></i>
                         Pilih minimal satu bagian profil di atas untuk menampilkan field yang ingin diubah.
                     </div>
@@ -227,13 +347,13 @@ $professionGroups = [
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <div id="pcr_box_identity" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
                         <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1; display: flex; align-items: center; justify-content: space-between;">
-                            <span>Identitas Perorangan</span>
-                            <span style="font-size: 11.5px; font-weight: 600; color: #0369a1; background: #e0f2fe; padding: 2px 10px; border-radius: 999px; border: 1px solid #bae6fd;">Jenis Usaha &amp; WhatsApp dapat diedit</span>
+                            <span>1. Identitas Perorangan</span>
+                            <span style="font-size: 11px; font-weight: 600; color: #0369a1; background: #e0f2fe; padding: 2px 8px; border-radius: 999px; border: 1px solid #bae6fd;">Jenis Usaha &amp; WhatsApp dapat diedit</span>
                         </div>
-                        <div style="padding: 18px 20px; background: #ffffff;">
+                        <div style="padding: 16px 18px; background: #ffffff;">
                             
                             <!-- KETERANGAN FIELD READ ONLY -->
-                            <div style="font-size: 12px; color: #64748b; margin-bottom: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 9px 14px; line-height: 1.45;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; line-height: 1.45;">
                                 <i class="fa-solid fa-lock" style="color: #94a3b8; margin-right: 5px;"></i> Field Nama Pemberi Kerja, NIK, Nomor Telepon Aktif, dan Status NPWP berstatus <strong>Read-Only</strong> dan terverifikasi dari akun SIAPKerja.
                             </div>
 
@@ -271,8 +391,8 @@ $professionGroups = [
 
                                     <input type="hidden" name="pcr_profession" id="pcr_profession" value="<?php echo e($vProfession); ?>">
 
-                                    <div class="pki-custom-select-trigger" id="pcr_profession_trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox" style="border: 1px solid #0284c7; background: #f0fdf4;">
-                                        <span class="pki-custom-select-text <?php echo empty($vProfession) ? 'is-placeholder' : ''; ?>" id="pcr_profession_display" style="font-weight: 600; color: #1e293b;">
+                                    <div class="pki-custom-select-trigger" id="pcr_profession_trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox">
+                                        <span class="pki-custom-select-text <?php echo empty($vProfession) ? 'is-placeholder' : ''; ?>" id="pcr_profession_display">
                                             <?php echo !empty($vProfession) ? e($vProfession) : 'Pilih Jenis Usaha Individu'; ?>
                                         </span>
                                         <span class="pki-custom-select-caret">
@@ -316,7 +436,7 @@ $professionGroups = [
                                     <label class="pki-field-label" for="pcr_whatsapp">
                                         Nomor WhatsApp <span class="req">*</span>
                                     </label>
-                                    <input type="text" name="pcr_whatsapp" id="pcr_whatsapp" value="<?php echo $vWhatsapp; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx" style="border: 1px solid #0284c7; background: #f0fdf4; font-weight: 600;">
+                                    <input type="text" name="pcr_whatsapp" id="pcr_whatsapp" value="<?php echo $vWhatsapp; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx">
                                     <div class="pki-field-helper">Gunakan nomor WhatsApp aktif.</div>
                                 </div>
                                 <div class="pki-field" style="position:relative;">
@@ -345,11 +465,11 @@ $professionGroups = [
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <div id="pcr_box_workplace" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
                         <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1;">
-                            Tempat Usaha / Kegiatan Pemberi Kerja &amp; Deskripsi Usaha
+                            2. Tempat Usaha / Kegiatan Pemberi Kerja &amp; Deskripsi Usaha
                         </div>
-                        <div style="padding: 18px 20px; background: #ffffff;">
+                        <div style="padding: 16px 18px; background: #ffffff;">
                             
-                            <!-- Nama Brand Usaha & Logo Usaha -->
+                            <!-- Baris 1: Nama Brand Usaha & Logo Usaha -->
                             <div class="pki-grid-2">
                                 <div class="pki-field">
                                     <label class="pki-field-label" for="pcr_brand_name">
@@ -362,6 +482,7 @@ $professionGroups = [
                                     <input type="text" name="pcr_brand_name" id="pcr_brand_name" value="<?php echo $vBrandName; ?>" placeholder="Masukkan nama brand usaha">
                                     <div class="pki-field-helper">Nama brand atau merek usaha/kegiatan yang dijalankan.</div>
                                 </div>
+
                                 <div class="pki-field">
                                     <label class="pki-field-label">
                                         Logo Usaha
@@ -407,7 +528,7 @@ $professionGroups = [
                                         <span class="tooltip-popover">Jelaskan secara singkat usaha atau kegiatan yang dijalankan serta gambaran kebutuhan rekrutmen yang dilakukan.</span>
                                     </span>
                                 </label>
-                                <textarea name="pcr_description" id="pcr_description" placeholder="Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen..." style="min-height:85px;"><?php echo $vDescription; ?></textarea>
+                                <textarea name="pcr_description" id="pcr_description" placeholder="Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen..." style="min-height:80px;"><?php echo $vDescription; ?></textarea>
                                 <div class="pki-field-helper">Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen.</div>
                             </div>
 
@@ -428,7 +549,7 @@ $professionGroups = [
                             <input type="hidden" name="pcr_latitude" id="pcr_inputLat" value="<?php echo $vLat; ?>">
                             <input type="hidden" name="pcr_longitude" id="pcr_inputLng" value="<?php echo $vLng; ?>">
 
-                            <!-- Lokasi Tempat Usaha / Kegiatan: HIERARCHICAL LOCATION SELECTOR BERJENJANG -->
+                            <!-- Lokasi Tempat Usaha / Kegiatan: HIERARCHICAL LOCATION SELECTOR BERJENJANG (IDENTIK FORM PENDAFTARAN) -->
                             <div class="pki-field" style="position:relative;">
                                 <label class="pki-field-label" for="pcr_hierarchicalLocationInput">
                                     Lokasi Tempat Usaha / Kegiatan <span class="req">*</span>
@@ -489,14 +610,14 @@ $professionGroups = [
                             <!-- Peta Lokasi (Google Maps) -->
                             <div class="pki-field">
                                 <label class="pki-field-label" style="margin-bottom:6px;">Peta Lokasi</label>
-                                <div class="pki-map-container" style="height:170px;">
-                                    <div id="pcr_mapPlaceholder" class="pki-map-placeholder" style="<?php echo $hasLocSelected ? 'display:none;' : ''; ?>">
-                                        <div style="font-size:24px; margin-bottom:4px;">🗺</div>
-                                        <div style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:2px;">Pratinjau peta belum tersedia</div>
-                                        <div style="font-size:11px; color:#64748b;">Lengkapi lokasi dan alamat terlebih dahulu.</div>
+                                <div id="pcr_mapContainer" class="pki-map-container" style="height:190px;">
+                                    <div id="pcr_mapPlaceholder" class="pki-map-placeholder <?php echo $hasFullLocation ? 'is-hidden' : ''; ?>" style="<?php echo $hasFullLocation ? 'display:none;' : 'display:flex;'; ?>">
+                                        <div style="font-size:26px; margin-bottom:4px;">🗺</div>
+                                        <div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:2px;">Pratinjau peta belum tersedia</div>
+                                        <div style="font-size:11.5px; color:#64748b; max-width:340px; line-height:1.4;">Lengkapi lokasi dan alamat terlebih dahulu.</div>
                                     </div>
-                                    <div id="pcr_googleMapWrapper" class="pki-map-wrapper" style="<?php echo $hasLocSelected ? 'display:block;' : 'display:none;'; ?> width:100%; height:100%;">
-                                        <iframe id="pcr_gmapIframe" width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" src="<?php echo $hasLocSelected ? 'https://www.google.com/maps?q=' . urlencode($vAddress . ', ' . $vVillage . ', ' . $vCity) . '&output=embed' : 'about:blank'; ?>"></iframe>
+                                    <div id="pcr_googleMapWrapper" class="pki-map-wrapper <?php echo $hasFullLocation ? 'is-visible' : ''; ?>" style="<?php echo $hasFullLocation ? 'display:block;' : 'display:none;'; ?> width:100%; height:100%;">
+                                        <iframe id="pcr_gmapIframe" width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" data-last-query="<?php echo e($initialMapQuery); ?>" src="<?php echo $initialMapQuery ? 'https://maps.google.com/maps?q=' . urlencode($initialMapQuery) . '&output=embed' : 'about:blank'; ?>"></iframe>
                                     </div>
                                 </div>
                                 <div class="pki-field-helper" style="margin-top:6px;">Peta muncul otomatis setelah lokasi dan alamat lengkap tersedia.</div>
@@ -510,9 +631,9 @@ $professionGroups = [
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <div id="pcr_box_documents" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
                         <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1;">
-                            Dokumen &amp; Bukti Tempat Usaha
+                            3. Dokumen &amp; Bukti Tempat Usaha
                         </div>
-                        <div style="padding: 18px 20px; background: #ffffff;">
+                        <div style="padding: 16px 18px; background: #ffffff;">
                             
                             <div class="pki-grid-2">
                                 <!-- Dokumen Perizinan Usaha -->
@@ -596,9 +717,9 @@ $professionGroups = [
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <div id="pcr_box_social" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
                         <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1;">
-                            Media Sosial
+                            4. Media Sosial
                         </div>
-                        <div style="padding: 18px 20px; background: #ffffff;">
+                        <div style="padding: 16px 18px; background: #ffffff;">
                             
                             <div style="font-size:12px; color:#64748b; margin-bottom:14px;">Wajib mengisi minimal salah satu akun media sosial (LinkedIn, Facebook, Instagram, atau TikTok).</div>
 
@@ -656,18 +777,18 @@ $professionGroups = [
                 </div>
 
                 <!-- 4. KONFIRMASI PERUBAHAN CALLOUT BOX -->
-                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 14px;">
-                    <i class="fa-solid fa-circle-info" style="color: #0284c7; font-size: 20px; flex-shrink: 0; margin-top: 2px;"></i>
-                    <div style="font-size: 13px; line-height: 1.5; color: #1e3a8a;">
-                        <strong style="display: block; font-size: 13.5px; font-weight: 700; color: #1e40af; margin-bottom: 2px;">Konfirmasi Perubahan</strong>
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; display: flex; align-items: flex-start; gap: 12px;">
+                    <i class="fa-solid fa-circle-info" style="color: #0284c7; font-size: 18px; flex-shrink: 0; margin-top: 2px;"></i>
+                    <div style="font-size: 12.5px; line-height: 1.5; color: #1e3a8a;">
+                        <strong style="display: block; font-size: 13px; font-weight: 700; color: #1e40af; margin-bottom: 2px;">Konfirmasi Perubahan</strong>
                         <span id="pcr_confirmation_text">Anda akan mengajukan perubahan pada bagian: <strong id="pcr_confirm_sections_list">-</strong>.</span>
                     </div>
                 </div>
 
                 <!-- 5. USER CONSENT CHECKBOX -->
-                <div style="margin-bottom: 8px;">
-                    <label style="display: inline-flex; align-items: flex-start; gap: 10px; font-size: 13px; color: #1e293b; font-weight: 500; cursor: pointer; user-select: none;">
-                        <input type="checkbox" name="pcr_consent" id="pcr_consent" value="1" required style="width: 17px; height: 17px; accent-color: #0284c7; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
+                <div style="margin-bottom: 6px;">
+                    <label style="display: inline-flex; align-items: flex-start; gap: 10px; font-size: 12.5px; color: #1e293b; font-weight: 500; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="pcr_consent" id="pcr_consent" value="1" required style="width: 16px; height: 16px; accent-color: #0284c7; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
                         <span>Saya telah membaca dan menyetujui pengajuan perubahan profil untuk diperiksa oleh Admin. <span style="color: #ef4444;">*</span></span>
                     </label>
                 </div>
@@ -675,11 +796,11 @@ $professionGroups = [
             </div>
 
             <!-- MODAL FOOTER -->
-            <div class="modal-footer" style="padding: 16px 28px; background: #ffffff; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; align-items: center; gap: 12px;">
-                <button type="button" class="ghost-btn" data-close-modal="modal-profile-change-request" style="height: 40px; padding: 0 20px; border-radius: 8px; font-size: 13.5px; font-weight: 600; color: #475569; background: #f8fafc; border: 1px solid #cbd5e1; cursor: pointer;">
+            <div class="modal-footer">
+                <button type="button" class="ghost-btn" data-close-modal="modal-profile-change-request" style="height: 38px; padding: 0 18px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #475569; background: #f8fafc; border: 1px solid #cbd5e1; cursor: pointer;">
                     Batal
                 </button>
-                <button type="submit" class="primary-btn" id="btnSubmitPCR" style="height: 40px; padding: 0 24px; border-radius: 8px; font-size: 13.5px; font-weight: 700; color: #ffffff; background: #0284c7; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.2);">
+                <button type="submit" class="primary-btn" id="btnSubmitPCR" style="height: 38px; padding: 0 22px; border-radius: 8px; font-size: 13px; font-weight: 700; color: #ffffff; background: #0284c7; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.2);">
                     Ajukan Perubahan
                 </button>
             </div>
@@ -697,7 +818,6 @@ function pcrTriggerUpload(fieldId) {
 function pcrHandleFileChange(input, fieldId) {
     const rawId = fieldId.replace('pcr_', '');
     const textBox = document.getElementById('pcr_text_' + rawId);
-    const clearBtnWrapper = document.getElementById('pcr_box_' + rawId)?.querySelector('div');
     const btn = document.getElementById('pcr_btn_' + rawId);
 
     if (input.files && input.files[0]) {
@@ -886,16 +1006,34 @@ function pcrHandleSameLocationToggle(cb) {
 function pcrUpdateMapPreview() {
     const addr = document.getElementById('pcr_inputAddress')?.value?.trim() || '';
     const vill = document.getElementById('pcr_hiddenVillage')?.value?.trim() || '';
+    const dist = document.getElementById('pcr_hiddenDistrict')?.value?.trim() || '';
     const city = document.getElementById('pcr_hiddenCity')?.value?.trim() || '';
+    const prov = document.getElementById('pcr_hiddenProvince')?.value?.trim() || '';
     const iframe = document.getElementById('pcr_gmapIframe');
     const wrapper = document.getElementById('pcr_googleMapWrapper');
     const placeholder = document.getElementById('pcr_mapPlaceholder');
 
-    if (iframe && (addr || vill || city)) {
-        const query = [addr, vill, city].filter(Boolean).join(', ');
-        iframe.src = 'https://www.google.com/maps?q=' + encodeURIComponent(query) + '&output=embed';
-        if (wrapper) wrapper.style.display = 'block';
-        if (placeholder) placeholder.style.display = 'none';
+    if (!iframe || !wrapper || !placeholder) return;
+
+    if (addr && (vill || city || prov)) {
+        const parts = [addr, vill, dist, city, prov, 'Indonesia'].filter(Boolean);
+        const query = parts.join(', ');
+        const embedUrl = 'https://maps.google.com/maps?q=' + encodeURIComponent(query) + '&output=embed';
+        if (iframe.getAttribute('data-last-query') !== query) {
+            iframe.setAttribute('data-last-query', query);
+            iframe.src = embedUrl;
+        }
+        placeholder.classList.add('is-hidden');
+        placeholder.style.display = 'none';
+        wrapper.classList.add('is-visible');
+        wrapper.style.display = 'block';
+    } else {
+        placeholder.classList.remove('is-hidden');
+        placeholder.style.display = 'flex';
+        wrapper.classList.remove('is-visible');
+        wrapper.style.display = 'none';
+        iframe.src = 'about:blank';
+        iframe.removeAttribute('data-last-query');
     }
 }
 
@@ -937,7 +1075,13 @@ function pcrUpdateMapPreview() {
 
         // Toggle boxes
         if (boxIdentity) boxIdentity.style.display = checkedValues.includes('identity') ? 'block' : 'none';
-        if (boxWorkplace) boxWorkplace.style.display = checkedValues.includes('workplace') ? 'block' : 'none';
+        if (boxWorkplace) {
+            const isWp = checkedValues.includes('workplace');
+            boxWorkplace.style.display = isWp ? 'block' : 'none';
+            if (isWp) {
+                setTimeout(pcrUpdateMapPreview, 50);
+            }
+        }
         if (boxDocuments) boxDocuments.style.display = checkedValues.includes('documents') ? 'block' : 'none';
         if (boxSocial) boxSocial.style.display = checkedValues.includes('social') ? 'block' : 'none';
 
@@ -1119,13 +1263,19 @@ function pcrUpdateMapPreview() {
             if (!breadcrumbs) return;
             let html = '';
             if (pcrLocLevel === 1) {
-                html = '<span class="crumb-btn active" onclick="window.pcrSwitchLevel(1)">Pilih Provinsi</span>';
+                html += `<span class="crumb-btn active" onclick="pcrSwitchLevel(1)">Pilih Provinsi</span>`;
             } else if (pcrLocLevel === 2) {
-                html = `<span class="crumb-btn" onclick="window.pcrSwitchLevel(1)">${pcrSelProv}</span> &gt; <span class="crumb-btn active" onclick="window.pcrSwitchLevel(2)">Pilih Kota/Kabupaten</span>`;
+                html += `<span class="crumb-btn" onclick="pcrSwitchLevel(1)">${pcrSelProv}</span> <span class="crumb-sep">›</span> `;
+                html += `<span class="crumb-btn active" onclick="pcrSwitchLevel(2)">Pilih Kabupaten / Kota</span>`;
             } else if (pcrLocLevel === 3) {
-                html = `<span class="crumb-btn" onclick="window.pcrSwitchLevel(1)">${pcrSelProv}</span> &gt; <span class="crumb-btn" onclick="window.pcrSwitchLevel(2)">${pcrSelCity}</span> &gt; <span class="crumb-btn active" onclick="window.pcrSwitchLevel(3)">Pilih Kecamatan</span>`;
+                html += `<span class="crumb-btn" onclick="pcrSwitchLevel(1)">${pcrSelProv}</span> <span class="crumb-sep">›</span> `;
+                html += `<span class="crumb-btn" onclick="pcrSwitchLevel(2)">${pcrSelCity}</span> <span class="crumb-sep">›</span> `;
+                html += `<span class="crumb-btn active" onclick="pcrSwitchLevel(3)">Pilih Kecamatan</span>`;
             } else if (pcrLocLevel === 4) {
-                html = `<span class="crumb-btn" onclick="window.pcrSwitchLevel(1)">${pcrSelProv}</span> &gt; <span class="crumb-btn" onclick="window.pcrSwitchLevel(2)">${pcrSelCity}</span> &gt; <span class="crumb-btn" onclick="window.pcrSwitchLevel(3)">${pcrSelDistrict}</span> &gt; <span class="crumb-btn active" onclick="window.pcrSwitchLevel(4)">Pilih Kelurahan</span>`;
+                html += `<span class="crumb-btn" onclick="pcrSwitchLevel(1)">${pcrSelProv}</span> <span class="crumb-sep">›</span> `;
+                html += `<span class="crumb-btn" onclick="pcrSwitchLevel(2)">${pcrSelCity}</span> <span class="crumb-sep">›</span> `;
+                html += `<span class="crumb-btn" onclick="pcrSwitchLevel(3)">${pcrSelDistrict}</span> <span class="crumb-sep">›</span> `;
+                html += `<span class="crumb-btn active" onclick="pcrSwitchLevel(4)">Pilih Kelurahan / Desa</span>`;
             }
             breadcrumbs.innerHTML = html;
         }
@@ -1136,40 +1286,70 @@ function pcrUpdateMapPreview() {
             const db = getDb();
 
             if (pcrLocLevel === 1) {
-                Object.keys(db).forEach(prov => {
-                    const btn = document.createElement('div');
-                    btn.className = 'loc-option-item' + (prov === pcrSelProv ? ' selected' : '');
-                    btn.textContent = prov;
-                    btn.onclick = () => window.pcrSelectProv(prov);
-                    optionsList.appendChild(btn);
+                const provinces = Object.keys(db);
+                provinces.forEach(prov => {
+                    const isSel = prov === pcrSelProv;
+                    const row = document.createElement('div');
+                    row.className = 'loc-opt-row' + (isSel ? ' selected' : '');
+                    row.innerHTML = `
+                        <div style="display:flex; align-items:center;">
+                            <span class="radio-bullet"></span>
+                            <span>${prov}</span>
+                        </div>
+                        ${isSel ? '<span class="sel-tag">✓ Dipilih</span>' : ''}
+                    `;
+                    row.onclick = () => window.pcrSelectProv(prov);
+                    optionsList.appendChild(row);
                 });
             } else if (pcrLocLevel === 2) {
-                const cities = db[pcrSelProv] || {};
-                Object.keys(cities).forEach(city => {
-                    const btn = document.createElement('div');
-                    btn.className = 'loc-option-item' + (city === pcrSelCity ? ' selected' : '');
-                    btn.textContent = city;
-                    btn.onclick = () => window.pcrSelectCity(city);
-                    optionsList.appendChild(btn);
+                const cities = Object.keys(db[pcrSelProv] || {});
+                cities.forEach(city => {
+                    const isSel = city === pcrSelCity;
+                    const row = document.createElement('div');
+                    row.className = 'loc-opt-row' + (isSel ? ' selected' : '');
+                    row.innerHTML = `
+                        <div style="display:flex; align-items:center;">
+                            <span class="radio-bullet"></span>
+                            <span>${city}</span>
+                        </div>
+                        ${isSel ? '<span class="sel-tag">✓ Dipilih</span>' : ''}
+                    `;
+                    row.onclick = () => window.pcrSelectCity(city);
+                    optionsList.appendChild(row);
                 });
             } else if (pcrLocLevel === 3) {
-                const districts = db[pcrSelProv]?.[pcrSelCity] || {};
-                Object.keys(districts).forEach(dist => {
-                    const btn = document.createElement('div');
-                    btn.className = 'loc-option-item' + (dist === pcrSelDistrict ? ' selected' : '');
-                    btn.textContent = dist;
-                    btn.onclick = () => window.pcrSelectDistrict(dist);
-                    optionsList.appendChild(btn);
+                const districts = Object.keys(db[pcrSelProv]?.[pcrSelCity] || {});
+                districts.forEach(dist => {
+                    const isSel = dist === pcrSelDistrict;
+                    const row = document.createElement('div');
+                    row.className = 'loc-opt-row' + (isSel ? ' selected' : '');
+                    row.innerHTML = `
+                        <div style="display:flex; align-items:center;">
+                            <span class="radio-bullet"></span>
+                            <span>${dist}</span>
+                        </div>
+                        ${isSel ? '<span class="sel-tag">✓ Dipilih</span>' : ''}
+                    `;
+                    row.onclick = () => window.pcrSelectDistrict(dist);
+                    optionsList.appendChild(row);
                 });
             } else if (pcrLocLevel === 4) {
-                const villages = db[pcrSelProv]?.[pcrSelCity]?.[pcrSelDistrict] || {};
-                Object.keys(villages).forEach(vill => {
-                    const postal = villages[vill];
-                    const btn = document.createElement('div');
-                    btn.className = 'loc-option-item' + (vill === pcrSelVillage ? ' selected' : '');
-                    btn.innerHTML = `<span>${vill}</span> <span class="postal-tag">${postal}</span>`;
-                    btn.onclick = () => window.pcrSelectVillage(vill, postal);
-                    optionsList.appendChild(btn);
+                const villagesObj = db[pcrSelProv]?.[pcrSelCity]?.[pcrSelDistrict] || {};
+                const villages = Object.keys(villagesObj);
+                villages.forEach(vill => {
+                    const isSel = vill === pcrSelVillage;
+                    const postal = villagesObj[vill];
+                    const row = document.createElement('div');
+                    row.className = 'loc-opt-row' + (isSel ? ' selected' : '');
+                    row.innerHTML = `
+                        <div style="display:flex; align-items:center;">
+                            <span class="radio-bullet"></span>
+                            <span>${vill}</span>
+                        </div>
+                        <span style="font-size:12px; color:#64748b;">${postal}</span>
+                    `;
+                    row.onclick = () => window.pcrSelectVillage(vill, postal);
+                    optionsList.appendChild(row);
                 });
             }
         }
@@ -1235,7 +1415,17 @@ function pcrUpdateMapPreview() {
         addrInput.addEventListener('input', pcrUpdateMapPreview);
     }
 
+    // Listen for modal open event
+    const modalEl = document.getElementById('modal-profile-change-request');
+    if (modalEl) {
+        modalEl.addEventListener('modal:open', function() {
+            updatePcrSections();
+            pcrUpdateMapPreview();
+        });
+    }
+
     // Default trigger on init
     updatePcrSections();
+    pcrUpdateMapPreview();
 })();
 </script>
