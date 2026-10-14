@@ -3900,8 +3900,16 @@
                 <div class="dash-container profile-page-wrapper">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
                         <h1 class="profile-page-heading" style="margin:0;">Profil Pemberi Kerja</h1>
-                        <?php if (in_array($verificationStatus, ['NOT_SUBMITTED', 'NEEDS_REVISION', 'PENDING'], true)): ?>
+                        <?php
+                            $isVerifiedProfile = (!empty($profile['verified']) && (int)$profile['verified'] === 1) && in_array($verificationStatus, ['APPROVED', 'ACTIVE_VERIFIED'], true);
+                            $isPendingVerif = in_array($verificationStatus, ['PENDING', 'REVERIFICATION_PENDING'], true) || (($profile['manual_review_status'] ?? '') === 'CONSENT_PENDING');
+                        ?>
+                        <?php if ($isVerifiedProfile && !$isPendingVerif): ?>
                             <button type="button" class="primary-btn" data-open-modal="modal-employer-profile">
+                                <i class="fa-solid fa-pen-to-square"></i> Edit Profil
+                            </button>
+                        <?php elseif ($isPendingVerif): ?>
+                            <button type="button" class="primary-btn" disabled style="opacity:0.65; cursor:not-allowed; background:#94a3b8; border-color:#94a3b8; color:#ffffff; box-shadow:none;" title="Profil sedang dalam proses verifikasi. Anda belum dapat melakukan perubahan profil saat ini.">
                                 <i class="fa-solid fa-pen-to-square"></i> Edit Profil
                             </button>
                         <?php endif; ?>
@@ -3944,7 +3952,7 @@
                             $iconClass = 'fa-solid fa-circle-info';
                             $iconColor = '#64748b';
                             $statusTitle = 'Profil Belum Diverifikasi';
-                            $statusText = 'Profil Pemberi Kerja Anda belum diajukan untuk verifikasi. Klik tombol Edit Profil di kanan atas untuk melengkapi biodata.';
+                            $statusText = 'Profil Pemberi Kerja Anda belum diajukan untuk verifikasi. Silakan lengkapi biodata dan ajukan verifikasi profil Anda.';
                         }
                     ?>
                     <div class="profile-verified-banner" style="background:<?php echo $bannerBg; ?>; border-color:<?php echo $bannerBorder; ?>;">
