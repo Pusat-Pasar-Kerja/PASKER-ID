@@ -1993,6 +1993,23 @@ $exp1 = format_indo_date(date('Y-m-d', strtotime('+1 month')), 'short');
 $exp2 = format_indo_date(date('Y-m-d', strtotime('+2 month')), 'short');
 $exp3 = format_indo_date(date('Y-m-d', strtotime('+3 month')), 'short');
 
+$professionGroups = function_exists('individual_business_types') ? individual_business_types() : [];
+$defaultProfession = trim((string)($profile['profession'] ?? ''));
+$industryOptionsHtml = '<option value="">Pilih jenis usaha individu</option>';
+$hasSelected = false;
+foreach ($professionGroups as $groupName => $items) {
+    $industryOptionsHtml .= '<optgroup label="' . htmlspecialchars($groupName, ENT_QUOTES, 'UTF-8') . '">';
+    foreach ($items as $item) {
+        $selected = (!$hasSelected && $defaultProfession !== '' && $defaultProfession === $item) ? ' selected' : '';
+        if ($selected) $hasSelected = true;
+        $industryOptionsHtml .= '<option value="' . htmlspecialchars($item, ENT_QUOTES, 'UTF-8') . '"' . $selected . '>' . htmlspecialchars($item, ENT_QUOTES, 'UTF-8') . '</option>';
+    }
+    $industryOptionsHtml .= '</optgroup>';
+}
+if (!$hasSelected && $defaultProfession !== '') {
+    $industryOptionsHtml .= '<optgroup label="Lainnya / Sesuai Profil"><option value="' . htmlspecialchars($defaultProfession, ENT_QUOTES, 'UTF-8') . '" selected>' . htmlspecialchars($defaultProfession, ENT_QUOTES, 'UTF-8') . '</option></optgroup>';
+}
+
 $modal = <<<HTML
     <div class="modal-backdrop" data-modal="job-create">
         <div class="modal-panel job-create-panel" role="dialog" aria-modal="true">
@@ -2147,17 +2164,7 @@ $modal = <<<HTML
                             <div class="form-group">
                                 <label>Jenis Usaha Individu <span class="req">*</span></label>
                                 <select name="industry" class="form-control-custom" required>
-                                    <option value="">Pilih jenis usaha individu</option>
-                                    <option value="Praktik Dokter Umum">Praktik Dokter Umum</option>
-                                    <option value="Praktik Dokter Gigi">Praktik Dokter Gigi</option>
-                                    <option value="Praktik Bidan">Praktik Bidan</option>
-                                    <option value="Notaris">Notaris</option>
-                                    <option value="Konsultan Hukum">Konsultan Hukum</option>
-                                    <option value="Psikolog">Psikolog</option>
-                                    <option value="Arsitek">Arsitek</option>
-                                    <option value="Konsultan Pajak">Konsultan Pajak</option>
-                                    <option value="Guru Privat">Guru Privat</option>
-                                    <option value="Bimbingan Belajar (Bimbel)">Bimbingan Belajar (Bimbel)</option>
+                                    {$industryOptionsHtml}
                                 </select>
                             </div>
 

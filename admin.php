@@ -6340,9 +6340,9 @@ document.addEventListener('click', function(e) {
                             </div>
                             <div>
                                 <div style="font-size:12px; color:#64748b; display:flex; align-items:center; gap:6px; margin-bottom:2px;">
-                                    <i class="fa-solid fa-building" style="color:#94a3b8; width:14px;"></i> Industri / Sektor
+                                    <i class="fa-solid fa-store" style="color:#94a3b8; width:14px;"></i> Jenis Usaha Individu
                                 </div>
-                                <div style="font-size:13px; font-weight:600; color:#1e293b;"><?php echo e($selectedJob['industry'] ?: 'Jasa Kreatif'); ?></div>
+                                <div style="font-size:13px; font-weight:600; color:#1e293b;"><?php echo e($selectedJob['industry'] ?: '-'); ?></div>
                             </div>
                             <div>
                                 <div style="font-size:12px; color:#64748b; display:flex; align-items:center; gap:6px; margin-bottom:2px;">
