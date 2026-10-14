@@ -1556,3 +1556,289 @@ function reactivate_employer_access_by_admin_dinas(PDO $pdo, int $targetUserId, 
         return ['success' => false, 'error' => 'Gagal mereaktivasi Hak Akses: ' . $e->getMessage()];
     }
 }
+
+/**
+ * Ensure database tables for Profile Change Requests and Profile Versioning
+ */
+function ensure_profile_change_schema(?PDO $pdo = null): void
+{
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+    $ensured = true;
+    if ($pdo === null) {
+        $pdo = db();
+    }
+
+    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver === 'sqlite') {
+        $pdo->exec('CREATE TABLE IF NOT EXISTS profile_change_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            sections TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            proposed_data TEXT NOT NULL,
+            current_data TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT "PENDING",
+            admin_notes TEXT,
+            reviewed_by TEXT,
+            reviewed_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME
+        )');
+
+        $pdo->exec('CREATE TABLE IF NOT EXISTS profile_versions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            request_id INTEGER,
+            version_num INTEGER NOT NULL DEFAULT 1,
+            snapshot_data TEXT NOT NULL,
+            change_summary TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )');
+    } else {
+        $pdo->exec('CREATE TABLE IF NOT EXISTS profile_change_requests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            sections TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            proposed_data TEXT NOT NULL,
+            current_data TEXT NOT NULL,
+            status VARCHAR(40) NOT NULL DEFAULT "PENDING",
+            admin_notes TEXT NULL,
+            reviewed_by VARCHAR(120) NULL,
+            reviewed_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_pcr_user (user_id),
+            INDEX idx_pcr_status (status)
+        )');
+
+        $pdo->exec('CREATE TABLE IF NOT EXISTS profile_versions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            request_id INT NULL,
+            version_num INT NOT NULL DEFAULT 1,
+            snapshot_data TEXT NOT NULL,
+            change_summary TEXT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_pv_user (user_id)
+        )');
+    }
+}
+
+/**
+ * Get active (PENDING) profile change request for a specific user
+ */
+function get_active_profile_change_request(int $userId): ?array
+{
+    ensure_profile_change_schema();
+    $stmt = db()->prepare('SELECT * FROM profile_change_requests WHERE user_id = ? AND status = "PENDING" ORDER BY id DESC LIMIT 1');
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+/**
+ * Get latest profile change request (PENDING, APPROVED, or REJECTED)
+ */
+function get_latest_profile_change_request(int $userId): ?array
+{
+    ensure_profile_change_schema();
+    $stmt = db()->prepare('SELECT * FROM profile_change_requests WHERE user_id = ? ORDER BY id DESC LIMIT 1');
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+/**
+ * Get all profile versions for audit trail
+ */
+function get_profile_versions(int $userId): array
+{
+    ensure_profile_change_schema();
+    $stmt = db()->prepare('SELECT * FROM profile_versions WHERE user_id = ? ORDER BY version_num DESC, id DESC');
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll() ?: [];
+}
+
+/**
+ * Create a new Profile Change Request
+ */
+function create_profile_change_request(int $userId, array $sections, string $reason, array $proposedData, array $currentData): int
+{
+    ensure_profile_change_schema();
+    $pdo = db();
+    $stmt = $pdo->prepare('INSERT INTO profile_change_requests 
+        (user_id, sections, reason, proposed_data, current_data, status, created_at)
+        VALUES (?, ?, ?, ?, ?, "PENDING", ' . ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? 'datetime("now")' : 'NOW()') . ')');
+
+    $stmt->execute([
+        $userId,
+        json_encode($sections, JSON_UNESCAPED_UNICODE),
+        $reason,
+        json_encode($proposedData, JSON_UNESCAPED_UNICODE),
+        json_encode($currentData, JSON_UNESCAPED_UNICODE)
+    ]);
+
+    return (int)$pdo->lastInsertId();
+}
+
+/**
+ * Approve a Profile Change Request, apply changes to active profile, and record version snapshot
+ */
+function approve_profile_change_request(int $requestId, string $reviewerName, ?string $adminNotes = null): array
+{
+    ensure_profile_change_schema();
+    $pdo = db();
+    $stmt = $pdo->prepare('SELECT * FROM profile_change_requests WHERE id = ? LIMIT 1');
+    $stmt->execute([$requestId]);
+    $request = $stmt->fetch();
+
+    if (!$request) {
+        return ['success' => false, 'error' => 'Permintaan perubahan profil tidak ditemukan.'];
+    }
+    if ($request['status'] !== 'PENDING') {
+        return ['success' => false, 'error' => 'Permintaan perubahan ini sudah diproses sebelumnya (Status: ' . $request['status'] . ').'];
+    }
+
+    $userId = (int)$request['user_id'];
+    $proposedData = json_decode($request['proposed_data'] ?? '{}', true) ?: [];
+    $currentData = json_decode($request['current_data'] ?? '{}', true) ?: [];
+    $sections = json_decode($request['sections'] ?? '[]', true) ?: [];
+
+    // Map section IDs to human-readable names
+    $sectionLabelsMap = [
+        'identity' => 'Identitas Perorangan (Nomor WhatsApp)',
+        'workplace' => 'Tempat Usaha / Kegiatan & Deskripsi Usaha',
+        'documents' => 'Dokumen & Bukti Tempat Usaha',
+        'social' => 'Media Sosial'
+    ];
+    $sectionNames = array_map(fn($s) => $sectionLabelsMap[$s] ?? $s, $sections);
+
+    $pdo->beginTransaction();
+    try {
+        // 1. Ensure initial version (Version 1) is archived if no version exists yet
+        $checkVerStmt = $pdo->prepare('SELECT COUNT(*) FROM profile_versions WHERE user_id = ?');
+        $checkVerStmt->execute([$userId]);
+        $existingVersionCount = (int)$checkVerStmt->fetchColumn();
+
+        if ($existingVersionCount === 0) {
+            $stmtInitVer = $pdo->prepare('INSERT INTO profile_versions (user_id, request_id, version_num, snapshot_data, change_summary, created_at) VALUES (?, NULL, 1, ?, "Profil Awal Terverifikasi", ' . ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? 'datetime("now")' : 'NOW()') . ')');
+            $stmtInitVer->execute([$userId, json_encode($currentData, JSON_UNESCAPED_UNICODE)]);
+            $nextVersionNum = 2;
+        } else {
+            $maxVerStmt = $pdo->prepare('SELECT MAX(version_num) FROM profile_versions WHERE user_id = ?');
+            $maxVerStmt->execute([$userId]);
+            $nextVersionNum = ((int)$maxVerStmt->fetchColumn()) + 1;
+        }
+
+        // 2. Build UPDATE statement dynamically for proposed fields
+        $allowedFields = [
+            'whatsapp', 'profession',
+            'brand_name', 'business_logo', 'description',
+            'province', 'city', 'district', 'village', 'postal_code',
+            'address', 'address_detail', 'latitude', 'longitude', 'same_location_siapkerja',
+            'permit_document', 'doc_permission', 'workplace_photo', 'doc_location_photo',
+            'instagram', 'linkedin', 'facebook', 'tiktok'
+        ];
+
+        $updateParts = [];
+        $updateVals = [];
+        foreach ($proposedData as $k => $v) {
+            if (in_array($k, $allowedFields, true)) {
+                $updateParts[] = "{$k} = ?";
+                $updateVals[] = $v;
+            }
+        }
+
+        if (!empty($updateParts)) {
+            $updateParts[] = "updated_at = " . ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? 'datetime("now")' : 'NOW()');
+            $updateVals[] = $userId;
+            $sql = "UPDATE employer_profiles SET " . implode(', ', $updateParts) . " WHERE user_id = ?";
+            $updateStmt = $pdo->prepare($sql);
+            $updateStmt->execute($updateVals);
+        }
+
+        // 3. Fetch newly updated profile for new version snapshot
+        $stmtNewProf = $pdo->prepare('SELECT * FROM employer_profiles WHERE user_id = ? LIMIT 1');
+        $stmtNewProf->execute([$userId]);
+        $newProfileData = $stmtNewProf->fetch() ?: [];
+
+        // 4. Record new version snapshot
+        $changeSummary = 'Perubahan profil disetujui: ' . implode(', ', $sectionNames);
+        if ($adminNotes) {
+            $changeSummary .= ' | Catatan Admin: ' . $adminNotes;
+        }
+        $stmtNewVer = $pdo->prepare('INSERT INTO profile_versions (user_id, request_id, version_num, snapshot_data, change_summary, created_at) VALUES (?, ?, ?, ?, ?, ' . ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? 'datetime("now")' : 'NOW()') . ')');
+        $stmtNewVer->execute([
+            $userId,
+            $requestId,
+            $nextVersionNum,
+            json_encode($newProfileData, JSON_UNESCAPED_UNICODE),
+            $changeSummary
+        ]);
+
+        // 5. Update profile change request status
+        $nowStr = date('Y-m-d H:i:s');
+        $stmtReqUpdate = $pdo->prepare('UPDATE profile_change_requests SET status = "APPROVED", reviewed_by = ?, reviewed_at = ?, admin_notes = ?, updated_at = ? WHERE id = ?');
+        $stmtReqUpdate->execute([$reviewerName, $nowStr, $adminNotes, $nowStr, $requestId]);
+
+        // 6. Record audit log
+        record_audit_log('employer', $userId, 'PROFILE_CHANGE_APPROVED', "Permintaan perubahan profil disetujui oleh {$reviewerName}. Bagian diubah: " . implode(', ', $sectionNames) . ". Riwayat versi profil tersimpan (Versi {$nextVersionNum}).", $reviewerName, 'admin', true);
+
+        // 7. Notify employer user
+        notify_user($userId, 'Perubahan Profil Disetujui', 'Permintaan perubahan data profil Anda telah disetujui oleh Admin dan data profil aktif telah diperbarui.', 'success');
+
+        $pdo->commit();
+        return ['success' => true, 'version' => $nextVersionNum];
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        return ['success' => false, 'error' => 'Gagal menyetujui perubahan profil: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * Reject a Profile Change Request, keeping old profile data intact
+ */
+function reject_profile_change_request(int $requestId, string $reviewerName, string $adminNotes): array
+{
+    ensure_profile_change_schema();
+    $pdo = db();
+    $stmt = $pdo->prepare('SELECT * FROM profile_change_requests WHERE id = ? LIMIT 1');
+    $stmt->execute([$requestId]);
+    $request = $stmt->fetch();
+
+    if (!$request) {
+        return ['success' => false, 'error' => 'Permintaan perubahan profil tidak ditemukan.'];
+    }
+    if ($request['status'] !== 'PENDING') {
+        return ['success' => false, 'error' => 'Permintaan perubahan ini sudah diproses sebelumnya (Status: ' . $request['status'] . ').'];
+    }
+
+    $userId = (int)$request['user_id'];
+    $sections = json_decode($request['sections'] ?? '[]', true) ?: [];
+    $sectionLabelsMap = [
+        'identity' => 'Identitas Perorangan (Nomor WhatsApp)',
+        'workplace' => 'Tempat Usaha / Kegiatan & Deskripsi Usaha',
+        'documents' => 'Dokumen & Bukti Tempat Usaha',
+        'social' => 'Media Sosial'
+    ];
+    $sectionNames = array_map(fn($s) => $sectionLabelsMap[$s] ?? $s, $sections);
+
+    $nowStr = date('Y-m-d H:i:s');
+    $stmtReqUpdate = $pdo->prepare('UPDATE profile_change_requests SET status = "REJECTED", reviewed_by = ?, reviewed_at = ?, admin_notes = ?, updated_at = ? WHERE id = ?');
+    $stmtReqUpdate->execute([$reviewerName, $nowStr, $adminNotes, $nowStr, $requestId]);
+
+    // Record audit log
+    record_audit_log('employer', $userId, 'PROFILE_CHANGE_REJECTED', "Permintaan perubahan profil ditolak oleh {$reviewerName}. Alasan: {$adminNotes}", $reviewerName, 'admin', true);
+
+    // Notify user with rejection reason
+    notify_user($userId, 'Perubahan Profil Ditolak', 'Permintaan perubahan profil Anda belum dapat disetujui oleh Admin. Alasan: ' . $adminNotes, 'error');
+
+    return ['success' => true];
+}
+

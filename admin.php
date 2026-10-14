@@ -200,6 +200,38 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
         exit;
     }
 
+    // 2.1 VERIFIKASI PERMINTAAN PERUBAHAN PROFIL (PROFILE CHANGE REQUEST)
+    if ($action === 'approve_profile_change') {
+        $requestId = (int)$_POST['request_id'];
+        $notes = trim($_POST['admin_notes'] ?? '');
+        $result = approve_profile_change_request($requestId, $user['name'] ?? 'Admin', $notes);
+        if ($result['success']) {
+            flash('success', "Permintaan perubahan profil berhasil disetujui. Versi profil ke-{$result['version']} telah disimpan.");
+        } else {
+            flash('error', $result['error'] ?? 'Gagal menyetujui perubahan profil.');
+        }
+        redirect($redirectUrl);
+        exit;
+    }
+
+    if ($action === 'reject_profile_change') {
+        $requestId = (int)$_POST['request_id'];
+        $notes = trim($_POST['admin_notes'] ?? '');
+        if ($notes === '') {
+            flash('error', 'Alasan penolakan perubahan profil wajib diisi.');
+            redirect($redirectUrl);
+            exit;
+        }
+        $result = reject_profile_change_request($requestId, $user['name'] ?? 'Admin', $notes);
+        if ($result['success']) {
+            flash('success', 'Permintaan perubahan profil telah ditolak. Data aktif profil terverifikasi tetap dipertahankan.');
+        } else {
+            flash('error', $result['error'] ?? 'Gagal menolak perubahan profil.');
+        }
+        redirect($redirectUrl);
+        exit;
+    }
+
     // 3. JALUR MANUAL DINAS: CONTROLLED EDIT & AJUKAN PERMOHONAN ULANG
     if ($action === 'manual_dinas_edit') {
         $targetUserId = (int)$_POST['user_id'];

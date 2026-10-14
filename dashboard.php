@@ -627,6 +627,132 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         exit;
     }
 
+    // 2.1 PENGAJUAN PERMINTAAN PERUBAHAN PROFIL (PROFILE CHANGE REQUEST UNTUK PROFIL TERVERIFIKASI)
+    if (isset($_POST['submit_profile_change_request'])) {
+        if ($verificationStatus === 'SUSPENDED') {
+            flash('error', 'Hak Akses Pemberi Kerja Individu sedang ditangguhkan. Perubahan profil tidak dapat diajukan.');
+            redirect('dashboard.php#profil');
+            exit;
+        }
+
+        // Pastikan tidak ada active pending change request yang masih berjalan
+        $existingActivePCR = get_active_profile_change_request((int)$user['id']);
+        if ($existingActivePCR) {
+            flash('error', 'Anda masih memiliki permintaan perubahan profil aktif yang sedang menunggu pemeriksaan Admin.');
+            redirect('dashboard.php#profil');
+            exit;
+        }
+
+        $sections = isset($_POST['pcr_sections']) && is_array($_POST['pcr_sections']) ? array_values(array_filter($_POST['pcr_sections'])) : [];
+        $reason = trim($_POST['pcr_reason'] ?? '');
+        $consent = !empty($_POST['pcr_consent']);
+
+        if (empty($sections)) {
+            flash('error', 'Pilih minimal satu bagian profil yang ingin Anda ubah.');
+            redirect('dashboard.php?open_pcr=1#profil');
+            exit;
+        }
+
+        if ($reason === '') {
+            flash('error', 'Alasan perubahan profil wajib diisi.');
+            redirect('dashboard.php?open_pcr=1#profil');
+            exit;
+        }
+
+        if (mb_strlen($reason) > 500) {
+            flash('error', 'Alasan perubahan profil tidak boleh melebihi 500 karakter.');
+            redirect('dashboard.php?open_pcr=1#profil');
+            exit;
+        }
+
+        if (!$consent) {
+            flash('error', 'Anda wajib menyetujui pernyataan pengajuan perubahan profil.');
+            redirect('dashboard.php?open_pcr=1#profil');
+            exit;
+        }
+
+        // Ambil data profil saat ini
+        $stmtCurrent = db()->prepare('SELECT * FROM employer_profiles WHERE user_id = ? LIMIT 1');
+        $stmtCurrent->execute([$user['id']]);
+        $currentData = $stmtCurrent->fetch() ?: [];
+
+        $proposedData = [];
+
+        // 1. Identitas Perorangan
+        if (in_array('identity', $sections, true)) {
+            $newWhatsapp = trim($_POST['pcr_whatsapp'] ?? '');
+            if ($newWhatsapp === '') {
+                flash('error', 'Nomor WhatsApp wajib diisi pada bagian Identitas Perorangan.');
+                redirect('dashboard.php?open_pcr=1#profil');
+                exit;
+            }
+            $proposedData['whatsapp'] = $newWhatsapp;
+            if (isset($_POST['pcr_profession']) && trim($_POST['pcr_profession']) !== '') {
+                $proposedData['profession'] = trim($_POST['pcr_profession']);
+            }
+        }
+
+        // 2. Tempat Usaha / Kegiatan & Deskripsi Usaha
+        if (in_array('workplace', $sections, true)) {
+            $proposedData['brand_name'] = trim($_POST['pcr_brand_name'] ?? '');
+            $proposedData['description'] = trim($_POST['pcr_description'] ?? '');
+            $proposedData['province'] = trim($_POST['pcr_province'] ?? '');
+            $proposedData['city'] = trim($_POST['pcr_city'] ?? '');
+            $proposedData['district'] = trim($_POST['pcr_district'] ?? '');
+            $proposedData['village'] = trim($_POST['pcr_village'] ?? '');
+            $proposedData['postal_code'] = trim($_POST['pcr_postal_code'] ?? '');
+            $proposedData['address'] = trim($_POST['pcr_address'] ?? '');
+            $proposedData['address_detail'] = trim($_POST['pcr_address_detail'] ?? '');
+
+            // Handle logo jika diupload
+            if (!empty($_FILES['pcr_business_logo']['name'])) {
+                $newLogo = store_upload('pcr_business_logo', 'employer/' . $user['id'], ['png', 'jpg', 'jpeg']);
+                if ($newLogo) {
+                    $proposedData['business_logo'] = $newLogo;
+                }
+            }
+        }
+
+        // 3. Dokumen & Bukti Tempat Usaha
+        if (in_array('documents', $sections, true)) {
+            if (!empty($_FILES['pcr_permit_document']['name'])) {
+                $newPermit = store_upload('pcr_permit_document', 'employer/' . $user['id'], ['pdf', 'docx']);
+                if ($newPermit) {
+                    $proposedData['permit_document'] = $newPermit;
+                    $proposedData['doc_permission'] = $newPermit;
+                }
+            }
+            if (!empty($_FILES['pcr_workplace_photo']['name'])) {
+                $newPhoto = store_upload('pcr_workplace_photo', 'employer/' . $user['id'], ['png', 'jpg', 'jpeg']);
+                if ($newPhoto) {
+                    $proposedData['workplace_photo'] = $newPhoto;
+                    $proposedData['doc_location_photo'] = $newPhoto;
+                }
+            }
+        }
+
+        // 4. Media Sosial
+        if (in_array('social', $sections, true)) {
+            $proposedData['instagram'] = trim($_POST['pcr_instagram'] ?? '');
+            $proposedData['linkedin'] = trim($_POST['pcr_linkedin'] ?? '');
+            $proposedData['facebook'] = trim($_POST['pcr_facebook'] ?? '');
+            $proposedData['tiktok'] = trim($_POST['pcr_tiktok'] ?? '');
+        }
+
+        // Buat record Profile Change Request baru
+        $requestId = create_profile_change_request($user['id'], $sections, $reason, $proposedData, $currentData);
+
+        // Audit log
+        record_audit_log('employer', $user['id'], 'PROFILE_CHANGE_REQUESTED', "Pengguna mengajukan Permintaan Perubahan Profil (Request #{$requestId}). Menunggu verifikasi Admin.", $user['name'] ?? 'Pemberi Kerja', 'employer', true);
+
+        // Notifikasi ke user
+        notify_user($user['id'], 'Permintaan Perubahan Profil Dikirim', 'Permintaan perubahan profil Anda telah berhasil diajukan dan sedang dalam proses verifikasi oleh Admin. Data profil aktif Anda saat ini tetap aman.', 'info');
+
+        flash('success', 'Permintaan perubahan profil berhasil diajukan dan sedang menunggu pemeriksaan oleh Admin.');
+        redirect('dashboard.php#profil');
+        exit;
+    }
+
     // 3. TAMBAH / UPDATE DRAFT LOWONGAN (SELALU Draft, TANPA Rules Engine)
     if (isset($_POST['save_job']) || isset($_POST['update_job'])) {
         if ($isTransitionPeriod || $isFullDisable || $verificationStatus === 'SUSPENDED') {
@@ -1338,6 +1464,11 @@ if ($selectedJobId > 0) {
 }
 
 // Prepare dynamic metrics & verification flags for Index.html template
+$activeChangeRequest = get_active_profile_change_request((int)$user['id']);
+$latestChangeRequest = get_latest_profile_change_request((int)$user['id']);
+$profileVersions = get_profile_versions((int)$user['id']);
+$hasActiveChangeRequest = !empty($activeChangeRequest);
+
 $isProfileVerified = (!empty($profile['verified']) && (int)$profile['verified'] === 1) && in_array($verificationStatus, ['APPROVED', 'ACTIVE_VERIFIED', 'TRANSITION_LIMITED'], true);
 
 $jobCounts = [
