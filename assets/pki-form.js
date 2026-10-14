@@ -1366,7 +1366,7 @@
         const STEP_TITLES = {
             1: 'Identitas Perorangan',
             2: 'PROFIL USAHA / KEGIATAN PEMBERI KERJA',
-            3: 'File & Bukti Tempat Usaha & Media Sosial',
+            3: 'Dokumen & Bukti Tempat Usaha & Media Sosial',
             4: 'PERNYATAAN'
         };
 

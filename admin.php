@@ -3960,9 +3960,9 @@ document.addEventListener('click', function(e) {
                                                 </div>
                                             </div>
 
-                                            <!-- 3. FILE & BUKTI TEMPAT USAHA (PREFILL DOKUMEN & FOTO) -->
+                                            <!-- 3. DOKUMEN & BUKTI TEMPAT USAHA (PREFILL DOKUMEN & FOTO) -->
                                             <div style="font-size:12.5px; font-weight:800; color:#0369a1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; padding-bottom:6px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-folder-open"></i> 3. File & Bukti Tempat Usaha
+                                                <i class="fa-solid fa-folder-open"></i> 3. Dokumen & Bukti Tempat Usaha
                                             </div>
                                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
                                                 <!-- FILE PENDUKUNG -->

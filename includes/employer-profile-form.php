@@ -531,7 +531,7 @@ if (file_exists($pkiCssPath)) {
 <!-- LANGKAH 3: SECTION 3 (FILE BUKTI) & SECTION 4 (MEDIA SOSIAL)    -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <div class="pki-step-pane" data-step="3" style="display:none;">
-    <div class="section-title" style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:12px;">3. FILE & BUKTI TEMPAT USAHA</div>
+    <div class="section-title" style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:12px;">3. DOKUMEN & BUKTI TEMPAT USAHA</div>
 
     <div class="pki-grid-2">
         <!-- Dokumen Perizinan Usaha -->
