@@ -4423,19 +4423,24 @@
                     </div>
 
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label style="display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
+                        <label style="display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 4px;">
                             Dokumen Pendukung Kebutuhan Tenaga Kerja <span style="color: #ef4444;">*</span>
                         </label>
-                        <div>
-                            <input type="file" name="additional_file" id="additional_file_input" accept=".pdf,.jpg,.jpeg" style="display: none;" onchange="handleAdditionalFileSelected(this)">
+                        <div style="font-size: 12px; color: #64748b; line-height: 1.45; margin-bottom: 8px;">
+                            Unggah dokumen pendukung yang menjelaskan kebutuhan membuka kembali jabatan, seperti surat pernyataan kebutuhan tenaga kerja atau dokumen pendukung lain yang relevan.
+                        </div>
+
+                        <input type="file" name="additional_file" id="additional_file_input" accept=".pdf,.jpg,.jpeg" style="display: none;" onchange="handleAdditionalFileSelected(this)">
+
+                        <!-- Tombol Unggah (Hanya Tampil Sebelum File Dipilih) -->
+                        <div id="additionalUploadWrapper">
                             <button type="button" id="additionalUploadBtn" onclick="document.getElementById('additional_file_input').click()" class="btn-secondary-custom" style="padding: 8px 14px; font-size: 13px; font-weight: 600; border: 1px solid #cbd5e1; background: #f8fafc; color: #334155; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
                                 <i class="fa-solid fa-file-arrow-up"></i> Pilih file untuk diunggah
                             </button>
                         </div>
-                        <small style="display: block; font-size: 11px; color: #94a3b8; margin-top: 5px;">PDF/JPG (Maks. 2 MB)</small>
 
-                        <!-- Card/Row Terpisah untuk File yang Berhasil Dipilih -->
-                        <div id="additionalFileCard" style="display: none; margin-top: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                        <!-- Card/Row Terpisah untuk File yang Berhasil Dipilih (Menggantikan Tombol Upload) -->
+                        <div id="additionalFileCard" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
                             <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
                                 <div id="additionalFileIconWrapper" style="width: 38px; height: 38px; border-radius: 8px; background: #ffffff; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
                                     <i id="additionalFileIcon" class="fa-solid fa-file-pdf" style="font-size: 18px; color: #ef4444;"></i>
@@ -4455,9 +4460,7 @@
                             </div>
                         </div>
 
-                        <div style="font-size: 12px; color: #64748b; line-height: 1.45; margin-top: 8px;">
-                            Unggah dokumen pendukung yang menjelaskan kebutuhan membuka kembali jabatan, seperti surat pernyataan kebutuhan tenaga kerja atau dokumen pendukung lain yang relevan.
-                        </div>
+                        <small style="display: block; font-size: 11px; color: #94a3b8; margin-top: 6px;">PDF/JPG (Maks. 2 MB)</small>
                     </div>
                 </div>
 
@@ -4483,6 +4486,7 @@
     }
 
     function handleAdditionalFileSelected(input) {
+        const uploadWrapper = document.getElementById('additionalUploadWrapper');
         const card = document.getElementById('additionalFileCard');
         const nameEl = document.getElementById('additionalFileName');
         const sizeEl = document.getElementById('additionalFileSize');
@@ -4520,6 +4524,13 @@
             if (sizeEl) {
                 sizeEl.textContent = formatAdditionalFileSize(file.size);
             }
+            if (uploadWrapper) {
+                uploadWrapper.style.display = 'none';
+            }
+            const uploadBtn = document.getElementById('additionalUploadBtn');
+            if (uploadBtn) {
+                uploadBtn.style.display = 'none';
+            }
             if (card) {
                 card.style.display = 'flex';
             }
@@ -4535,6 +4546,10 @@
     function removeAdditionalFile() {
         const input = document.getElementById('additional_file_input');
         if (input) input.value = '';
+        const uploadWrapper = document.getElementById('additionalUploadWrapper');
+        if (uploadWrapper) uploadWrapper.style.display = '';
+        const uploadBtn = document.getElementById('additionalUploadBtn');
+        if (uploadBtn) uploadBtn.style.display = 'inline-flex';
         const card = document.getElementById('additionalFileCard');
         if (card) card.style.display = 'none';
         const nameEl = document.getElementById('additionalFileName');
