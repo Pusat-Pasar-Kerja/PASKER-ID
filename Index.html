@@ -4426,15 +4426,36 @@
                         <label style="display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
                             Dokumen Pendukung Kebutuhan Tenaga Kerja <span style="color: #ef4444;">*</span>
                         </label>
-                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                            <input type="file" name="additional_file" id="additional_file_input" accept=".pdf,.jpg,.jpeg" style="display: none;" onchange="updateAdditionalFileLabel(this)">
-                            <button type="button" onclick="document.getElementById('additional_file_input').click()" class="btn-secondary-custom" style="padding: 8px 14px; font-size: 13px; font-weight: 600; border: 1px solid #cbd5e1; background: #f8fafc; color: #334155; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        <div>
+                            <input type="file" name="additional_file" id="additional_file_input" accept=".pdf,.jpg,.jpeg" style="display: none;" onchange="handleAdditionalFileSelected(this)">
+                            <button type="button" id="additionalUploadBtn" onclick="document.getElementById('additional_file_input').click()" class="btn-secondary-custom" style="padding: 8px 14px; font-size: 13px; font-weight: 600; border: 1px solid #cbd5e1; background: #f8fafc; color: #334155; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
                                 <i class="fa-solid fa-file-arrow-up"></i> Pilih file untuk diunggah
                             </button>
-                            <span id="additionalFileChosenLabel" style="font-size: 12px; color: #64748b; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px;">Belum ada file dipilih</span>
                         </div>
-                        <small style="display: block; font-size: 11px; color: #94a3b8; margin-top: 4px;">PDF/JPG (Maks. 2 MB)</small>
-                        <div style="font-size: 12px; color: #64748b; line-height: 1.45; margin-top: 6px;">
+                        <small style="display: block; font-size: 11px; color: #94a3b8; margin-top: 5px;">PDF/JPG (Maks. 2 MB)</small>
+
+                        <!-- Card/Row Terpisah untuk File yang Berhasil Dipilih -->
+                        <div id="additionalFileCard" style="display: none; margin-top: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                            <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+                                <div id="additionalFileIconWrapper" style="width: 38px; height: 38px; border-radius: 8px; background: #ffffff; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+                                    <i id="additionalFileIcon" class="fa-solid fa-file-pdf" style="font-size: 18px; color: #ef4444;"></i>
+                                </div>
+                                <div style="min-width: 0; flex: 1;">
+                                    <div id="additionalFileName" style="font-size: 13px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.35;" title=""></div>
+                                    <div id="additionalFileSize" style="font-size: 11px; color: #64748b; margin-top: 2px;"></div>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                                <button type="button" onclick="document.getElementById('additional_file_input').click()" title="Ganti file" style="padding: 6px 11px; font-size: 12px; font-weight: 600; color: #0284c7; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s ease;" onmouseover="this.style.background='#f0f9ff'; this.style.borderColor='#bae6fd';" onmouseout="this.style.background='#ffffff'; this.style.borderColor='#cbd5e1';">
+                                    <i class="fa-solid fa-arrows-rotate"></i> Ganti
+                                </button>
+                                <button type="button" onclick="removeAdditionalFile()" title="Hapus file" style="padding: 6px 11px; font-size: 12px; font-weight: 600; color: #dc2626; background: #ffffff; border: 1px solid #fecaca; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s ease;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fca5a5';" onmouseout="this.style.background='#ffffff'; this.style.borderColor='#fecaca';">
+                                    <i class="fa-solid fa-trash-can"></i> Hapus
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="font-size: 12px; color: #64748b; line-height: 1.45; margin-top: 8px;">
                             Unggah dokumen pendukung yang menjelaskan kebutuhan membuka kembali jabatan, seperti surat pernyataan kebutuhan tenaga kerja atau dokumen pendukung lain yang relevan.
                         </div>
                     </div>
@@ -4453,30 +4474,76 @@
     </div>
 
     <script>
-    function updateAdditionalFileLabel(input) {
-        const label = document.getElementById('additionalFileChosenLabel');
-        if (label && input.files && input.files[0]) {
+    function formatAdditionalFileSize(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function handleAdditionalFileSelected(input) {
+        const card = document.getElementById('additionalFileCard');
+        const nameEl = document.getElementById('additionalFileName');
+        const sizeEl = document.getElementById('additionalFileSize');
+        const iconEl = document.getElementById('additionalFileIcon');
+
+        if (input.files && input.files[0]) {
             const file = input.files[0];
-            const maxBytes = 2 * 1024 * 1024;
+            const maxBytes = 2 * 1024 * 1024; // 2 MB
             if (file.size > maxBytes) {
                 alert('Ukuran file melebihi batas maksimal 2 MB. Silakan pilih file dengan ukuran maksimal 2 MB.');
-                input.value = '';
-                label.textContent = 'Belum ada file dipilih';
-                label.style.fontStyle = 'italic';
-                label.style.color = '#ef4444';
-                label.style.fontWeight = 'normal';
+                removeAdditionalFile();
                 return;
             }
-            label.textContent = file.name;
-            label.style.fontStyle = 'normal';
-            label.style.color = '#0284c7';
-            label.style.fontWeight = '600';
-        } else if (label) {
-            label.textContent = 'Belum ada file dipilih';
-            label.style.fontStyle = 'italic';
-            label.style.color = '#64748b';
-            label.style.fontWeight = 'normal';
+
+            const ext = (file.name.split('.').pop() || '').toLowerCase();
+            let iconClass = 'fa-solid fa-file-lines';
+            let iconColor = '#64748b';
+
+            if (ext === 'pdf') {
+                iconClass = 'fa-solid fa-file-pdf';
+                iconColor = '#ef4444';
+            } else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+                iconClass = 'fa-solid fa-file-image';
+                iconColor = '#0284c7';
+            }
+
+            if (iconEl) {
+                iconEl.className = iconClass;
+                iconEl.style.color = iconColor;
+            }
+            if (nameEl) {
+                nameEl.textContent = file.name;
+                nameEl.title = file.name;
+            }
+            if (sizeEl) {
+                sizeEl.textContent = formatAdditionalFileSize(file.size);
+            }
+            if (card) {
+                card.style.display = 'flex';
+            }
+        } else {
+            removeAdditionalFile();
         }
+    }
+
+    function updateAdditionalFileLabel(input) {
+        handleAdditionalFileSelected(input);
+    }
+
+    function removeAdditionalFile() {
+        const input = document.getElementById('additional_file_input');
+        if (input) input.value = '';
+        const card = document.getElementById('additionalFileCard');
+        if (card) card.style.display = 'none';
+        const nameEl = document.getElementById('additionalFileName');
+        if (nameEl) {
+            nameEl.textContent = '';
+            nameEl.title = '';
+        }
+        const sizeEl = document.getElementById('additionalFileSize');
+        if (sizeEl) sizeEl.textContent = '';
     }
 
     function handleKirimLowongan(event, jobId, kbjiCode, publishedCount) {
@@ -4509,13 +4576,7 @@
             document.body.style.overflow = '';
             const form = document.getElementById('formAdditionalDoc');
             if (form) form.reset();
-            const fileLabel = document.getElementById('additionalFileChosenLabel');
-            if (fileLabel) {
-                fileLabel.textContent = 'Belum ada file dipilih';
-                fileLabel.style.fontStyle = 'italic';
-                fileLabel.style.color = '#64748b';
-                fileLabel.style.fontWeight = 'normal';
-            }
+            removeAdditionalFile();
             if (window.history && window.history.replaceState) {
                 const url = new URL(window.location.href);
                 if (url.searchParams.has('open_additional_doc_modal')) {
