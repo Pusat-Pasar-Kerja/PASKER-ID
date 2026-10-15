@@ -157,9 +157,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
 
                 $isReactivationApproval = !empty($targetEmp['last_activated_at']);
                 $auditAction = $isReactivationApproval ? 'REACTIVATION_APPROVED' : 'APPROVED';
+                $notesStr = !empty($notes) ? " Catatan: {$notes}" : "";
                 $auditText = $isReactivationApproval
-                    ? "Permohonan reaktivasi Hak Akses online disetujui. Masa aktif baru berlaku 6 bulan. Catatan: {$notes} | Source: ONLINE_REACTIVATION"
-                    : "Profil disetujui. Masa aktif berlaku 6 bulan. Catatan: {$notes} | Source: INITIAL_VERIFICATION";
+                    ? "Permohonan reaktivasi Hak Akses online disetujui. Masa aktif baru berlaku 6 bulan.{$notesStr}"
+                    : "Profil disetujui. Masa aktif berlaku 6 bulan.{$notesStr}";
 
                 record_audit_log('employer', $targetUserId, $auditAction, $auditText, $user['name'], $user['role'] ?? 'admin', true);
                 notify_user($targetUserId, 'Profil Disetujui', 'Selamat! Hak Akses Pemberi Kerja Individu Anda telah disetujui dan aktif selama 6 bulan.', 'success');
@@ -2301,12 +2302,18 @@ window.CITY_MASTER = [
 
                                     <?php if (!empty($auditLogs)): ?>
                                         <?php foreach ($auditLogs as $log): ?>
+                                            <?php $formattedLog = format_audit_log_item($log); ?>
                                             <div style="position:relative; margin-bottom:18px;">
-                                                <div style="position:absolute; left:-18px; top:4px; width:10px; height:10px; border-radius:50%; background:#94a3b8; border:2px solid #ffffff;"></div>
+                                                <div style="position:absolute; left:-18px; top:4px; width:10px; height:10px; border-radius:50%; <?php echo $formattedLog['dotStyle']; ?> border:2px solid #ffffff;"></div>
                                                 <div style="font-size:11.5px; color:#64748b; font-weight:600;"><?php echo date('d M Y, H:i', strtotime($log['created_at'])); ?></div>
-                                                <div style="font-size:12.5px; color:#0f172a; font-weight:600; margin-top:2px; line-height:1.4;"><?php echo e($log['action']); ?></div>
-                                                <?php if (!empty($log['details']) && $log['details'] !== $log['action']): ?>
-                                                    <div style="font-size:11.5px; color:#64748b; margin-top:2px;"><?php echo e($log['details']); ?></div>
+                                                <div style="font-size:12.5px; color:#0f172a; font-weight:700; margin-top:2px; line-height:1.4;">
+                                                    <?php echo e($formattedLog['title']); ?>
+                                                    <?php if (!empty($formattedLog['actor'])): ?>
+                                                        <small style="color:#64748b; font-weight:500;">(oleh <?php echo e($formattedLog['actor']); ?>)</small>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <?php if (!empty($formattedLog['details'])): ?>
+                                                    <div style="font-size:11.5px; color:#64748b; margin-top:2px;"><?php echo e($formattedLog['details']); ?></div>
                                                 <?php endif; ?>
                                             </div>
                                         <?php endforeach; ?>
@@ -4542,17 +4549,31 @@ document.addEventListener('click', function(e) {
                                         </div>
                                     <?php else: ?>
                                         <div class="timeline-item">
-                                            <div class="timeline-dot"></div>
+                                            <div class="timeline-dot" style="background:#0284c7; box-shadow:0 0 0 2px #bae6fd;"></div>
                                             <div class="timeline-time"><?php echo date('d M Y, H:i', strtotime($selectedEmployer['created_at'])); ?></div>
-                                            <div class="timeline-title">Data pemberi kerja dikirim untuk verifikasi.</div>
+                                            <div class="timeline-title" style="font-weight:700; color:#0f172a; font-size:12.5px;">
+                                                Pengajuan Profil Awal
+                                                <small style="color:#64748b; font-weight:500;">(oleh <?php echo e($selectedEmployer['owner_name'] ?: $selectedEmployer['name']); ?>)</small>
+                                            </div>
+                                            <div class="timeline-desc" style="color:#475569; font-size:12px; margin-top:3px; line-height:1.45;">
+                                                Data profil pemberi kerja dikirim untuk verifikasi.
+                                            </div>
                                         </div>
                                         <?php if (!empty($auditLogs)): ?>
                                             <?php foreach ($auditLogs as $log): ?>
+                                                <?php $formattedLog = format_audit_log_item($log); ?>
                                                 <div class="timeline-item">
-                                                    <div class="timeline-dot"></div>
+                                                    <div class="timeline-dot" style="<?php echo $formattedLog['dotStyle']; ?>"></div>
                                                     <div class="timeline-time"><?php echo date('d M Y, H:i', strtotime($log['created_at'])); ?></div>
-                                                    <div class="timeline-title"><?php echo e($log['action']); ?> <small style="color:#64748b;">(oleh <?php echo e($log['actor_name']); ?>)</small></div>
-                                                    <div class="timeline-desc"><?php echo e($log['details']); ?></div>
+                                                    <div class="timeline-title" style="font-weight:700; color:#0f172a; font-size:12.5px;">
+                                                        <?php echo e($formattedLog['title']); ?>
+                                                        <?php if (!empty($formattedLog['actor'])): ?>
+                                                            <small style="color:#64748b; font-weight:500;">(oleh <?php echo e($formattedLog['actor']); ?>)</small>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <?php if (!empty($formattedLog['details'])): ?>
+                                                        <div class="timeline-desc" style="color:#475569; font-size:12px; margin-top:3px; line-height:1.45;"><?php echo e($formattedLog['details']); ?></div>
+                                                    <?php endif; ?>
                                                 </div>
                                             <?php endforeach; ?>
                                         <?php else: ?>

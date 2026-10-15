@@ -996,6 +996,87 @@ function fetch_audit_logs(string $entityType, int $entityId): array
     }
 }
 
+/**
+ * Format audit log for clean, human-readable timeline UI
+ */
+function format_audit_log_item(array $log): array
+{
+    $actionMap = [
+        'INITIAL_VERIFICATION_SUBMITTED' => 'Pengajuan Verifikasi',
+        'CASE_ASSIGNED' => 'Penugasan Pemeriksa',
+        'CASE_TAKEN' => 'Pengajuan Diambil Verifikator',
+        'CASE_UNASSIGNED' => 'Pembatalan Penugasan',
+        'UNASSIGNED' => 'Pembatalan Penugasan',
+        'APPROVED' => 'Profil Disetujui',
+        'APPROVED_MANUAL_DINAS' => 'Persetujuan Manual Dinas',
+        'REVISION_REQUESTED' => 'Permintaan Revisi',
+        'REJECTED' => 'Pengajuan Ditolak',
+        'PROFILE_CHANGE_REQUESTED' => 'Pengajuan Perubahan Profil',
+        'PROFILE_CHANGE_APPROVED' => 'Perubahan Profil Disetujui',
+        'PROFILE_CHANGE_REJECTED' => 'Perubahan Profil Ditolak',
+        'ADMIN_PROFILE_EDIT' => 'Pembaruan Data oleh Dinas',
+        'CONSENT_REQUESTED' => 'Permintaan Persetujuan Pemohon',
+        'CONSENT_GIVEN' => 'Persetujuan Diberikan Pemohon',
+        'CONSENT_INVALIDATED' => 'Persetujuan Dibatalkan',
+        'EXTENSION_REQUESTED' => 'Pengajuan Perpanjangan',
+        'EXTENSION_APPROVED' => 'Perpanjangan Disetujui',
+        'EXTENSION_REJECTED' => 'Perpanjangan Ditolak',
+        'REACTIVATION_APPROVED' => 'Reaktivasi Hak Akses Disetujui',
+        'ADDITIONAL_DOC_SUBMITTED' => 'Dokumen Tambahan Dikirim',
+        'ADDITIONAL_DOC_APPROVED' => 'Dokumen Tambahan Disetujui',
+        'ADDITIONAL_DOC_REJECTED' => 'Dokumen Tambahan Ditolak',
+        'ADDITIONAL_DOC_REJECTED_LAYER3' => 'Dokumen Tambahan Ditolak (Evaluasi Kuota)',
+        'SUBMITTED' => 'Pengajuan Dikirim'
+    ];
+
+    $rawAction = (string)($log['action'] ?? '');
+    $title = $actionMap[$rawAction] ?? ucwords(strtolower(str_replace('_', ' ', $rawAction)));
+
+    // Dot style & accent color
+    $dotColor = '#0284c7'; // default blue
+    $dotShadow = '#bae6fd';
+    if (in_array($rawAction, ['APPROVED', 'APPROVED_MANUAL_DINAS', 'PROFILE_CHANGE_APPROVED', 'EXTENSION_APPROVED', 'REACTIVATION_APPROVED', 'ADDITIONAL_DOC_APPROVED'], true)) {
+        $dotColor = '#10b981'; // Green
+        $dotShadow = '#a7f3d0';
+    } elseif (in_array($rawAction, ['REJECTED', 'PROFILE_CHANGE_REJECTED', 'EXTENSION_REJECTED', 'ADDITIONAL_DOC_REJECTED', 'ADDITIONAL_DOC_REJECTED_LAYER3'], true)) {
+        $dotColor = '#ef4444'; // Red
+        $dotShadow = '#fecaca';
+    } elseif (in_array($rawAction, ['REVISION_REQUESTED', 'CONSENT_REQUESTED', 'CONSENT_INVALIDATED'], true)) {
+        $dotColor = '#f59e0b'; // Amber / Orange
+        $dotShadow = '#fde68a';
+    }
+
+    // Clean details
+    $details = (string)($log['details'] ?? '');
+    $details = preg_replace('/\s*\|\s*Source:\s*[A-Z_]+/i', '', $details);
+    $details = preg_replace('/Source:\s*[A-Z_]+/i', '', $details);
+    $details = preg_replace('/Catatan:\s*\|\s*/i', '', $details);
+    $details = preg_replace('/Catatan:\s*$/i', '', $details);
+    $details = trim($details, " |");
+
+    // Deduplicate actor repetitions in details
+    $actor = trim((string)($log['actor_name'] ?? ''));
+    if ($actor !== '') {
+        $escapedActor = preg_quote($actor, '/');
+        $details = preg_replace('/(disetujui|ditolak|diproses)\s+oleh\s+' . $escapedActor . '\.?\s*/iu', '$1. ', $details);
+        $details = preg_replace('/^' . $escapedActor . '\s+mengambil pengajuan:\s*/iu', 'Mengambil pengajuan: ', $details);
+    }
+
+    // Don't show details if identical to raw action or title
+    if (strcasecmp($details, $rawAction) === 0 || strcasecmp($details, $title) === 0) {
+        $details = '';
+    }
+
+    return [
+        'title' => $title,
+        'actor' => $actor,
+        'details' => $details,
+        'dotColor' => $dotColor,
+        'dotShadow' => $dotShadow,
+        'dotStyle' => "background: {$dotColor}; box-shadow: 0 0 0 2px {$dotShadow};"
+    ];
+}
+
 function calculate_employer_consent_hash(array $p): string
 {
     $fields = [
@@ -1825,7 +1906,8 @@ function approve_profile_change_request(int $requestId, string $reviewerName, ?s
         $stmtReqUpdate->execute([$reviewerName, $nowStr, $adminNotes, $nowStr, $requestId]);
 
         // 6. Record audit log
-        record_audit_log('employer', $userId, 'PROFILE_CHANGE_APPROVED', "Permintaan perubahan profil disetujui oleh {$reviewerName}. Bagian diubah: " . implode(', ', $sectionNames) . ". Riwayat versi profil tersimpan (Versi {$nextVersionNum}).", $reviewerName, 'admin', true);
+        $notesPart = !empty($adminNotes) ? " Catatan: {$adminNotes}." : "";
+        record_audit_log('employer', $userId, 'PROFILE_CHANGE_APPROVED', "Perubahan profil disetujui. Bagian diubah: " . implode(', ', $sectionNames) . ". Riwayat versi profil tersimpan (Versi {$nextVersionNum}).{$notesPart}", $reviewerName, 'admin', true);
 
         // 7. Notify employer user
         notify_user($userId, 'Perubahan Profil Disetujui', 'Permintaan perubahan data profil Anda telah disetujui oleh Admin dan data profil aktif telah diperbarui.', 'success');
@@ -1873,7 +1955,7 @@ function reject_profile_change_request(int $requestId, string $reviewerName, str
     $stmtReqUpdate->execute([$reviewerName, $nowStr, $adminNotes, $nowStr, $requestId]);
 
     // Record audit log
-    record_audit_log('employer', $userId, 'PROFILE_CHANGE_REJECTED', "Permintaan perubahan profil ditolak oleh {$reviewerName}. Alasan: {$adminNotes}", $reviewerName, 'admin', true);
+    record_audit_log('employer', $userId, 'PROFILE_CHANGE_REJECTED', "Perubahan profil ditolak. Alasan: {$adminNotes}", $reviewerName, 'admin', true);
 
     // Notify user with rejection reason
     notify_user($userId, 'Perubahan Profil Ditolak', 'Permintaan perubahan profil Anda belum dapat disetujui oleh Admin. Alasan: ' . $adminNotes, 'error');
