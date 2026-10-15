@@ -345,8 +345,8 @@ if (file_exists($pkiCssPath)) {
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <!-- SECTION 1: IDENTITAS PERORANGAN (SESUAI LANGKAH 1 FORM PROFIL)  -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div id="pcr_box_identity" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
-                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1; display: flex; align-items: center; justify-content: space-between;">
+                    <div id="pcr_box_identity" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: visible; margin-bottom: 18px; position: relative;">
+                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1; display: flex; align-items: center; justify-content: space-between; border-top-left-radius: 9px; border-top-right-radius: 9px;">
                             <span>1. Identitas Perorangan</span>
                             <span style="font-size: 11px; font-weight: 600; color: #0369a1; background: #e0f2fe; padding: 2px 8px; border-radius: 999px; border: 1px solid #bae6fd;">Jenis Usaha &amp; WhatsApp dapat diedit</span>
                         </div>
@@ -380,7 +380,7 @@ if (file_exists($pkiCssPath)) {
                                 </div>
                                 
                                 <!-- Jenis Usaha Individu (EDITABLE DENGAN CUSTOM SELECT SEARCHABLE IDENTIK) -->
-                                <div class="pki-field" style="position:relative;">
+                                <div class="pki-field" style="position:relative; z-index:30;">
                                     <label class="pki-field-label" for="pcr_profession_trigger">
                                         Jenis Usaha Individu <span class="req">*</span>
                                         <span class="pki-tooltip tooltip-right" tabindex="0" role="tooltip">
@@ -391,38 +391,40 @@ if (file_exists($pkiCssPath)) {
 
                                     <input type="hidden" name="pcr_profession" id="pcr_profession" value="<?php echo e($vProfession); ?>">
 
-                                    <div class="pki-custom-select-trigger" id="pcr_profession_trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox">
-                                        <span class="pki-custom-select-text <?php echo empty($vProfession) ? 'is-placeholder' : ''; ?>" id="pcr_profession_display">
-                                            <?php echo !empty($vProfession) ? e($vProfession) : 'Pilih Jenis Usaha Individu'; ?>
-                                        </span>
-                                        <span class="pki-custom-select-caret">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="m7 15 5 5 5-5"/>
-                                                <path d="m7 9 5-5 5 5"/>
-                                            </svg>
-                                        </span>
-                                    </div>
-
-                                    <div class="pki-custom-select-dropdown" id="pcr_profession_dropdown" style="display:none;" role="listbox">
-                                        <div class="pki-custom-select-search-wrap">
-                                            <input type="text" class="pki-custom-select-search" id="pcr_profession_search" placeholder="Cari jenis usaha..." autocomplete="off">
+                                    <div style="position: relative;">
+                                        <div class="pki-custom-select-trigger" id="pcr_profession_trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox">
+                                            <span class="pki-custom-select-text <?php echo empty($vProfession) ? 'is-placeholder' : ''; ?>" id="pcr_profession_display">
+                                                <?php echo !empty($vProfession) ? e($vProfession) : 'Pilih Jenis Usaha Individu'; ?>
+                                            </span>
+                                            <span class="pki-custom-select-caret">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="m7 15 5 5 5-5"/>
+                                                    <path d="m7 9 5-5 5 5"/>
+                                                </svg>
+                                            </span>
                                         </div>
-                                        <div class="pki-custom-select-options" id="pcr_profession_options">
-                                            <?php foreach ($professionGroups as $groupName => $items): ?>
-                                                <div class="pki-select-group" data-group="<?php echo e($groupName); ?>">
-                                                    <div class="pki-select-group-header"><?php echo e($groupName); ?></div>
-                                                    <?php foreach ($items as $item): ?>
-                                                        <div class="pki-select-option <?php echo ($vProfession === $item) ? 'selected' : ''; ?>" data-value="<?php echo e($item); ?>" role="option">
-                                                            <span><?php echo e($item); ?></span>
-                                                            <?php if ($vProfession === $item): ?>
-                                                                <i class="fa-solid fa-check pki-select-check"></i>
-                                                            <?php endif; ?>
-                                                        </div>
-                                                    <?php endforeach; ?>
+
+                                        <div class="pki-custom-select-dropdown" id="pcr_profession_dropdown" style="display:none;" role="listbox">
+                                            <div class="pki-custom-select-search-wrap">
+                                                <input type="text" class="pki-custom-select-search" id="pcr_profession_search" placeholder="Cari jenis usaha..." autocomplete="off">
+                                            </div>
+                                            <div class="pki-custom-select-options" id="pcr_profession_options">
+                                                <?php foreach ($professionGroups as $groupName => $items): ?>
+                                                    <div class="pki-select-group" data-group="<?php echo e($groupName); ?>">
+                                                        <div class="pki-select-group-header"><?php echo e($groupName); ?></div>
+                                                        <?php foreach ($items as $item): ?>
+                                                            <div class="pki-select-option <?php echo ($vProfession === $item) ? 'selected' : ''; ?>" data-value="<?php echo e($item); ?>" role="option">
+                                                                <span><?php echo e($item); ?></span>
+                                                                <?php if ($vProfession === $item): ?>
+                                                                    <i class="fa-solid fa-check pki-select-check"></i>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                                <div class="pki-select-no-results" id="pcr_profession_no_results" style="display:none;">
+                                                    Tidak ada jenis usaha yang sesuai
                                                 </div>
-                                            <?php endforeach; ?>
-                                            <div class="pki-select-no-results" id="pcr_profession_no_results" style="display:none;">
-                                                Tidak ada jenis usaha yang sesuai
                                             </div>
                                         </div>
                                     </div>
@@ -463,8 +465,8 @@ if (file_exists($pkiCssPath)) {
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <!-- SECTION 2: TEMPAT USAHA & DESKRIPSI (IDENTIK LANGKAH 2)        -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div id="pcr_box_workplace" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
-                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1;">
+                    <div id="pcr_box_workplace" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: visible; margin-bottom: 18px; position: relative;">
+                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1; border-top-left-radius: 9px; border-top-right-radius: 9px;">
                             2. Tempat Usaha / Kegiatan Pemberi Kerja &amp; Deskripsi Usaha
                         </div>
                         <div style="padding: 16px 18px; background: #ffffff;">
@@ -550,7 +552,7 @@ if (file_exists($pkiCssPath)) {
                             <input type="hidden" name="pcr_longitude" id="pcr_inputLng" value="<?php echo $vLng; ?>">
 
                             <!-- Lokasi Tempat Usaha / Kegiatan: HIERARCHICAL LOCATION SELECTOR BERJENJANG (IDENTIK FORM PENDAFTARAN) -->
-                            <div class="pki-field" style="position:relative;">
+                            <div class="pki-field" style="position:relative; z-index:25;">
                                 <label class="pki-field-label" for="pcr_hierarchicalLocationInput">
                                     Lokasi Tempat Usaha / Kegiatan <span class="req">*</span>
                                     <span class="pki-tooltip" tabindex="0" role="tooltip">
@@ -558,15 +560,17 @@ if (file_exists($pkiCssPath)) {
                                         <span class="tooltip-popover">Lokasi tempat Anda menjalankan usaha atau kegiatan sebagai Pemberi Kerja Individu.</span>
                                     </span>
                                 </label>
-                                <div id="pcr_hierarchicalLocationInput" class="hierarchical-loc-field" tabindex="0">
-                                    <span id="pcr_locDisplayValue" class="<?php echo $hasLocSelected ? '' : 'placeholder'; ?>"><?php echo e($locDisplayText); ?></span>
-                                    <i id="pcr_locCaret" class="fa-solid fa-chevron-down" style="color:#64748b; font-size:12px;"></i>
-                                </div>
-                                <div id="pcr_hierarchicalLocDropdown" class="loc-dropdown-popup" style="display:none;">
-                                    <div id="pcr_locBreadcrumbs" class="loc-breadcrumbs">
-                                        <span class="crumb-btn active" data-level="1">Pilih Provinsi</span>
+                                <div style="position:relative;">
+                                    <div id="pcr_hierarchicalLocationInput" class="hierarchical-loc-field" tabindex="0">
+                                        <span id="pcr_locDisplayValue" class="<?php echo $hasLocSelected ? '' : 'placeholder'; ?>"><?php echo e($locDisplayText); ?></span>
+                                        <i id="pcr_locCaret" class="fa-solid fa-chevron-down" style="color:#64748b; font-size:12px;"></i>
                                     </div>
-                                    <div id="pcr_locOptionsList" class="loc-options-list"></div>
+                                    <div id="pcr_hierarchicalLocDropdown" class="loc-dropdown-popup" style="display:none;">
+                                        <div id="pcr_locBreadcrumbs" class="loc-breadcrumbs">
+                                            <span class="crumb-btn active" data-level="1">Pilih Provinsi</span>
+                                        </div>
+                                        <div id="pcr_locOptionsList" class="loc-options-list"></div>
+                                    </div>
                                 </div>
                                 <div class="pki-field-helper">Pilih lokasi secara berjenjang sampai Kelurahan/Desa.</div>
                             </div>
@@ -629,8 +633,8 @@ if (file_exists($pkiCssPath)) {
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <!-- SECTION 3: DOKUMEN & BUKTI TEMPAT USAHA (IDENTIK LANGKAH 3)     -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div id="pcr_box_documents" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
-                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1;">
+                    <div id="pcr_box_documents" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: visible; margin-bottom: 18px; position: relative;">
+                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1; border-top-left-radius: 9px; border-top-right-radius: 9px;">
                             3. Dokumen &amp; Bukti Tempat Usaha
                         </div>
                         <div style="padding: 16px 18px; background: #ffffff;">
@@ -715,8 +719,8 @@ if (file_exists($pkiCssPath)) {
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <!-- SECTION 4: MEDIA SOSIAL (IDENTIK LANGKAH 4)                     -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div id="pcr_box_social" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
-                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1;">
+                    <div id="pcr_box_social" style="display: none; border: 1px solid #e2e8f0; border-radius: 10px; overflow: visible; margin-bottom: 18px; position: relative;">
+                        <div style="background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 13.5px; color: #0369a1; border-top-left-radius: 9px; border-top-right-radius: 9px;">
                             4. Media Sosial
                         </div>
                         <div style="padding: 16px 18px; background: #ffffff;">
