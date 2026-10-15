@@ -5718,7 +5718,7 @@ document.addEventListener('click', function(e) {
                                     <span style="color:#64748b; font-weight:500;">Alasan</span>
                                     <div style="color:#1e293b; line-height:1.5;">: <?php echo nl2br(e($alasanText)); ?></div>
 
-                                    <span style="color:#64748b; font-weight:500;">Dokumen Perizinan Usaha</span>
+                                    <span style="color:#64748b; font-weight:500;">Dokumen Pendukung Kebutuhan Tenaga Kerja</span>
                                     <div style="display:flex; flex-direction:column; gap:8px;">
                                         <div style="display:flex; align-items:center; gap:8px;">
                                             :
@@ -5758,7 +5758,7 @@ document.addEventListener('click', function(e) {
                                             <?php if ($isImgFile): ?>
                                                 <div style="margin-top:4px; margin-left:10px;">
                                                     <a href="<?php echo e($docLink); ?>" target="_blank">
-                                                        <img src="<?php echo e($docLink); ?>" alt="Preview Dokumen Perizinan Usaha" style="max-width:260px; max-height:180px; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover; box-shadow:0 2px 4px rgba(0,0,0,0.08);">
+                                                        <img src="<?php echo e($docLink); ?>" alt="Preview Dokumen Pendukung Kebutuhan Tenaga Kerja" style="max-width:260px; max-height:180px; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover; box-shadow:0 2px 4px rgba(0,0,0,0.08);">
                                                     </a>
                                                 </div>
                                             <?php endif; ?>

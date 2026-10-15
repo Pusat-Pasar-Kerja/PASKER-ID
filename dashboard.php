@@ -3077,8 +3077,10 @@ if (!$employerJobs) {
                             Harap lampirkan berkas dokumen pendukung (Surat Izin/Keterangan Tempat Kerja/Justifikasi) atau catatan keterangan untuk ditinjau oleh Admin.
                         </div>
                         <div class="form-group" style="margin-bottom:16px;">
-                            <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Berkas Dokumen Pendukung (PDF/JPG/PNG):</label>
-                            <input type="file" name="additional_file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                            <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Dokumen Pendukung Kebutuhan Tenaga Kerja:</label>
+                            <input type="file" name="additional_file" accept=".pdf,.jpg,.jpeg" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                            <div style="font-size:11.5px; color:#64748b; line-height:1.45; margin-top:6px;">Unggah dokumen pendukung yang menjelaskan kebutuhan membuka kembali jabatan, seperti surat pernyataan kebutuhan tenaga kerja atau dokumen pendukung lain yang relevan.</div>
+                            <small style="display:block; font-size:11px; color:#94a3b8; margin-top:3px;">PDF/JPG (Maks. 2 MB)</small>
                             ' . (!empty($row['additional_doc_file']) ? '<div class="tiny" style="color:#0284c7; margin-top:4px;">Berkas tersimpan: <a href="' . e($row['additional_doc_file']) . '" target="_blank" style="color:#0284c7; text-decoration:underline;">Lihat Berkas</a></div>' : '') . '
                         </div>
                         <div class="form-group" style="margin-bottom:20px;">
