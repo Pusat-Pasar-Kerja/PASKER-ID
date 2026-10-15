@@ -204,6 +204,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
     if ($action === 'approve_profile_change') {
         $requestId = (int)$_POST['request_id'];
         $notes = trim($_POST['admin_notes'] ?? '');
+        if ($notes === '') {
+            flash('error', 'Catatan Admin / Verifikator wajib diisi.');
+            redirect($redirectUrl);
+            exit;
+        }
         $result = approve_profile_change_request($requestId, $user['name'] ?? 'Admin', $notes);
         if ($result['success']) {
             flash('success', "Permintaan perubahan profil berhasil disetujui. Versi profil ke-{$result['version']} telah disimpan.");
@@ -218,7 +223,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
         $requestId = (int)$_POST['request_id'];
         $notes = trim($_POST['admin_notes'] ?? '');
         if ($notes === '') {
-            flash('error', 'Alasan penolakan perubahan profil wajib diisi.');
+            flash('error', 'Catatan Admin / Verifikator wajib diisi.');
             redirect($redirectUrl);
             exit;
         }
@@ -3447,16 +3452,7 @@ document.addEventListener('click', function(e) {
                         </div>
 
                         <div>
-                            <?php if ($activeProfileChange): ?>
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <button type="button" data-open-modal="modal-pcr-reject" style="background:#fef2f2; border:1px solid #fecaca; border-radius:999px; padding:8px 18px; font-size:13px; font-weight:700; color:#b91c1c; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:inline-flex; align-items:center; gap:6px;">
-                                        <i class="fa-solid fa-xmark"></i> Tolak Perubahan Profil
-                                    </button>
-                                    <button type="button" data-open-modal="modal-pcr-approve" style="background:#0284c7; border:none; border-radius:999px; padding:8px 20px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.3); display:inline-flex; align-items:center; gap:6px;">
-                                        <i class="fa-solid fa-check"></i> Setujui Perubahan Profil
-                                    </button>
-                                </div>
-                            <?php elseif ($isDinasFlow): ?>
+                            <?php if ($isDinasFlow): ?>
                                 <button type="button" onclick="const sec = document.getElementById('sectionManualDinasEdit'); if (sec) { sec.scrollIntoView({behavior:'smooth'}); const dt = sec.querySelector('details'); if (dt) dt.open = true; }" style="display:inline-flex; align-items:center; gap:8px; background:#0284c7; border:none; border-radius:999px; padding:9px 20px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.25);">
                                     <i class="fa-solid fa-pen-to-square"></i> Ajukan Permohonan Ulang
                                 </button>
@@ -3644,34 +3640,69 @@ document.addEventListener('click', function(e) {
 
                                         <div style="margin-bottom:16px;">
                                             <label for="pcr_admin_notes" style="display:block; font-size:13px; font-weight:700; color:#0f172a; margin-bottom:6px;">
-                                                Catatan Admin / Verifikator:
+                                                Catatan Admin / Verifikator: <span style="color:#ef4444;">*</span>
                                             </label>
                                             <textarea
                                                 name="admin_notes"
                                                 id="pcr_admin_notes"
                                                 rows="3"
+                                                required
                                                 placeholder="Tuliskan catatan persetujuan atau alasan penolakan jika ditolak..."
-                                                style="width:100%; box-sizing:border-box; font-family:inherit; font-size:13px; color:#0f172a; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; resize:vertical; min-height:75px; outline:none;"
+                                                oninput="if(this.value.trim()){ const err=document.getElementById('pcrAdminNotesError'); if(err) err.style.display='none'; this.style.borderColor='#cbd5e1'; }"
+                                                style="width:100%; box-sizing:border-box; font-family:inherit; font-size:13px; color:#0f172a; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; resize:vertical; min-height:80px; outline:none;"
                                             ></textarea>
-                                            <div id="pcrRejectNotesError" style="display:none; color:#ef4444; font-size:12px; margin-top:4px; font-weight:600;">
-                                                Alasan penolakan wajib diisi ketika menolak perubahan profil.
+                                            <div id="pcrAdminNotesError" style="display:none; color:#ef4444; font-size:12px; margin-top:5px; font-weight:600;">
+                                                Catatan Admin / Verifikator wajib diisi.
                                             </div>
                                         </div>
 
-                                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px;">
-                                            <div style="font-size:12px; color:#64748b;">
-                                                <i class="fa-solid fa-shield-halved" style="color:#0284c7;"></i> Keputusan Admin akan langsung memperbarui profil aktif dan mencatat snapshot versi baru ke riwayat versi.
+                                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 18px; gap:16px; flex-wrap:wrap;">
+                                            <div style="font-size:12px; color:#64748b; display:flex; align-items:center; gap:8px; flex:1 1 260px;">
+                                                <i class="fa-solid fa-shield-halved" style="color:#0284c7; font-size:15px; flex-shrink:0;"></i>
+                                                <span>Keputusan Admin akan langsung memperbarui profil aktif dan mencatat snapshot versi baru ke riwayat versi.</span>
                                             </div>
-                                            <div style="display:flex; align-items:center; gap:10px;">
-                                                <button type="submit" onclick="document.getElementById('pcr_admin_action_input').value='reject_profile_change'; const txt = document.getElementById('pcr_admin_notes'); if(!txt.value.trim()){ document.getElementById('pcrRejectNotesError').style.display='block'; txt.focus(); return false; }" style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:700; color:#b91c1c; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-                                                    <i class="fa-solid fa-xmark"></i> Tolak Perubahan
+                                            <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+                                                <button type="button" onclick="submitPcrDecision('reject_profile_change')" style="background:#fef2f2; border:1px solid #fecaca; border-radius:999px; padding:9px 20px; font-size:13px; font-weight:700; color:#b91c1c; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:inline-flex; align-items:center; gap:7px; white-space:nowrap; transition:all 0.15s ease;">
+                                                    <i class="fa-solid fa-xmark"></i> Tolak
                                                 </button>
-                                                <button type="submit" onclick="document.getElementById('pcr_admin_action_input').value='approve_profile_change'; document.getElementById('pcrRejectNotesError').style.display='none';" style="background:#0284c7; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.25); display:inline-flex; align-items:center; gap:6px;">
-                                                    <i class="fa-solid fa-check"></i> Setujui Perubahan
+                                                <button type="button" onclick="submitPcrDecision('approve_profile_change')" style="background:#0284c7; border:none; border-radius:999px; padding:9px 22px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.3); display:inline-flex; align-items:center; gap:7px; white-space:nowrap; transition:all 0.15s ease;">
+                                                    <i class="fa-solid fa-check"></i> Setujui
                                                 </button>
                                             </div>
                                         </div>
                                     </form>
+                                    <script>
+                                    function submitPcrDecision(action) {
+                                        const form = document.getElementById('adminPcrDecisionForm');
+                                        const actionInput = document.getElementById('pcr_admin_action_input');
+                                        const notesInput = document.getElementById('pcr_admin_notes');
+                                        const errEl = document.getElementById('pcrAdminNotesError');
+                                        const reviewedRadio = document.querySelector('input[name="pcr_reviewed"]:checked');
+
+                                        if (reviewedRadio && reviewedRadio.value === 'Tidak') {
+                                            alert('Usulan data profil harus ditinjau terlebih dahulu sebelum mengambil keputusan.');
+                                            return false;
+                                        }
+
+                                        if (!notesInput || !notesInput.value.trim()) {
+                                            if (errEl) {
+                                                errEl.style.display = 'block';
+                                                errEl.textContent = 'Catatan Admin / Verifikator wajib diisi.';
+                                            }
+                                            if (notesInput) {
+                                                notesInput.style.borderColor = '#ef4444';
+                                                notesInput.focus();
+                                            }
+                                            return false;
+                                        }
+
+                                        if (errEl) errEl.style.display = 'none';
+                                        if (notesInput) notesInput.style.borderColor = '#cbd5e1';
+                                        if (actionInput) actionInput.value = action;
+                                        if (form) form.submit();
+                                        return true;
+                                    }
+                                    </script>
                                 </div>
                             <?php endif; ?>
 
@@ -4801,74 +4832,7 @@ document.addEventListener('click', function(e) {
                     </div>
 
                     <!-- MODAL KEPUTUSAN SETUJUI PERUBAHAN PROFIL -->
-                    <?php if ($activeProfileChange): ?>
-                    <div class="modal-backdrop" data-modal="modal-pcr-approve">
-                        <div class="modal-panel" style="width:min(480px, 90vw); border-radius:16px; padding:24px; background:#ffffff;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                                <h3 style="font-size:17px; font-weight:800; color:#0f172a; margin:0; display:flex; align-items:center; gap:8px;">
-                                    <i class="fa-solid fa-circle-check" style="color:#0284c7;"></i> Setujui Perubahan Profil
-                                </h3>
-                                <button type="button" data-close-modal="modal-pcr-approve" style="background:none; border:none; color:#64748b; font-size:18px; cursor:pointer;">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </div>
-                            <p style="font-size:13.5px; color:#475569; line-height:1.5; margin-bottom:18px;">
-                                Apakah Anda yakin ingin menyetujui permohonan perubahan profil ini? Data usulan baru akan langsung diterapkan ke profil aktif pemberi kerja dan dicatat sebagai versi profil baru.
-                            </p>
-                            <form method="post" action="admin.php?view=verifikasi_employer&detail_id=<?php echo $selectedEmployer['user_id']; ?>">
-                                <input type="hidden" name="admin_action" value="approve_profile_change">
-                                <input type="hidden" name="request_id" value="<?php echo (int)$activeProfileChange['id']; ?>">
-                                <input type="hidden" name="user_id" value="<?php echo (int)$selectedEmployer['user_id']; ?>">
-                                <div style="margin-bottom:20px;">
-                                    <label style="font-size:13px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">Catatan Admin (Opsional):</label>
-                                    <textarea name="admin_notes" placeholder="Catatan persetujuan perubahan profil..." style="width:100%; min-height:80px; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; color:#0f172a; outline:none; font-family:inherit;"></textarea>
-                                </div>
-                                <div style="display:flex; justify-content:flex-end; gap:12px;">
-                                    <button type="button" class="ghost-btn" data-close-modal="modal-pcr-approve" style="border:1px solid #cbd5e1; border-radius:999px; padding:8px 20px; font-size:13px; font-weight:700; color:#475569; background:#ffffff; cursor:pointer;">
-                                        Batal
-                                    </button>
-                                    <button type="submit" style="background:#0284c7; border:none; border-radius:999px; padding:8px 22px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.3);">
-                                        Ya, Setujui Perubahan
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
 
-                    <!-- MODAL KEPUTUSAN TOLAK PERUBAHAN PROFIL -->
-                    <div class="modal-backdrop" data-modal="modal-pcr-reject">
-                        <div class="modal-panel" style="width:min(500px, 90vw); border-radius:16px; padding:24px; background:#ffffff;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                                <h3 style="font-size:17px; font-weight:800; color:#0f172a; margin:0; display:flex; align-items:center; gap:8px;">
-                                    <i class="fa-solid fa-circle-xmark" style="color:#ef4444;"></i> Tolak Perubahan Profil
-                                </h3>
-                                <button type="button" data-close-modal="modal-pcr-reject" style="background:none; border:none; color:#64748b; font-size:18px; cursor:pointer;">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </div>
-                            <p style="font-size:13.5px; color:#475569; line-height:1.5; margin-bottom:18px;">
-                                Pengajuan perubahan profil akan ditolak dan data aktif profil pemberi kerja saat ini tetap dipertahankan. Alasan penolakan akan dikirimkan sebagai notifikasi kepada pemberi kerja.
-                            </p>
-                            <form method="post" action="admin.php?view=verifikasi_employer&detail_id=<?php echo $selectedEmployer['user_id']; ?>">
-                                <input type="hidden" name="admin_action" value="reject_profile_change">
-                                <input type="hidden" name="request_id" value="<?php echo (int)$activeProfileChange['id']; ?>">
-                                <input type="hidden" name="user_id" value="<?php echo (int)$selectedEmployer['user_id']; ?>">
-                                <div style="margin-bottom:20px;">
-                                    <label style="font-size:13px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">Alasan Penolakan <span style="color:#ef4444;">*</span></label>
-                                    <textarea name="admin_notes" required placeholder="Tuliskan alasan mengapa usulan perubahan profil ditolak..." style="width:100%; min-height:90px; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; color:#0f172a; outline:none; font-family:inherit;"></textarea>
-                                </div>
-                                <div style="display:flex; justify-content:flex-end; gap:12px;">
-                                    <button type="button" class="ghost-btn" data-close-modal="modal-pcr-reject" style="border:1px solid #cbd5e1; border-radius:999px; padding:8px 20px; font-size:13px; font-weight:700; color:#475569; background:#ffffff; cursor:pointer;">
-                                        Batal
-                                    </button>
-                                    <button type="submit" style="background:#ef4444; border:none; border-radius:999px; padding:8px 22px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer;">
-                                        Tolak Perubahan
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                    <?php endif; ?>
 
                     <!-- MODAL ASSIGN PEMERIKSA -->
                     <div class="modal-backdrop" data-modal="modal-assign-pemeriksa">
