@@ -4424,7 +4424,7 @@
 
                     <div class="form-group" style="margin-bottom: 0;">
                         <label style="display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
-                            Dokumen Pendukung Kebutuhan Tenaga Kerja
+                            Dokumen Pendukung Kebutuhan Tenaga Kerja <span style="color: #ef4444;">*</span>
                         </label>
                         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                             <input type="file" name="additional_file" id="additional_file_input" accept=".pdf,.jpg,.jpeg" style="display: none;" onchange="updateAdditionalFileLabel(this)">
@@ -4531,6 +4531,18 @@
         const openDocJobId = urlParams.get('open_additional_doc_modal');
         if (openDocJobId) {
             openAdditionalDocModal(openDocJobId, '');
+        }
+
+        const formDoc = document.getElementById('formAdditionalDoc');
+        if (formDoc) {
+            formDoc.addEventListener('submit', function(e) {
+                const fileInput = document.getElementById('additional_file_input');
+                if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                    e.preventDefault();
+                    alert('Harap unggah Dokumen Pendukung Kebutuhan Tenaga Kerja terlebih dahulu.');
+                    return false;
+                }
+            });
         }
     });
     </script>

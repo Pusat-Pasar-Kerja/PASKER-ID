@@ -908,9 +908,22 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 exit;
             }
 
+            $hasExistingFile = !empty($targetJob['additional_doc_file']);
+            $hasUploadedFile = !empty($_FILES['additional_file']['name']) && empty($_FILES['additional_file']['error']);
+            if (!$hasExistingFile && !$hasUploadedFile) {
+                flash('danger', 'Harap unggah Dokumen Pendukung Kebutuhan Tenaga Kerja terlebih dahulu.');
+                redirect('dashboard.php?open_additional_doc_modal=' . $jobId . '#lowongan');
+                exit;
+            }
+
             $filePath = null;
-            if (!empty($_FILES['additional_file']['name'])) {
-                $filePath = store_upload('additional_file', 'additional_docs', ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'gif', 'bmp', 'doc', 'docx']);
+            if ($hasUploadedFile) {
+                if ($_FILES['additional_file']['size'] > 2 * 1024 * 1024) {
+                    flash('danger', 'Ukuran file Dokumen Pendukung melebihi batas maksimal 2 MB.');
+                    redirect('dashboard.php?open_additional_doc_modal=' . $jobId . '#lowongan');
+                    exit;
+                }
+                $filePath = store_upload('additional_file', 'additional_docs', ['pdf', 'jpg', 'jpeg']);
             }
 
             // Setelah Dokumen/Keterangan Tambahan dikirim, pengajuan masuk ke status Menunggu Verifikasi
@@ -3077,8 +3090,8 @@ if (!$employerJobs) {
                             Harap lampirkan berkas dokumen pendukung (Surat Izin/Keterangan Tempat Kerja/Justifikasi) atau catatan keterangan untuk ditinjau oleh Admin.
                         </div>
                         <div class="form-group" style="margin-bottom:16px;">
-                            <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Dokumen Pendukung Kebutuhan Tenaga Kerja:</label>
-                            <input type="file" name="additional_file" accept=".pdf,.jpg,.jpeg" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                            <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Dokumen Pendukung Kebutuhan Tenaga Kerja: <span style="color:#ef4444;">*</span></label>
+                            <input type="file" name="additional_file" accept=".pdf,.jpg,.jpeg" ' . (empty($row['additional_doc_file']) ? 'required' : '') . ' style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
                             <small style="display:block; font-size:11px; color:#94a3b8; margin-top:4px;">PDF/JPG (Maks. 2 MB)</small>
                             <div style="font-size:11.5px; color:#64748b; line-height:1.45; margin-top:6px;">Unggah dokumen pendukung yang menjelaskan kebutuhan membuka kembali jabatan, seperti surat pernyataan kebutuhan tenaga kerja atau dokumen pendukung lain yang relevan.</div>
                             ' . (!empty($row['additional_doc_file']) ? '<div class="tiny" style="color:#0284c7; margin-top:4px;">Berkas tersimpan: <a href="' . e($row['additional_doc_file']) . '" target="_blank" style="color:#0284c7; text-decoration:underline;">Lihat Berkas</a></div>' : '') . '
