@@ -1096,15 +1096,13 @@ if ($view === 'verifikasi_employer') {
     $tabFilter = '';
     $tabParams = [];
     if ($tab === 'process') {
-        $tabFilter = ' AND (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status IS NULL)';
+        $tabFilter = ' AND (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status IS NULL OR (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") > 0)';
     } elseif ($tab === 'approved') {
-        $tabFilter = ' AND (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED")';
+        $tabFilter = ' AND (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED") AND (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") = 0';
     } elseif ($tab === 'revision') {
         $tabFilter = ' AND ep.verification_status = "NEEDS_REVISION"';
     } elseif ($tab === 'rejected') {
         $tabFilter = ' AND (ep.verification_status = "REJECTED" OR ep.verification_status = "FULL_DISABLED")';
-    } elseif ($tab === 'profile_changes') {
-        $tabFilter = ' AND (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") > 0';
     }
 
     // Scope Admin Dinas Filter (exact domicile_city_id match)
@@ -1137,11 +1135,10 @@ if ($view === 'verifikasi_employer') {
     $statusCountSql = <<<SQL
         SELECT
             COUNT(*) AS all_count,
-            SUM(CASE WHEN (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status IS NULL) THEN 1 ELSE 0 END) AS process_count,
+            SUM(CASE WHEN (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status IS NULL OR (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') > 0) THEN 1 ELSE 0 END) AS process_count,
             SUM(CASE WHEN ep.verification_status = "NEEDS_REVISION" THEN 1 ELSE 0 END) AS revision_count,
-            SUM(CASE WHEN (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED") THEN 1 ELSE 0 END) AS approved_count,
-            SUM(CASE WHEN (ep.verification_status = "REJECTED" OR ep.verification_status = "FULL_DISABLED") THEN 1 ELSE 0 END) AS rejected_count,
-            SUM(CASE WHEN (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') > 0 THEN 1 ELSE 0 END) AS profile_changes_count
+            SUM(CASE WHEN (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED") AND (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') = 0 THEN 1 ELSE 0 END) AS approved_count,
+            SUM(CASE WHEN (ep.verification_status = "REJECTED" OR ep.verification_status = "FULL_DISABLED") THEN 1 ELSE 0 END) AS rejected_count
         {$baseFilter}
         {$entityFilter}
     SQL;
@@ -1154,7 +1151,6 @@ if ($view === 'verifikasi_employer') {
         'revision' => (int)($statusCountsRow['revision_count'] ?? 0),
         'approved' => (int)($statusCountsRow['approved_count'] ?? 0),
         'rejected' => (int)($statusCountsRow['rejected_count'] ?? 0),
-        'profile_changes' => (int)($statusCountsRow['profile_changes_count'] ?? 0),
     ];
 
     // Counts for entity pills, preserving active tab and active filter/search scope.
@@ -5075,7 +5071,6 @@ document.addEventListener('click', function(e) {
                                 <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=revision&q=<?php echo urlencode($search); ?>&sort=<?php echo e($sort); ?><?php echo $filterParamsEmp; ?>" class="status-tab-item <?php echo $tab === 'revision' ? 'active' : ''; ?>" style="display:inline-flex; align-items:center; gap:8px;">Revisi<?php if ((int)($verificationStatusCounts['revision'] ?? 0) > 0): ?> <span style="display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 8px; border-radius:999px; border:1px solid #fecdd3; background:#fff1f2; color:#e11d48; font-size:12px; font-weight:700;"><?php echo (int)($verificationStatusCounts['revision'] ?? 0); ?></span><?php endif; ?></a>
                                 <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=approved&q=<?php echo urlencode($search); ?>&sort=<?php echo e($sort); ?><?php echo $filterParamsEmp; ?>" class="status-tab-item <?php echo $tab === 'approved' ? 'active' : ''; ?>" style="display:inline-flex; align-items:center; gap:8px;">Terverifikasi<?php if ((int)($verificationStatusCounts['approved'] ?? 0) > 0): ?> <span style="display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 8px; border-radius:999px; border:1px solid #fecdd3; background:#fff1f2; color:#e11d48; font-size:12px; font-weight:700;"><?php echo (int)($verificationStatusCounts['approved'] ?? 0); ?></span><?php endif; ?></a>
                                 <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=rejected&q=<?php echo urlencode($search); ?>&sort=<?php echo e($sort); ?><?php echo $filterParamsEmp; ?>" class="status-tab-item <?php echo $tab === 'rejected' ? 'active' : ''; ?>" style="display:inline-flex; align-items:center; gap:8px;">Ditolak<?php if ((int)($verificationStatusCounts['rejected'] ?? 0) > 0): ?> <span style="display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 8px; border-radius:999px; border:1px solid #fecdd3; background:#fff1f2; color:#e11d48; font-size:12px; font-weight:700;"><?php echo (int)($verificationStatusCounts['rejected'] ?? 0); ?></span><?php endif; ?></a>
-                                <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=profile_changes&q=<?php echo urlencode($search); ?>&sort=<?php echo e($sort); ?><?php echo $filterParamsEmp; ?>" class="status-tab-item <?php echo $tab === 'profile_changes' ? 'active' : ''; ?>" style="display:inline-flex; align-items:center; gap:8px;">Perubahan Profil<?php if ((int)($verificationStatusCounts['profile_changes'] ?? 0) > 0): ?> <span style="display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 8px; border-radius:999px; border:1px solid #fed7aa; background:#fff7ed; color:#ea580c; font-size:12px; font-weight:700;"><?php echo (int)($verificationStatusCounts['profile_changes'] ?? 0); ?></span><?php endif; ?></a>
                             </div>
                         </div>
 
