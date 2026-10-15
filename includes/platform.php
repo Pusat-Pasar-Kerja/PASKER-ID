@@ -722,38 +722,77 @@ function job_to_form_data(array $job): array
     ];
 }
 
-function render_notif_dropdown(array $notifications, int $unread, string $verStatus = '', string $manualStatus = ''): string
+function render_notif_dropdown(array $notifications, int $unread, string $verStatus = '', string $manualStatus = '', ?array $activePcr = null, ?int $userId = null): string
 {
+    if ($activePcr === null && $userId !== null && function_exists('get_active_profile_change_request')) {
+        $activePcr = get_active_profile_change_request($userId);
+    }
+
     $items = '';
-    if (!$notifications) {
-        $items = '<div class="notif-empty">Belum ada notifikasi.</div>';
+
+    // If there is an active profile change request pending verification, show prominent notification item
+    if ($activePcr && ($activePcr['status'] ?? '') === 'PENDING') {
+        $pcrDate = !empty($activePcr['created_at']) ? date('d M Y H:i', strtotime($activePcr['created_at'])) . ' WIB' : 'Baru saja';
+        $items .= '<div class="notif-item unread" style="background:#f0f9ff; border-left:3px solid #0284c7; cursor:pointer;" data-open-modal="modal-profile-change-request">';
+        $items .= '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">';
+        $items .= '<strong style="color:#0284c7; font-size:13px; display:inline-flex; align-items:center; gap:6px;"><i class="fa-solid fa-clock-rotate-left"></i> Permintaan Perubahan Profil</strong>';
+        $items .= '<span style="font-size:10px; font-weight:700; background:#e0f2fe; color:#0369a1; padding:2px 7px; border-radius:999px;">Menunggu Keputusan</span>';
+        $items .= '</div>';
+        $items .= '<p style="color:#334155; font-size:12px; line-height:1.4; margin:0 0 4px 0;">Pengajuan perubahan data profil sedang diperiksa oleh Admin/Petugas Dinas. Klik di sini untuk melihat detail permohonan Anda.</p>';
+        $items .= '<span style="font-size:11px; color:#64748b;">Diajukan: ' . e($pcrDate) . '</span>';
+        $items .= '</div>';
+    }
+
+    if (!$notifications && !$activePcr) {
+        $items = '<div class="notif-empty" style="padding:20px; text-align:center; color:#94a3b8; font-size:13px;">Belum ada notifikasi.</div>';
     } else {
         $isVerified = in_array($verStatus, ['APPROVED', 'ACTIVE_VERIFIED'], true);
         foreach ($notifications as $row) {
             $unreadClass = empty($row['is_read']) ? ' unread' : '';
-            $isConsentTitle = (stripos($row['title'], 'Persetujuan') !== false || stripos($row['title'], 'Consent') !== false);
+            $title = (string)($row['title'] ?? '');
+            $isConsentTitle = (stripos($title, 'Persetujuan') !== false || stripos($title, 'Consent') !== false);
             // Hanya izinkan modal-user-consent jika manualStatus === 'CONSENT_PENDING' dan belum terverifikasi
             $canOpenConsent = ($isConsentTitle && $manualStatus === 'CONSENT_PENDING' && !$isVerified);
-            $isProfileTitle = (stripos($row['title'], 'Verifikasi Ulang') !== false || stripos($row['title'], 'Perbaikan Profil') !== false || stripos($row['title'], 'Profil Ditolak') !== false || stripos($row['title'], 'Hak Akses Tidak Aktif') !== false);
+            $isProfileChangeTitle = (stripos($title, 'Perubahan Profil') !== false || ($row['type'] ?? '') === 'PROFILE_CHANGE_SUBMITTED');
+            $isProfileTitle = (stripos($title, 'Verifikasi Ulang') !== false || stripos($title, 'Perbaikan Profil') !== false || stripos($title, 'Profil Ditolak') !== false || stripos($title, 'Hak Akses Tidak Aktif') !== false);
+
             if ($canOpenConsent) {
                 $modalAttr = ' data-open-modal="modal-user-consent" style="cursor:pointer;"';
+            } elseif ($isProfileChangeTitle) {
+                $modalAttr = ' data-open-modal="modal-profile-change-request" style="cursor:pointer;"';
             } elseif ($isProfileTitle || in_array($verStatus, ['INACTIVE_REVERIFICATION_REQUIRED', 'NEEDS_REVISION', 'REJECTED'], true)) {
                 $modalAttr = ' data-open-modal="modal-employer-profile" style="cursor:pointer;"';
             } else {
                 $modalAttr = '';
             }
-            $items .= '<div class="notif-item' . $unreadClass . '"' . $modalAttr . '>';
-            $items .= '<strong>' . e($row['title']) . '</strong>';
+
+            // Custom icon and styling based on notification type / title
+            $iconHtml = '';
+            $extraStyle = '';
+            if (stripos($title, 'Disetujui') !== false) {
+                $iconHtml = '<i class="fa-solid fa-circle-check" style="color:#10b981; font-size:12px; margin-right:4px;"></i> ';
+                $extraStyle = 'border-left:3px solid #10b981; background:#f0fdf4;';
+            } elseif (stripos($title, 'Ditolak') !== false) {
+                $iconHtml = '<i class="fa-solid fa-circle-xmark" style="color:#ef4444; font-size:12px; margin-right:4px;"></i> ';
+                $extraStyle = 'border-left:3px solid #ef4444; background:#fef2f2;';
+            } elseif ($isProfileChangeTitle) {
+                $iconHtml = '<i class="fa-solid fa-clock-rotate-left" style="color:#0284c7; font-size:12px; margin-right:4px;"></i> ';
+                $extraStyle = 'border-left:3px solid #0284c7;';
+            }
+
+            $items .= '<div class="notif-item' . $unreadClass . '"' . $modalAttr . ($extraStyle ? ' style="' . $extraStyle . '"' : '') . '>';
+            $items .= '<strong>' . $iconHtml . e($row['title']) . '</strong>';
             $items .= '<p>' . e($row['message']) . '</p>';
             $items .= '<span>' . e(date('d M Y H:i', strtotime((string) $row['created_at']))) . '</span>';
             $items .= '</div>';
         }
     }
 
-    $dot = $unread > 0 ? ' has-unread' : '';
+    $hasActivePcr = ($activePcr && ($activePcr['status'] ?? '') === 'PENDING');
+    $dot = ($unread > 0 || $hasActivePcr) ? ' has-unread' : '';
     return '<div class="notif-wrap">'
         . '<button type="button" class="notif' . $dot . '" data-notif-toggle aria-label="Notifikasi"><i class="fa-regular fa-bell"></i></button>'
-        . '<div class="notif-panel" hidden><div class="notif-head">Notifikasi</div>' . $items . '</div>'
+        . '<div class="notif-panel" hidden><div class="notif-head" style="font-weight:700; padding:12px 16px; border-bottom:1px solid #f1f5f9; font-size:14px; color:#0f172a; display:flex; justify-content:space-between; align-items:center;"><span>Notifikasi</span>' . ($hasActivePcr ? '<span style="font-size:11px; font-weight:600; color:#0284c7;">Ada pengajuan aktif</span>' : '') . '</div>' . $items . '</div>'
         . '</div>';
 }
 

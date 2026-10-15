@@ -1805,7 +1805,16 @@
                 </div>
 
                 <div class="topbar-right-actions">
-                    <div class="notif"><i class="fa-regular fa-bell"></i></div>
+                    <?php
+                    if (function_exists('render_notif_dropdown') && isset($user['id'])) {
+                        $topNotifs = function_exists('user_notifications') ? user_notifications((int) $user['id']) : [];
+                        $topUnread = function_exists('unread_notification_count') ? unread_notification_count((int) $user['id']) : 0;
+                        $topActivePcr = function_exists('get_active_profile_change_request') ? get_active_profile_change_request((int) $user['id']) : null;
+                        echo render_notif_dropdown($topNotifs, $topUnread, $verificationStatus ?? '', $profile['manual_review_status'] ?? '', $topActivePcr, (int)$user['id']);
+                    } else {
+                    ?>
+                        <div class="notif" data-open-modal="modal-notifications" style="cursor:pointer;" title="Notifikasi"><i class="fa-regular fa-bell"></i></div>
+                    <?php } ?>
 
                     <div class="company-profile-pill" data-open-modal="modal-user-account" title="Pengaturan Akun / Profil">
                         <div class="company-pill-avatar" id="topbarAvatar"><?php echo mb_strtoupper(mb_substr($profile['owner_name'] ?? $user['name'], 0, 2)); ?></div>
@@ -4630,13 +4639,75 @@
                 <h3 style="font-size:16px; font-weight:800;"><i class="fa-regular fa-bell"></i> Notifikasi Sistem Pemberi Kerja Individu</h3>
                 <button type="button" class="ghost-btn" data-close-modal="modal-notifications">×</button>
             </div>
-            <div class="list" style="max-height:300px; overflow-y:auto;">
+            <div class="list" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
                 <?php
                 $isVerifiedAcc = in_array($verificationStatus, ['APPROVED', 'ACTIVE_VERIFIED'], true);
                 $manualStatusNotif = $profile['manual_review_status'] ?? '';
                 $isConsentPendingNotif = ($manualStatusNotif === 'CONSENT_PENDING' && !$isVerifiedAcc);
                 $isConsentGivenNotif = ($manualStatusNotif === 'CONSENT_GIVEN' && !$isVerifiedAcc);
+                $activeModalPcr = function_exists('get_active_profile_change_request') && isset($user['id']) ? get_active_profile_change_request((int)$user['id']) : null;
+                $dbNotifs = function_exists('user_notifications') && isset($user['id']) ? user_notifications((int)$user['id'], 15) : [];
                 ?>
+
+                <!-- ACTIVE PROFILE CHANGE REQUEST ALERT -->
+                <?php if ($activeModalPcr && ($activeModalPcr['status'] ?? '') === 'PENDING'): ?>
+                    <div class="list-item" style="background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid #0284c7; cursor:pointer;" data-close-modal="modal-notifications" data-open-modal="modal-profile-change-request">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <strong style="color:#0284c7; display:flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-clock-rotate-left"></i> Permintaan Perubahan Profil Dikirim
+                            </strong>
+                            <span style="font-size:10px; font-weight:700; background:#dbeafe; color:#1e40af; padding:2px 7px; border-radius:999px;">Menunggu Verifikasi</span>
+                        </div>
+                        <div class="tiny" style="color:#1e3a8a; margin-top:4px;">
+                            Permintaan perubahan data profil Anda sedang ditinjau oleh Admin/Petugas Dinas. Klik di sini untuk melihat status permohonan.
+                        </div>
+                        <div class="tiny" style="color:#64748b; margin-top:3px; font-size:11px;">
+                            Diajukan: <?php echo date('d M Y, H:i', strtotime($activeModalPcr['created_at'])); ?> WIB
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- DYNAMIC NOTIFICATIONS FROM DATABASE -->
+                <?php if (!empty($dbNotifs)): ?>
+                    <?php foreach ($dbNotifs as $dNotif): ?>
+                        <?php
+                        $nTitle = (string)($dNotif['title'] ?? '');
+                        $isPCR = (stripos($nTitle, 'Perubahan Profil') !== false || ($dNotif['type'] ?? '') === 'PROFILE_CHANGE_SUBMITTED');
+                        $isApprove = stripos($nTitle, 'Disetujui') !== false;
+                        $isReject = stripos($nTitle, 'Ditolak') !== false;
+
+                        $bgColor = '#ffffff';
+                        $borderColor = '#e2e8f0';
+                        $accentColor = '#0f172a';
+                        $iconClass = 'fa-regular fa-bell';
+
+                        if ($isApprove) {
+                            $bgColor = '#f0fdf4';
+                            $borderColor = '#bbf7d0';
+                            $accentColor = '#15803d';
+                            $iconClass = 'fa-solid fa-circle-check';
+                        } elseif ($isReject) {
+                            $bgColor = '#fef2f2';
+                            $borderColor = '#fecaca';
+                            $accentColor = '#dc2626';
+                            $iconClass = 'fa-solid fa-circle-xmark';
+                        } elseif ($isPCR) {
+                            $bgColor = '#f8fafc';
+                            $borderColor = '#cbd5e1';
+                            $accentColor = '#0284c7';
+                            $iconClass = 'fa-solid fa-clock-rotate-left';
+                        }
+                        ?>
+                        <div class="list-item" style="background:<?php echo $bgColor; ?>; border-color:<?php echo $borderColor; ?>; cursor:pointer;" <?php echo $isPCR ? 'data-close-modal="modal-notifications" data-open-modal="modal-profile-change-request"' : ''; ?>>
+                            <strong style="color:<?php echo $accentColor; ?>; display:flex; align-items:center; gap:6px;">
+                                <i class="<?php echo $iconClass; ?>"></i> <?php echo e($dNotif['title']); ?>
+                            </strong>
+                            <div class="tiny" style="color:#334155; margin-top:3px; line-height:1.4;"><?php echo e($dNotif['message']); ?></div>
+                            <div class="tiny" style="color:#94a3b8; margin-top:4px; font-size:10.5px;"><?php echo date('d M Y, H:i', strtotime($dNotif['created_at'])); ?> WIB</div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+
                 <?php if ($isConsentPendingNotif): ?>
                     <div class="list-item" style="background:#eff6ff; border-color:#bfdbfe; cursor:pointer;" data-close-modal="modal-notifications" data-open-modal="modal-user-consent">
                         <strong style="color:#0284c7; display:flex; align-items:center; gap:6px;"><i class="fa-solid fa-file-signature"></i> Persetujuan Data Diperlukan (Jalur Dinas)</strong>
@@ -4647,7 +4718,7 @@
                         <strong style="color:#15803d; display:flex; align-items:center; gap:6px;"><i class="fa-solid fa-circle-check"></i> Persetujuan Profil Telah Dikirim</strong>
                         <div class="tiny" style="color:#166534; margin-top:3px;">Persetujuan (User Consent) Anda telah diterima<?php echo !empty($profile['consent_given_at']) ? ' pada ' . date('d M Y, H:i', strtotime($profile['consent_given_at'])) . ' WIB' : ''; ?>. Menunggu peninjauan verifikasi Petugas Dinas.</div>
                     </div>
-                <?php elseif ($isVerifiedAcc): ?>
+                <?php elseif ($isVerifiedAcc && empty($dbNotifs)): ?>
                     <div class="list-item" style="background:#f0fdf4; border-color:#bbf7d0;">
                         <strong style="color:#15803d; display:flex; align-items:center; gap:6px;"><i class="fa-solid fa-circle-check"></i> Status Profil Terverifikasi</strong>
                         <div class="tiny" style="color:#166534; margin-top:3px;">Akun Pemberi Kerja Individu Anda telah disetujui dan terverifikasi oleh Petugas Dinas.</div>

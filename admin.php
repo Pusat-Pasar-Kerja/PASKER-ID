@@ -1034,6 +1034,7 @@ if ($view === 'directory_individual') {
 
 // --- FETCH DATA FOR VERIFIKASI PEMBERI KERJA ---
 if ($view === 'verifikasi_employer') {
+    ensure_profile_change_schema();
     $query = <<<SQL
         SELECT u.id as user_id, u.name, u.email, u.created_at,
                ep.id as profile_id, ep.owner_name, ep.nik, ep.profession, ep.phone, ep.whatsapp, ep.npwp,
@@ -1041,7 +1042,9 @@ if ($view === 'verifikasi_employer') {
                ep.latitude, ep.longitude, ep.description, ep.brand_name, ep.business_logo, ep.verified, ep.verification_status, ep.verifier_notes,
                ep.verification_checklist, ep.assigned_to, ep.assigned_at, ep.assignment_reason, ep.rejection_count,
                ep.manual_review_status, ep.consent_data_hash, ep.consent_given_at, ep.officer_statement, ep.officer_name, ep.entity_type,
-               ep.doc_permission, ep.permit_document, ep.doc_location_photo, ep.workplace_photo, ep.social_media, ep.instagram, ep.linkedin, ep.facebook, ep.domicile_city_id
+               ep.doc_permission, ep.permit_document, ep.doc_location_photo, ep.workplace_photo, ep.social_media, ep.instagram, ep.linkedin, ep.facebook, ep.domicile_city_id,
+               (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') AS pending_profile_changes,
+               (SELECT id FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING' ORDER BY id DESC LIMIT 1) AS pending_pcr_id
     SQL;
     $baseFilter = <<<SQL
         FROM users u
@@ -1100,6 +1103,8 @@ if ($view === 'verifikasi_employer') {
         $tabFilter = ' AND ep.verification_status = "NEEDS_REVISION"';
     } elseif ($tab === 'rejected') {
         $tabFilter = ' AND (ep.verification_status = "REJECTED" OR ep.verification_status = "FULL_DISABLED")';
+    } elseif ($tab === 'profile_changes') {
+        $tabFilter = ' AND (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") > 0';
     }
 
     // Scope Admin Dinas Filter (exact domicile_city_id match)
@@ -1135,7 +1140,8 @@ if ($view === 'verifikasi_employer') {
             SUM(CASE WHEN (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status IS NULL) THEN 1 ELSE 0 END) AS process_count,
             SUM(CASE WHEN ep.verification_status = "NEEDS_REVISION" THEN 1 ELSE 0 END) AS revision_count,
             SUM(CASE WHEN (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED") THEN 1 ELSE 0 END) AS approved_count,
-            SUM(CASE WHEN (ep.verification_status = "REJECTED" OR ep.verification_status = "FULL_DISABLED") THEN 1 ELSE 0 END) AS rejected_count
+            SUM(CASE WHEN (ep.verification_status = "REJECTED" OR ep.verification_status = "FULL_DISABLED") THEN 1 ELSE 0 END) AS rejected_count,
+            SUM(CASE WHEN (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') > 0 THEN 1 ELSE 0 END) AS profile_changes_count
         {$baseFilter}
         {$entityFilter}
     SQL;
@@ -1148,6 +1154,7 @@ if ($view === 'verifikasi_employer') {
         'revision' => (int)($statusCountsRow['revision_count'] ?? 0),
         'approved' => (int)($statusCountsRow['approved_count'] ?? 0),
         'rejected' => (int)($statusCountsRow['rejected_count'] ?? 0),
+        'profile_changes' => (int)($statusCountsRow['profile_changes_count'] ?? 0),
     ];
 
     // Counts for entity pills, preserving active tab and active filter/search scope.
@@ -1178,8 +1185,12 @@ if ($view === 'verifikasi_employer') {
     // If detail_id is requested
     $selectedEmployer = null;
     $auditLogs = [];
+    $activeProfileChange = null;
+    $profileVersions = [];
     if ($detailId > 0) {
-        $stmtSel = db()->prepare('SELECT u.id as user_id, u.name, u.email, u.created_at, ep.* FROM employer_profiles ep JOIN users u ON u.id = ep.user_id WHERE ep.user_id = ? LIMIT 1');
+        $stmtSel = db()->prepare('SELECT u.id as user_id, u.name, u.email, u.created_at, ep.*,
+            (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") AS pending_profile_changes
+            FROM employer_profiles ep JOIN users u ON u.id = ep.user_id WHERE ep.user_id = ? LIMIT 1');
         $stmtSel->execute([$detailId]);
         $selectedEmployer = $stmtSel->fetch();
         if ($selectedEmployer) {
@@ -1192,6 +1203,8 @@ if ($view === 'verifikasi_employer') {
             }
             if ($selectedEmployer) {
                 $auditLogs = fetch_audit_logs('employer', $detailId);
+                $activeProfileChange = function_exists('get_active_profile_change_request') ? get_active_profile_change_request((int)$selectedEmployer['user_id']) : null;
+                $profileVersions = function_exists('get_profile_versions') ? get_profile_versions((int)$selectedEmployer['user_id']) : [];
             }
         }
     }
@@ -3422,6 +3435,11 @@ document.addEventListener('click', function(e) {
                                     <span class="pill-badge <?php echo $statusClass; ?>" style="<?php echo $isRevisionStatus ? 'background:#fff7ed; color:#ea580c; border:1px solid #ffedd5;' : ($statusClass === 'pending' ? 'background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd;' : ''); ?>">
                                         ● <?php echo e($statusLabel); ?>
                                     </span>
+                                    <?php if ($activeProfileChange): ?>
+                                        <span class="pill-badge" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-weight:700; display:inline-flex; align-items:center; gap:5px; padding:4px 10px;">
+                                            <i class="fa-solid fa-clock-rotate-left"></i> Ada Pengajuan Perubahan Profil
+                                        </span>
+                                    <?php endif; ?>
                                 </div>
                                 <div style="font-size:12px; color:#64748b; margin-top:4px;">
                                     Slug: <code><?php echo strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $selectedEmployer['owner_name'] ?: $selectedEmployer['name'])); ?></code> &nbsp;|&nbsp;
@@ -3433,7 +3451,16 @@ document.addEventListener('click', function(e) {
                         </div>
 
                         <div>
-                            <?php if ($isDinasFlow): ?>
+                            <?php if ($activeProfileChange): ?>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <button type="button" data-open-modal="modal-pcr-reject" style="background:#fef2f2; border:1px solid #fecaca; border-radius:999px; padding:8px 18px; font-size:13px; font-weight:700; color:#b91c1c; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:inline-flex; align-items:center; gap:6px;">
+                                        <i class="fa-solid fa-xmark"></i> Tolak Perubahan Profil
+                                    </button>
+                                    <button type="button" data-open-modal="modal-pcr-approve" style="background:#0284c7; border:none; border-radius:999px; padding:8px 20px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.3); display:inline-flex; align-items:center; gap:6px;">
+                                        <i class="fa-solid fa-check"></i> Setujui Perubahan Profil
+                                    </button>
+                                </div>
+                            <?php elseif ($isDinasFlow): ?>
                                 <button type="button" onclick="const sec = document.getElementById('sectionManualDinasEdit'); if (sec) { sec.scrollIntoView({behavior:'smooth'}); const dt = sec.querySelector('details'); if (dt) dt.open = true; }" style="display:inline-flex; align-items:center; gap:8px; background:#0284c7; border:none; border-radius:999px; padding:9px 20px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.25);">
                                     <i class="fa-solid fa-pen-to-square"></i> Ajukan Permohonan Ulang
                                 </button>
@@ -3463,6 +3490,220 @@ document.addEventListener('click', function(e) {
                     <div class="detail-grid-container" style="display:grid; grid-template-columns: 1fr 340px; gap:20px; align-items:start;">
                         <!-- LEFT COLUMN: MAIN VERIFICATION CONTENT -->
                         <div style="display:flex; flex-direction:column; gap:20px;">
+
+                            <!-- CARD PENGAJUAN PERUBAHAN PROFIL (JIKA ADA ACTIVE PCR) -->
+                            <?php if ($activeProfileChange): ?>
+                                <?php
+                                $pcrProposed = json_decode($activeProfileChange['proposed_data'] ?? '{}', true) ?: [];
+                                $pcrCurrent = json_decode($activeProfileChange['current_data'] ?? '{}', true) ?: [];
+                                $pcrSections = json_decode($activeProfileChange['sections'] ?? '[]', true) ?: [];
+                                $secLabels = [
+                                    'identity' => 'Identitas (WhatsApp)',
+                                    'workplace' => 'Tempat & Deskripsi Usaha',
+                                    'documents' => 'Dokumen & Bukti Usaha',
+                                    'social' => 'Media Sosial'
+                                ];
+                                ?>
+                                <div class="section-card" style="background:#ffffff; border:2px solid #0284c7; border-radius:14px; padding:22px; box-shadow:0 4px 14px rgba(2,132,199,0.12);">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">
+                                        <div style="display:flex; align-items:center; gap:10px;">
+                                            <div style="width:36px; height:36px; border-radius:8px; background:#e0f2fe; color:#0284c7; display:flex; align-items:center; justify-content:center; font-size:16px;">
+                                                <i class="fa-solid fa-clock-rotate-left"></i>
+                                            </div>
+                                            <div>
+                                                <h2 style="font-size:16px; font-weight:800; color:#0f172a; margin:0;">Pengajuan Perubahan Profil Pemberi Kerja</h2>
+                                                <div style="font-size:12px; color:#64748b;">Diajukan pada: <strong><?php echo date('d M Y, H:i', strtotime($activeProfileChange['created_at'])); ?> WIB</strong></div>
+                                            </div>
+                                        </div>
+                                        <span class="pill-badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:700;">
+                                            ● Menunggu Keputusan Admin
+                                        </span>
+                                    </div>
+
+                                    <!-- ALASAN PENGAJUAN & BAGIAN YANG DIUBAH -->
+                                    <div style="margin-bottom:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+                                        <div style="font-size:12.5px; font-weight:700; color:#475569; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                            <i class="fa-solid fa-circle-info" style="color:#0284c7;"></i> Alasan Perubahan Data Profil:
+                                        </div>
+                                        <div style="font-size:13.5px; color:#0f172a; font-weight:600; line-height:1.5;">
+                                            "<?php echo nl2br(e($activeProfileChange['reason'])); ?>"
+                                        </div>
+                                        <div style="margin-top:10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                            <span style="font-size:11.5px; color:#64748b; font-weight:600;">Bagian yang Diajukan:</span>
+                                            <?php foreach ($pcrSections as $secKey): ?>
+                                                <span style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;">
+                                                    <?php echo e($secLabels[$secKey] ?? $secKey); ?>
+                                                </span>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+
+                                    <!-- TABEL KOMPARASI PERUBAHAN DATA (DIFF TABLE) -->
+                                    <div style="margin-bottom:20px;">
+                                        <div style="font-size:13px; font-weight:800; color:#0f172a; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                                            <i class="fa-solid fa-table-columns" style="color:#0284c7;"></i> Perbandingan Data Profil (Saat Ini vs Usulan Baru):
+                                        </div>
+                                        <div style="border:1px solid #e2e8f0; border-radius:10px; overflow:hidden;">
+                                            <table style="width:100%; border-collapse:collapse; font-size:12.5px; text-align:left;">
+                                                <thead>
+                                                    <tr style="background:#f1f5f9; color:#475569; font-weight:700; border-bottom:1px solid #cbd5e1;">
+                                                        <th style="padding:10px 14px; width:28%;">Field / Data</th>
+                                                        <th style="padding:10px 14px; width:36%;">Data Profil Saat Ini</th>
+                                                        <th style="padding:10px 14px; width:36%; background:#ecfdf5; color:#065f46;">Usulan Perubahan Baru</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php
+                                                    $fieldNamesMap = [
+                                                        'whatsapp' => 'Nomor WhatsApp',
+                                                        'profession' => 'Profesi / Jenis Usaha',
+                                                        'brand_name' => 'Nama Brand Usaha',
+                                                        'business_logo' => 'Logo Usaha',
+                                                        'description' => 'Deskripsi Tempat Usaha',
+                                                        'province' => 'Provinsi',
+                                                        'city' => 'Kabupaten / Kota',
+                                                        'district' => 'Kecamatan',
+                                                        'village' => 'Kelurahan / Desa',
+                                                        'postal_code' => 'Kode Pos',
+                                                        'address' => 'Alamat Usaha',
+                                                        'address_detail' => 'Detail Patokan Alamat',
+                                                        'permit_document' => 'Dokumen Perizinan Usaha',
+                                                        'doc_permission' => 'Dokumen Perizinan Usaha (File)',
+                                                        'workplace_photo' => 'Foto Tempat Usaha',
+                                                        'doc_location_photo' => 'Foto Lokasi Tempat Usaha',
+                                                        'instagram' => 'Instagram',
+                                                        'facebook' => 'Facebook',
+                                                        'linkedin' => 'LinkedIn',
+                                                        'tiktok' => 'TikTok'
+                                                    ];
+
+                                                    $renderedCount = 0;
+                                                    foreach ($pcrProposed as $fKey => $fNewVal):
+                                                        $fOldVal = $pcrCurrent[$fKey] ?? ($selectedEmployer[$fKey] ?? '-');
+                                                        $fLabel = $fieldNamesMap[$fKey] ?? ucfirst(str_replace('_', ' ', $fKey));
+                                                        $renderedCount++;
+                                                        $isDocField = in_array($fKey, ['permit_document', 'doc_permission', 'workplace_photo', 'doc_location_photo', 'business_logo'], true);
+                                                    ?>
+                                                        <tr style="border-bottom:1px solid #f1f5f9; background:<?php echo $renderedCount % 2 === 0 ? '#ffffff' : '#fafafa'; ?>;">
+                                                            <td style="padding:10px 14px; font-weight:700; color:#334155; vertical-align:top;">
+                                                                <?php echo e($fLabel); ?>
+                                                            </td>
+                                                            <td style="padding:10px 14px; color:#64748b; vertical-align:top;">
+                                                                <?php if ($isDocField && !empty($fOldVal) && $fOldVal !== '-'): ?>
+                                                                    <a href="<?php echo e($fOldVal); ?>" target="_blank" style="color:#0284c7; text-decoration:none; font-weight:600; display:inline-flex; align-items:center; gap:5px;">
+                                                                        <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:11px;"></i> Lihat Berkas Lama
+                                                                    </a>
+                                                                <?php else: ?>
+                                                                    <?php echo e($fOldVal ?: '-'); ?>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td style="padding:10px 14px; background:#f0fdf4; color:#15803d; font-weight:700; vertical-align:top; border-left:1px solid #dcfce7;">
+                                                                <?php if ($isDocField && !empty($fNewVal)): ?>
+                                                                    <div style="display:flex; align-items:center; gap:10px;">
+                                                                        <a href="<?php echo e($fNewVal); ?>" target="_blank" style="color:#15803d; text-decoration:none; font-weight:700; display:inline-flex; align-items:center; gap:6px; background:#dcfce7; padding:4px 10px; border-radius:6px; border:1px solid #bbf7d0;">
+                                                                            <i class="fa-solid fa-file-arrow-down"></i> Buka Berkas Baru
+                                                                        </a>
+                                                                        <?php if (in_array(strtolower(pathinfo((string)$fNewVal, PATHINFO_EXTENSION)), ['jpg','jpeg','png','webp'], true)): ?>
+                                                                            <img src="<?php echo e($fNewVal); ?>" alt="Preview" style="max-height:40px; border-radius:4px; border:1px solid #bbf7d0;">
+                                                                        <?php endif; ?>
+                                                                    </div>
+                                                                <?php else: ?>
+                                                                    <?php echo e($fNewVal ?: '-'); ?>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+
+                                                    <?php if ($renderedCount === 0): ?>
+                                                        <tr>
+                                                            <td colspan="3" style="text-align:center; padding:16px; color:#94a3b8;">Tidak ada data komparasi usulan spesifik.</td>
+                                                        </tr>
+                                                    <?php endif; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- FORM AKSI KEPUTUSAN ADMIN PCR LANGSUNG DI CARD (SAMA SEPERTI VERIFIKASI LOWONGAN) -->
+                                    <form method="post" action="admin.php?view=verifikasi_employer&detail_id=<?php echo $selectedEmployer['user_id']; ?>" id="adminPcrDecisionForm" style="border-top:1px solid #e2e8f0; padding-top:18px; margin-top:14px;">
+                                        <input type="hidden" name="admin_action" id="pcr_admin_action_input" value="approve_profile_change">
+                                        <input type="hidden" name="request_id" value="<?php echo (int)$activeProfileChange['id']; ?>">
+                                        <input type="hidden" name="user_id" value="<?php echo (int)$selectedEmployer['user_id']; ?>">
+
+                                        <div style="margin-bottom:14px;">
+                                            <label style="display:block; font-size:13px; font-weight:700; color:#0f172a; margin-bottom:6px;">
+                                                Usulan data profil telah ditinjau <span style="color:#ef4444;">*</span>
+                                            </label>
+                                            <div style="display:flex; align-items:center; gap:24px; font-size:13px; color:#334155;">
+                                                <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                                                    <input type="radio" name="pcr_reviewed" value="Ya" id="pcr_reviewed_ya" checked required>
+                                                    <span>Ya, sudah ditinjau</span>
+                                                </label>
+                                                <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                                                    <input type="radio" name="pcr_reviewed" value="Tidak" id="pcr_reviewed_tidak">
+                                                    <span>Belum</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div style="margin-bottom:16px;">
+                                            <label for="pcr_admin_notes" style="display:block; font-size:13px; font-weight:700; color:#0f172a; margin-bottom:6px;">
+                                                Catatan Admin / Verifikator:
+                                            </label>
+                                            <textarea
+                                                name="admin_notes"
+                                                id="pcr_admin_notes"
+                                                rows="3"
+                                                placeholder="Tuliskan catatan persetujuan atau alasan penolakan jika ditolak..."
+                                                style="width:100%; box-sizing:border-box; font-family:inherit; font-size:13px; color:#0f172a; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; resize:vertical; min-height:75px; outline:none;"
+                                            ></textarea>
+                                            <div id="pcrRejectNotesError" style="display:none; color:#ef4444; font-size:12px; margin-top:4px; font-weight:600;">
+                                                Alasan penolakan wajib diisi ketika menolak perubahan profil.
+                                            </div>
+                                        </div>
+
+                                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px;">
+                                            <div style="font-size:12px; color:#64748b;">
+                                                <i class="fa-solid fa-shield-halved" style="color:#0284c7;"></i> Keputusan Admin akan langsung memperbarui profil aktif dan mencatat snapshot versi baru ke riwayat versi.
+                                            </div>
+                                            <div style="display:flex; align-items:center; gap:10px;">
+                                                <button type="submit" onclick="document.getElementById('pcr_admin_action_input').value='reject_profile_change'; const txt = document.getElementById('pcr_admin_notes'); if(!txt.value.trim()){ document.getElementById('pcrRejectNotesError').style.display='block'; txt.focus(); return false; }" style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:700; color:#b91c1c; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                                    <i class="fa-solid fa-xmark"></i> Tolak Perubahan
+                                                </button>
+                                                <button type="submit" onclick="document.getElementById('pcr_admin_action_input').value='approve_profile_change'; document.getElementById('pcrRejectNotesError').style.display='none';" style="background:#0284c7; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.25); display:inline-flex; align-items:center; gap:6px;">
+                                                    <i class="fa-solid fa-check"></i> Setujui Perubahan
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            <?php endif; ?>
+
+                            <!-- CARD RIWAYAT VERSI PROFIL (JIKA ADA RIWAYAT VERSI) -->
+                            <?php if (!empty($profileVersions)): ?>
+                                <div class="section-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px;">
+                                    <div class="section-card-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+                                        <i class="fa-solid fa-timeline" style="color:#0284c7;"></i> Riwayat Versi Profil (Audit Trail)
+                                    </div>
+                                    <div style="display:flex; flex-direction:column; gap:10px;">
+                                        <?php foreach ($profileVersions as $pVer): ?>
+                                            <div style="display:flex; align-items:flex-start; justify-content:space-between; padding:12px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+                                                <div>
+                                                    <div style="display:flex; align-items:center; gap:8px;">
+                                                        <span style="background:#0284c7; color:#fff; font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px;">
+                                                            Versi <?php echo (int)$pVer['version_num']; ?>
+                                                        </span>
+                                                        <strong style="font-size:13px; color:#0f172a;"><?php echo e($pVer['change_summary'] ?: 'Pembaruan profil'); ?></strong>
+                                                    </div>
+                                                    <div style="font-size:11.5px; color:#64748b; margin-top:4px;">
+                                                        Disimpan pada: <?php echo date('d M Y, H:i', strtotime($pVer['created_at'])); ?> WIB
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
 
                             <!-- CARD 1: RINGKASAN PENGAJUAN -->
                             <div class="section-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px;">
@@ -4563,6 +4804,76 @@ document.addEventListener('click', function(e) {
                         </div>
                     </div>
 
+                    <!-- MODAL KEPUTUSAN SETUJUI PERUBAHAN PROFIL -->
+                    <?php if ($activeProfileChange): ?>
+                    <div class="modal-backdrop" data-modal="modal-pcr-approve">
+                        <div class="modal-panel" style="width:min(480px, 90vw); border-radius:16px; padding:24px; background:#ffffff;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                                <h3 style="font-size:17px; font-weight:800; color:#0f172a; margin:0; display:flex; align-items:center; gap:8px;">
+                                    <i class="fa-solid fa-circle-check" style="color:#0284c7;"></i> Setujui Perubahan Profil
+                                </h3>
+                                <button type="button" data-close-modal="modal-pcr-approve" style="background:none; border:none; color:#64748b; font-size:18px; cursor:pointer;">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <p style="font-size:13.5px; color:#475569; line-height:1.5; margin-bottom:18px;">
+                                Apakah Anda yakin ingin menyetujui permohonan perubahan profil ini? Data usulan baru akan langsung diterapkan ke profil aktif pemberi kerja dan dicatat sebagai versi profil baru.
+                            </p>
+                            <form method="post" action="admin.php?view=verifikasi_employer&detail_id=<?php echo $selectedEmployer['user_id']; ?>">
+                                <input type="hidden" name="admin_action" value="approve_profile_change">
+                                <input type="hidden" name="request_id" value="<?php echo (int)$activeProfileChange['id']; ?>">
+                                <input type="hidden" name="user_id" value="<?php echo (int)$selectedEmployer['user_id']; ?>">
+                                <div style="margin-bottom:20px;">
+                                    <label style="font-size:13px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">Catatan Admin (Opsional):</label>
+                                    <textarea name="admin_notes" placeholder="Catatan persetujuan perubahan profil..." style="width:100%; min-height:80px; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; color:#0f172a; outline:none; font-family:inherit;"></textarea>
+                                </div>
+                                <div style="display:flex; justify-content:flex-end; gap:12px;">
+                                    <button type="button" class="ghost-btn" data-close-modal="modal-pcr-approve" style="border:1px solid #cbd5e1; border-radius:999px; padding:8px 20px; font-size:13px; font-weight:700; color:#475569; background:#ffffff; cursor:pointer;">
+                                        Batal
+                                    </button>
+                                    <button type="submit" style="background:#0284c7; border:none; border-radius:999px; padding:8px 22px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.3);">
+                                        Ya, Setujui Perubahan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- MODAL KEPUTUSAN TOLAK PERUBAHAN PROFIL -->
+                    <div class="modal-backdrop" data-modal="modal-pcr-reject">
+                        <div class="modal-panel" style="width:min(500px, 90vw); border-radius:16px; padding:24px; background:#ffffff;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                                <h3 style="font-size:17px; font-weight:800; color:#0f172a; margin:0; display:flex; align-items:center; gap:8px;">
+                                    <i class="fa-solid fa-circle-xmark" style="color:#ef4444;"></i> Tolak Perubahan Profil
+                                </h3>
+                                <button type="button" data-close-modal="modal-pcr-reject" style="background:none; border:none; color:#64748b; font-size:18px; cursor:pointer;">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <p style="font-size:13.5px; color:#475569; line-height:1.5; margin-bottom:18px;">
+                                Pengajuan perubahan profil akan ditolak dan data aktif profil pemberi kerja saat ini tetap dipertahankan. Alasan penolakan akan dikirimkan sebagai notifikasi kepada pemberi kerja.
+                            </p>
+                            <form method="post" action="admin.php?view=verifikasi_employer&detail_id=<?php echo $selectedEmployer['user_id']; ?>">
+                                <input type="hidden" name="admin_action" value="reject_profile_change">
+                                <input type="hidden" name="request_id" value="<?php echo (int)$activeProfileChange['id']; ?>">
+                                <input type="hidden" name="user_id" value="<?php echo (int)$selectedEmployer['user_id']; ?>">
+                                <div style="margin-bottom:20px;">
+                                    <label style="font-size:13px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">Alasan Penolakan <span style="color:#ef4444;">*</span></label>
+                                    <textarea name="admin_notes" required placeholder="Tuliskan alasan mengapa usulan perubahan profil ditolak..." style="width:100%; min-height:90px; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; color:#0f172a; outline:none; font-family:inherit;"></textarea>
+                                </div>
+                                <div style="display:flex; justify-content:flex-end; gap:12px;">
+                                    <button type="button" class="ghost-btn" data-close-modal="modal-pcr-reject" style="border:1px solid #cbd5e1; border-radius:999px; padding:8px 20px; font-size:13px; font-weight:700; color:#475569; background:#ffffff; cursor:pointer;">
+                                        Batal
+                                    </button>
+                                    <button type="submit" style="background:#ef4444; border:none; border-radius:999px; padding:8px 22px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer;">
+                                        Tolak Perubahan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                     <!-- MODAL ASSIGN PEMERIKSA -->
                     <div class="modal-backdrop" data-modal="modal-assign-pemeriksa">
                         <div class="modal-panel" style="width:min(500px, 90vw);">
@@ -4764,6 +5075,7 @@ document.addEventListener('click', function(e) {
                                 <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=revision&q=<?php echo urlencode($search); ?>&sort=<?php echo e($sort); ?><?php echo $filterParamsEmp; ?>" class="status-tab-item <?php echo $tab === 'revision' ? 'active' : ''; ?>" style="display:inline-flex; align-items:center; gap:8px;">Revisi<?php if ((int)($verificationStatusCounts['revision'] ?? 0) > 0): ?> <span style="display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 8px; border-radius:999px; border:1px solid #fecdd3; background:#fff1f2; color:#e11d48; font-size:12px; font-weight:700;"><?php echo (int)($verificationStatusCounts['revision'] ?? 0); ?></span><?php endif; ?></a>
                                 <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=approved&q=<?php echo urlencode($search); ?>&sort=<?php echo e($sort); ?><?php echo $filterParamsEmp; ?>" class="status-tab-item <?php echo $tab === 'approved' ? 'active' : ''; ?>" style="display:inline-flex; align-items:center; gap:8px;">Terverifikasi<?php if ((int)($verificationStatusCounts['approved'] ?? 0) > 0): ?> <span style="display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 8px; border-radius:999px; border:1px solid #fecdd3; background:#fff1f2; color:#e11d48; font-size:12px; font-weight:700;"><?php echo (int)($verificationStatusCounts['approved'] ?? 0); ?></span><?php endif; ?></a>
                                 <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=rejected&q=<?php echo urlencode($search); ?>&sort=<?php echo e($sort); ?><?php echo $filterParamsEmp; ?>" class="status-tab-item <?php echo $tab === 'rejected' ? 'active' : ''; ?>" style="display:inline-flex; align-items:center; gap:8px;">Ditolak<?php if ((int)($verificationStatusCounts['rejected'] ?? 0) > 0): ?> <span style="display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 8px; border-radius:999px; border:1px solid #fecdd3; background:#fff1f2; color:#e11d48; font-size:12px; font-weight:700;"><?php echo (int)($verificationStatusCounts['rejected'] ?? 0); ?></span><?php endif; ?></a>
+                                <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=profile_changes&q=<?php echo urlencode($search); ?>&sort=<?php echo e($sort); ?><?php echo $filterParamsEmp; ?>" class="status-tab-item <?php echo $tab === 'profile_changes' ? 'active' : ''; ?>" style="display:inline-flex; align-items:center; gap:8px;">Perubahan Profil<?php if ((int)($verificationStatusCounts['profile_changes'] ?? 0) > 0): ?> <span style="display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 8px; border-radius:999px; border:1px solid #fed7aa; background:#fff7ed; color:#ea580c; font-size:12px; font-weight:700;"><?php echo (int)($verificationStatusCounts['profile_changes'] ?? 0); ?></span><?php endif; ?></a>
                             </div>
                         </div>
 
@@ -5004,6 +5316,13 @@ document.addEventListener('click', function(e) {
                                                     <span class="pill-badge danger" style="background:#fef2f2; color:#dc2626; border:1px solid #fee2e2;">● Ditolak</span>
                                                 <?php else: ?>
                                                     <span class="pill-badge revision" style="background:#fff7ed; color:#ea580c; border:1px solid #ffedd5;">● <?php echo e($vEmp['verification_status']); ?></span>
+                                                <?php endif; ?>
+                                                <?php if (!empty($vEmp['pending_profile_changes']) && (int)$vEmp['pending_profile_changes'] > 0): ?>
+                                                    <div style="margin-top:5px;">
+                                                        <span class="pill-badge" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-size:11px; font-weight:700; display:inline-flex; align-items:center; gap:5px; padding:3px 8px;">
+                                                            <i class="fa-solid fa-clock-rotate-left"></i> Ada Perubahan Profil
+                                                        </span>
+                                                    </div>
                                                 <?php endif; ?>
                                             </td>
                                             <td style="padding:14px 16px; color:#64748b; font-size:13px;">-</td>

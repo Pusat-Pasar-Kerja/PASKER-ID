@@ -3219,7 +3219,8 @@ if ($isH7 && $hasValidDates && $daysRemaining > 0) {
 
 $notifications = user_notifications((int) $user['id']);
 $unread = unread_notification_count((int) $user['id']);
-$html = str_replace('<div class="notif"><i class="fa-regular fa-bell"></i></div>', render_notif_dropdown($notifications, $unread, $verificationStatus, $profile['manual_review_status'] ?? ''), $html);
+$activePcr = get_active_profile_change_request((int) $user['id']);
+$html = str_replace('<div class="notif"><i class="fa-regular fa-bell"></i></div>', render_notif_dropdown($notifications, $unread, $verificationStatus, $profile['manual_review_status'] ?? '', $activePcr, (int)$user['id']), $html);
 $html = preg_replace('/<h3>Draft<\/h3>\s*<div class="value">\d+<\/div>/', '<h3>Draft</h3><div class="value">' . $jobCounts['Draft'] . '</div>', $html, 1);
 $html = preg_replace('/<h3>Dikirim<\/h3>\s*<div class="value">\d+<\/div>/', '<h3>Dikirim</h3><div class="value">' . $jobCounts['Menunggu Verifikasi'] . '</div>', $html, 1);
 $html = preg_replace('/<h3>Perlu Direvisi<\/h3>\s*<div class="value">\d+<\/div>/', '<h3>Perlu Direvisi</h3><div class="value">' . $jobCounts['Perlu Direvisi'] . '</div>', $html, 1);
