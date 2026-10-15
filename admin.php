@@ -1200,7 +1200,7 @@ if ($view === 'verifikasi_employer') {
 // --- FETCH DATA FOR VERIFIKASI LOWONGAN ---
 if ($view === 'verifikasi_job') {
     $query = <<<SQL
-        SELECT j.*, ep.owner_name, ep.profession, ep.city as emp_city, ep.province as emp_province, u.name as user_name, u.email as user_email
+        SELECT j.*, ep.owner_name, ep.brand_name, ep.profession, ep.city as emp_city, ep.province as emp_province, u.name as user_name, u.email as user_email
     SQL;
     $baseFilter = <<<SQL
         FROM job_posts j
@@ -1219,9 +1219,9 @@ if ($view === 'verifikasi_job') {
     }
 
     if ($search !== '') {
-        $baseFilter .= ' AND (j.title LIKE ? OR j.location LIKE ? OR j.kbji_code LIKE ? OR u.name LIKE ? OR ep.owner_name LIKE ?)';
+        $baseFilter .= ' AND (j.title LIKE ? OR j.location LIKE ? OR j.kbji_code LIKE ? OR u.name LIKE ? OR ep.owner_name LIKE ? OR ep.brand_name LIKE ?)';
         $like = '%' . $search . '%';
-        $paramsCommon = array_merge($paramsCommon, [$like, $like, $like, $like, $like]);
+        $paramsCommon = array_merge($paramsCommon, [$like, $like, $like, $like, $like, $like]);
     }
 
     if ($startDate !== '') {
@@ -1329,7 +1329,7 @@ if ($view === 'verifikasi_job') {
     $auditLogs = [];
     $additionalDocCase = null;
     if ($detailId > 0) {
-        $stmtSel = db()->prepare('SELECT j.*, ep.owner_name, ep.profession, ep.city as emp_city, ep.domicile_city_id as emp_domicile_city_id, ep.phone, ep.whatsapp, ep.social_media, ep.instagram, ep.address, u.name as user_name, u.email as user_email FROM job_posts j JOIN users u ON u.id = j.user_id LEFT JOIN employer_profiles ep ON ep.user_id = u.id WHERE j.id = ? LIMIT 1');
+        $stmtSel = db()->prepare('SELECT j.*, ep.owner_name, ep.brand_name, ep.profession, ep.city as emp_city, ep.domicile_city_id as emp_domicile_city_id, ep.phone, ep.whatsapp, ep.social_media, ep.instagram, ep.address, u.name as user_name, u.email as user_email FROM job_posts j JOIN users u ON u.id = j.user_id LEFT JOIN employer_profiles ep ON ep.user_id = u.id WHERE j.id = ? LIMIT 1');
         $stmtSel->execute([$detailId]);
         $selectedJob = $stmtSel->fetch();
         if ($selectedJob) {
@@ -5554,7 +5554,12 @@ document.addEventListener('click', function(e) {
                 <?php if ($selectedJob): ?>
                     <?php
                         $jobFormData = job_to_form_data($selectedJob);
-                        $empName = $selectedJob['owner_name'] ?: $selectedJob['user_name'];
+                        $isJobIndividual = (strcasecmp($selectedJob['entity_type'] ?? '', 'Perusahaan') !== 0);
+                        $empBrandName = trim((string)($selectedJob['brand_name'] ?? ''));
+                        $empOwnerName = $selectedJob['owner_name'] ?: $selectedJob['user_name'];
+                        // Untuk Individu, gunakan Nama Brand Usaha sebagai sublabel Lowongan
+                        $empDisplayOnJob = ($isJobIndividual && $empBrandName !== '') ? $empBrandName : $empOwnerName;
+                        $empName = $empOwnerName;
                         $empEmail = $selectedJob['user_email'];
                         $empPhone = $selectedJob['phone'] ?: '-';
                         $empWhatsapp = $selectedJob['whatsapp'] ?: $empPhone;
@@ -5632,7 +5637,7 @@ document.addEventListener('click', function(e) {
                                     ?>
                                 </div>
                                 <div style="font-size:13px; color:#64748b; margin-top:6px; display:flex; align-items:center; gap:8px;">
-                                    <strong style="color:#334155;"><?php echo e($empName); ?></strong>
+                                    <strong style="color:#334155;"><?php echo e($empDisplayOnJob); ?></strong>
                                     <span style="color:#cbd5e1;">|</span>
                                     <span><?php echo e($entityTypeLabel); ?></span>
                                     <span style="color:#cbd5e1;">|</span>
@@ -6269,7 +6274,7 @@ document.addEventListener('click', function(e) {
                         <!-- JOB & EMPLOYER TITLE HEADER -->
                         <div style="margin-bottom:20px;">
                             <h2 style="font-size:20px; font-weight:800; color:#0f172a; margin:0 0 4px 0;"><?php echo e($selectedJob['title']); ?></h2>
-                            <div style="font-size:13px; color:#64748b; font-weight:500;"><?php echo e($empName); ?></div>
+                            <div style="font-size:13px; color:#64748b; font-weight:500;"><?php echo e($empDisplayOnJob); ?></div>
                         </div>
 
                         <!-- KEY METADATA GRID -->
@@ -6469,10 +6474,21 @@ document.addEventListener('click', function(e) {
                         <h4 style="font-size:15px; font-weight:800; color:#0f172a; margin:0 0 16px 0;">Informasi Pemberi Kerja</h4>
 
                         <div style="display:flex; flex-direction:column; gap:10px; font-size:13px;">
-                            <div style="display:grid; grid-template-columns:120px 1fr; gap:10px;">
-                                <div style="color:#64748b; font-weight:500;">Nama</div>
-                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empName); ?></div>
+                            <?php if ($isJobIndividual && $empBrandName !== ''): ?>
+                            <div style="display:grid; grid-template-columns:150px 1fr; gap:10px;">
+                                <div style="color:#64748b; font-weight:500;">Nama Brand Usaha</div>
+                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empBrandName); ?></div>
                             </div>
+                            <div style="display:grid; grid-template-columns:150px 1fr; gap:10px;">
+                                <div style="color:#64748b; font-weight:500;">Nama Pemilik (Owner)</div>
+                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empOwnerName); ?></div>
+                            </div>
+                            <?php else: ?>
+                            <div style="display:grid; grid-template-columns:150px 1fr; gap:10px;">
+                                <div style="color:#64748b; font-weight:500;">Nama</div>
+                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empOwnerName); ?></div>
+                            </div>
+                            <?php endif; ?>
                             <div style="display:grid; grid-template-columns:120px 1fr; gap:10px;">
                                 <div style="color:#64748b; font-weight:500;">Email</div>
                                 <div style="color:#0f172a; font-weight:600;">: <?php echo e($empEmail); ?></div>
@@ -7325,7 +7341,11 @@ function openDecisionModal() {
                                 <?php else: ?>
                                     <?php foreach ($showingJobs as $vJob):
                                         $jobTitle = $vJob['title'];
-                                        $employerName = $vJob['owner_name'] ?: $vJob['user_name'];
+                                        $isIndividual = ($vJob['entity_type'] === 'Individu' || $vJob['entity_type'] === 'Individual' || empty($vJob['entity_type']));
+                                        $brandName = trim((string)($vJob['brand_name'] ?? ''));
+                                        $ownerName = $vJob['owner_name'] ?: $vJob['user_name'];
+                                        // Untuk Jenis Entitas = Individu, tampilkan Nama Brand Usaha sebagai sublabel/nama Pemberi Kerja pada Lowongan.
+                                        $employerSublabel = ($isIndividual && $brandName !== '') ? $brandName : $ownerName;
                                         $entityTypeLabel = ($vJob['entity_type'] === 'Perusahaan') ? 'Perusahaan' : 'Individual';
 
                                         $jStatus = $vJob['status'] ?? '';
@@ -7359,7 +7379,7 @@ function openDecisionModal() {
                                                     </div>
                                                     <div>
                                                         <div style="font-weight:700; color:#0f172a; font-size:13.5px; line-height:1.3;"><?php echo e($jobTitle); ?></div>
-                                                        <div style="font-size:12px; color:#64748b; margin-top:2px;"><?php echo e($employerName); ?></div>
+                                                        <div style="font-size:12px; color:#64748b; margin-top:2px;"><?php echo e($employerSublabel); ?></div>
                                                     </div>
                                                 </div>
                                             </td>
