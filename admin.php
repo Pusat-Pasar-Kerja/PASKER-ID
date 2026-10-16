@@ -939,7 +939,7 @@ if ($view === 'verifikasi_employer') {
                ep.verification_checklist, ep.assigned_to, ep.assigned_at, ep.assignment_reason, ep.rejection_count,
                ep.manual_review_status, ep.consent_data_hash, ep.consent_given_at, ep.officer_statement, ep.officer_name, ep.entity_type,
                ep.doc_permission, ep.permit_document, ep.doc_location_photo, ep.workplace_photo, ep.social_media, ep.instagram, ep.linkedin, ep.facebook, ep.domicile_city_id,
-               ep.verification_method, ep.location_check_result,
+               ep.verification_method, ep.location_check_result, ep.updated_at,
                (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') AS pending_profile_changes,
                (SELECT id FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING' ORDER BY id DESC LIMIT 1) AS pending_pcr_id
     SQL;
@@ -1272,10 +1272,13 @@ try {
         SELECT COUNT(*) 
         FROM employer_profiles ep 
         JOIN users u ON u.id = ep.user_id 
-        WHERE u.created_at <= ? 
-          AND (ep.verification_status NOT IN ("APPROVED", "REJECTED", "ACTIVE_VERIFIED", "FULL_DISABLED") OR ep.verification_status IS NULL)
+        WHERE (
+            (ep.updated_at IS NOT NULL AND ep.updated_at != "" AND ep.updated_at <= ?)
+            OR ((ep.updated_at IS NULL OR ep.updated_at = "") AND u.created_at <= ?)
+        )
+          AND (ep.verification_status NOT IN ("APPROVED", "REJECTED", "ACTIVE_VERIFIED", "FULL_DISABLED", "NEEDS_REVISION", "REVISION") OR ep.verification_status IS NULL)
     ');
-    $stmtOverdue->execute([$slaLimitDate]);
+    $stmtOverdue->execute([$slaLimitDate, $slaLimitDate]);
     $overdueEmployerCount = (int)$stmtOverdue->fetchColumn();
 
     if ($overdueEmployerCount > 0) {
@@ -3707,7 +3710,7 @@ document.addEventListener('click', function(e) {
                                         </div>
                                         <div style="font-weight:700; color:#0f172a;">
                                             <?php
-                                            $selDeadlineInfo = get_verification_deadline_info($selectedEmployer['created_at'] ?? null, $selectedEmployer['verification_status'] ?? 'PENDING');
+                                            $selDeadlineInfo = get_verification_deadline_info($selectedEmployer['created_at'] ?? null, $selectedEmployer['verification_status'] ?? 'PENDING', null, $selectedEmployer['updated_at'] ?? null);
                                             echo $selDeadlineInfo['badge_html'];
                                             ?>
                                         </div>
@@ -3756,7 +3759,7 @@ document.addEventListener('click', function(e) {
                             <?php
                             $savedMethod = !empty($selectedEmployer['verification_method']) ? strtoupper($selectedEmployer['verification_method']) : 'ONLINE';
                             $savedLocResult = !empty($selectedEmployer['location_check_result']) ? strtoupper($selectedEmployer['location_check_result']) : 'SESUAI';
-                            $isVerifiedOrRejected = in_array($status, ['APPROVED', 'REJECTED'], true);
+                            $isDecided = in_array($status, ['APPROVED', 'REJECTED', 'NEEDS_REVISION', 'REVISION'], true) || $isRevisionStatus;
                             ?>
                             <div id="sectionMetodeVerifikasi" class="section-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:22px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
                                 <div class="section-card-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
@@ -3766,14 +3769,24 @@ document.addEventListener('click', function(e) {
                                         </div>
                                         <span>Metode Verifikasi</span>
                                     </div>
-                                    <?php if ($isVerifiedOrRejected): ?>
-                                        <span class="pill-badge" style="background:<?php echo $status === 'APPROVED' ? '#dcfce7; color:#15803d; border:1px solid #bbf7d0;' : '#fee2e2; color:#b91c1c; border:1px solid #fecaca;'; ?> font-size:12px; font-weight:700;">
-                                            <i class="fa-solid <?php echo $status === 'APPROVED' ? 'fa-check' : 'fa-xmark'; ?>"></i> Selesai Diverifikasi
-                                        </span>
+                                    <?php if ($isDecided): ?>
+                                        <?php if ($status === 'APPROVED'): ?>
+                                            <span class="pill-badge" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; font-size:12px; font-weight:700;">
+                                                <i class="fa-solid fa-check"></i> Selesai Diverifikasi (Disetujui)
+                                            </span>
+                                        <?php elseif ($status === 'REJECTED'): ?>
+                                            <span class="pill-badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; font-size:12px; font-weight:700;">
+                                                <i class="fa-solid fa-xmark"></i> Selesai Diverifikasi (Ditolak)
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="pill-badge" style="background:#fff7ed; color:#ea580c; border:1px solid #ffedd5; font-size:12px; font-weight:700;">
+                                                <i class="fa-solid fa-clock-rotate-left"></i> Revisi Diminta (Menunggu Pemohon)
+                                            </span>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
 
-                                <?php if ($isVerifiedOrRejected): ?>
+                                <?php if ($isDecided): ?>
                                     <!-- DISPLAY HASIL METODE VERIFIKASI SEBELUMNYA (READ-ONLY) -->
                                     <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px;">
                                         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:14px;">
@@ -3815,8 +3828,19 @@ document.addEventListener('click', function(e) {
 
                                         <?php if (!empty($selectedEmployer['verifier_notes'])): ?>
                                             <div style="border-top:1px solid #e2e8f0; padding-top:12px; margin-top:8px;">
-                                                <div style="font-size:12px; color:#64748b; font-weight:600; margin-bottom:2px;">Catatan / Temuan Verifikator:</div>
+                                                <div style="font-size:12px; color:#64748b; font-weight:600; margin-bottom:2px;">
+                                                    <?php echo ($status === 'APPROVED') ? 'Catatan / Temuan Verifikator:' : (($status === 'REJECTED') ? 'Alasan Penolakan:' : 'Catatan Perbaikan (Dikirim ke Pemohon):'); ?>
+                                                </div>
                                                 <div style="font-size:13px; color:#1e293b; line-height:1.5;"><?php echo nl2br(e($selectedEmployer['verifier_notes'])); ?></div>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <?php if ($status === 'NEEDS_REVISION' || $isRevisionStatus): ?>
+                                            <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:12px 14px; margin-top:12px; display:flex; align-items:flex-start; gap:10px;">
+                                                <i class="fa-solid fa-clock-rotate-left" style="color:#ea580c; margin-top:2px;"></i>
+                                                <div style="font-size:12.5px; color:#9a3412; line-height:1.5;">
+                                                    <strong>Menunggu Perbaikan Profil oleh Pemohon.</strong> Keputusan verifikasi telah dikirimkan dengan permintaan perbaikan data. Pilihan metode verifikasi dan keputusan dikunci sampai pemberi kerja mengirimkan perbaikan data profil.
+                                                </div>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -3838,8 +3862,8 @@ document.addEventListener('click', function(e) {
                                         </label>
                                         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
                                             <!-- Pilihan Online -->
-                                            <label id="optVerifOnlineCard" style="display:flex; align-items:flex-start; gap:12px; padding:14px; border:2px solid <?php echo ($savedMethod === 'ONLINE') ? '#0284c7' : '#e2e8f0'; ?>; background:<?php echo ($savedMethod === 'ONLINE') ? '#f0f9ff' : '#ffffff'; ?>; border-radius:12px; cursor:pointer; transition:all 0.2s;">
-                                                <input type="radio" name="verification_method_radio" value="ONLINE" <?php echo ($savedMethod === 'ONLINE') ? 'checked' : ''; ?> onchange="onMetodeVerifikasiChange('ONLINE')" style="margin-top:2px; width:17px; height:17px; accent-color:#0284c7; cursor:pointer;">
+                                            <label id="optVerifOnlineCard" style="display:flex; align-items:flex-start; gap:12px; padding:14px; border:2px solid <?php echo ($savedMethod === 'ONLINE') ? '#0284c7' : '#e2e8f0'; ?>; background:<?php echo ($savedMethod === 'ONLINE') ? '#f0f9ff' : '#ffffff'; ?>; border-radius:12px; <?php echo !$hasAssignment ? 'opacity:0.65; cursor:not-allowed;' : 'cursor:pointer;'; ?> transition:all 0.2s;">
+                                                <input type="radio" name="verification_method_radio" value="ONLINE" <?php echo ($savedMethod === 'ONLINE') ? 'checked' : ''; ?> <?php echo !$hasAssignment ? 'disabled' : ''; ?> onchange="onMetodeVerifikasiChange('ONLINE')" style="margin-top:2px; width:17px; height:17px; accent-color:#0284c7; cursor:pointer;">
                                                 <div>
                                                     <div style="font-size:13.5px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px;">
                                                         <i class="fa-solid fa-globe" style="color:#0284c7;"></i> Online
@@ -3851,8 +3875,8 @@ document.addEventListener('click', function(e) {
                                             </label>
 
                                             <!-- Pilihan Offline -->
-                                            <label id="optVerifOfflineCard" style="display:flex; align-items:flex-start; gap:12px; padding:14px; border:2px solid <?php echo ($savedMethod === 'OFFLINE') ? '#0284c7' : '#e2e8f0'; ?>; background:<?php echo ($savedMethod === 'OFFLINE') ? '#f0f9ff' : '#ffffff'; ?>; border-radius:12px; cursor:pointer; transition:all 0.2s;">
-                                                <input type="radio" name="verification_method_radio" value="OFFLINE" <?php echo ($savedMethod === 'OFFLINE') ? 'checked' : ''; ?> onchange="onMetodeVerifikasiChange('OFFLINE')" style="margin-top:2px; width:17px; height:17px; accent-color:#0284c7; cursor:pointer;">
+                                            <label id="optVerifOfflineCard" style="display:flex; align-items:flex-start; gap:12px; padding:14px; border:2px solid <?php echo ($savedMethod === 'OFFLINE') ? '#0284c7' : '#e2e8f0'; ?>; background:<?php echo ($savedMethod === 'OFFLINE') ? '#f0f9ff' : '#ffffff'; ?>; border-radius:12px; <?php echo !$hasAssignment ? 'opacity:0.65; cursor:not-allowed;' : 'cursor:pointer;'; ?> transition:all 0.2s;">
+                                                <input type="radio" name="verification_method_radio" value="OFFLINE" <?php echo ($savedMethod === 'OFFLINE') ? 'checked' : ''; ?> <?php echo !$hasAssignment ? 'disabled' : ''; ?> onchange="onMetodeVerifikasiChange('OFFLINE')" style="margin-top:2px; width:17px; height:17px; accent-color:#0284c7; cursor:pointer;">
                                                 <div>
                                                     <div style="font-size:13.5px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px;">
                                                         <i class="fa-solid fa-map-location-dot" style="color:#d97706;"></i> Offline
@@ -3870,8 +3894,8 @@ document.addEventListener('click', function(e) {
                                         <div style="font-size:13px; font-weight:800; color:#0369a1; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
                                             <i class="fa-solid fa-shield-check"></i> Consent Verifikasi Online <span style="color:#ef4444; font-weight:700;">*</span>
                                         </div>
-                                        <label id="labelConsentOnline" style="display:flex; align-items:flex-start; gap:12px; cursor:pointer; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:8px; padding:14px; transition:border-color 0.2s;">
-                                            <input type="checkbox" id="checkConsentOnline" name="consent_online" value="1" onchange="onConsentChange()" style="margin-top:2px; width:18px; height:18px; accent-color:#0284c7; cursor:pointer; flex-shrink:0;">
+                                        <label id="labelConsentOnline" style="display:flex; align-items:flex-start; gap:12px; <?php echo !$hasAssignment ? 'opacity:0.65; cursor:not-allowed;' : 'cursor:pointer;'; ?> background:#ffffff; border:1.5px solid #cbd5e1; border-radius:8px; padding:14px; transition:border-color 0.2s;">
+                                            <input type="checkbox" id="checkConsentOnline" name="consent_online" value="1" <?php echo !$hasAssignment ? 'disabled' : ''; ?> onchange="onConsentChange()" style="margin-top:2px; width:18px; height:18px; accent-color:#0284c7; cursor:pointer; flex-shrink:0;">
                                             <span style="font-size:13px; color:#0f172a; line-height:1.5; font-weight:500;">
                                                 “Saya telah melakukan pemeriksaan/verifikasi secara online terhadap data dan dokumen pengajuan Pemberi Kerja Individu serta memberikan hasil pemeriksaan berdasarkan informasi yang tersedia pada sistem.”
                                             </span>
@@ -3906,14 +3930,14 @@ document.addEventListener('click', function(e) {
                                                 Hasil Pemeriksaan Lokasi/Alamat <span style="color:#ef4444;">*</span>
                                             </label>
                                             <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-                                                <label id="labelLocSesuai" style="display:inline-flex; align-items:center; gap:8px; background:#ffffff; border:1.5px solid <?php echo ($savedLocResult !== 'TIDAK_SESUAI') ? '#10b981' : '#cbd5e1'; ?>; padding:8px 16px; border-radius:8px; cursor:pointer; transition:all 0.2s;">
-                                                    <input type="radio" name="location_check_result_radio" value="SESUAI" <?php echo ($savedLocResult !== 'TIDAK_SESUAI') ? 'checked' : ''; ?> onchange="onLocationResultChange('SESUAI')" style="accent-color:#10b981; width:16px; height:16px; cursor:pointer;">
+                                                <label id="labelLocSesuai" style="display:inline-flex; align-items:center; gap:8px; background:#ffffff; border:1.5px solid <?php echo ($savedLocResult !== 'TIDAK_SESUAI') ? '#10b981' : '#cbd5e1'; ?>; padding:8px 16px; border-radius:8px; <?php echo !$hasAssignment ? 'opacity:0.65; cursor:not-allowed;' : 'cursor:pointer;'; ?> transition:all 0.2s;">
+                                                    <input type="radio" name="location_check_result_radio" value="SESUAI" <?php echo ($savedLocResult !== 'TIDAK_SESUAI') ? 'checked' : ''; ?> <?php echo !$hasAssignment ? 'disabled' : ''; ?> onchange="onLocationResultChange('SESUAI')" style="accent-color:#10b981; width:16px; height:16px; cursor:pointer;">
                                                     <span style="font-size:13px; font-weight:700; color:#065f46; display:flex; align-items:center; gap:6px;">
                                                         <i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Sesuai
                                                     </span>
                                                 </label>
-                                                <label id="labelLocTidakSesuai" style="display:inline-flex; align-items:center; gap:8px; background:#ffffff; border:1.5px solid <?php echo ($savedLocResult === 'TIDAK_SESUAI') ? '#f59e0b' : '#cbd5e1'; ?>; padding:8px 16px; border-radius:8px; cursor:pointer; transition:all 0.2s;">
-                                                    <input type="radio" name="location_check_result_radio" value="TIDAK_SESUAI" <?php echo ($savedLocResult === 'TIDAK_SESUAI') ? 'checked' : ''; ?> onchange="onLocationResultChange('TIDAK_SESUAI')" style="accent-color:#f59e0b; width:16px; height:16px; cursor:pointer;">
+                                                <label id="labelLocTidakSesuai" style="display:inline-flex; align-items:center; gap:8px; background:#ffffff; border:1.5px solid <?php echo ($savedLocResult === 'TIDAK_SESUAI') ? '#f59e0b' : '#cbd5e1'; ?>; padding:8px 16px; border-radius:8px; <?php echo !$hasAssignment ? 'opacity:0.65; cursor:not-allowed;' : 'cursor:pointer;'; ?> transition:all 0.2s;">
+                                                    <input type="radio" name="location_check_result_radio" value="TIDAK_SESUAI" <?php echo ($savedLocResult === 'TIDAK_SESUAI') ? 'checked' : ''; ?> <?php echo !$hasAssignment ? 'disabled' : ''; ?> onchange="onLocationResultChange('TIDAK_SESUAI')" style="accent-color:#f59e0b; width:16px; height:16px; cursor:pointer;">
                                                     <span style="font-size:13px; font-weight:700; color:#92400e; display:flex; align-items:center; gap:6px;">
                                                         <i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;"></i> Tidak Sesuai
                                                     </span>
@@ -3929,8 +3953,8 @@ document.addEventListener('click', function(e) {
                                             <div style="font-size:13px; font-weight:800; color:#92400e; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
                                                 <i class="fa-solid fa-clipboard-check"></i> Pernyataan Pemeriksaan Lapangan <span style="color:#ef4444; font-weight:700;">*</span>
                                             </div>
-                                            <label id="labelConsentField" style="display:flex; align-items:flex-start; gap:12px; cursor:pointer; background:#ffffff; border:1.5px solid #fcd34d; border-radius:8px; padding:14px; transition:border-color 0.2s;">
-                                                <input type="checkbox" id="checkConsentField" name="consent_field" value="1" onchange="onConsentChange()" style="margin-top:2px; width:18px; height:18px; accent-color:#d97706; cursor:pointer; flex-shrink:0;">
+                                            <label id="labelConsentField" style="display:flex; align-items:flex-start; gap:12px; <?php echo !$hasAssignment ? 'opacity:0.65; cursor:not-allowed;' : 'cursor:pointer;'; ?> background:#ffffff; border:1.5px solid #fcd34d; border-radius:8px; padding:14px; transition:border-color 0.2s;">
+                                                <input type="checkbox" id="checkConsentField" name="consent_field" value="1" <?php echo !$hasAssignment ? 'disabled' : ''; ?> onchange="onConsentChange()" style="margin-top:2px; width:18px; height:18px; accent-color:#d97706; cursor:pointer; flex-shrink:0;">
                                                 <span style="font-size:13px; color:#0f172a; line-height:1.5; font-weight:500;">
                                                     “Saya telah melakukan pemeriksaan/verifikasi lapangan terhadap pengajuan Pemberi Kerja Individu dan memberikan hasil pemeriksaan berdasarkan kondisi yang saya temukan.”
                                                 </span>
@@ -3940,8 +3964,13 @@ document.addEventListener('click', function(e) {
 
                                     <!-- 5. PETUNJUK KEPUTUSAN VERIFIKASI -->
                                     <div id="consentStatusNotice" style="font-size:12.5px; color:#64748b; display:flex; align-items:center; gap:8px; border-top:1px solid #e2e8f0; padding-top:14px; margin-top:4px;">
-                                        <i class="fa-solid fa-lock" style="color:#94a3b8;"></i>
-                                        <span>Tombol keputusan di bagian atas (<strong>Setujui</strong> / <strong>Revisi</strong> / <strong>Tolak</strong>) akan aktif setelah consent verifikasi di atas dicentang.</span>
+                                        <?php if (!$hasAssignment): ?>
+                                            <i class="fa-solid fa-lock" style="color:#94a3b8;"></i>
+                                            <span>Pemberi kerja belum memiliki penugasan aktif. Silakan klik tombol <strong>"Ambil Pengajuan"</strong> pada bagian header terlebih dahulu untuk mengaktifkan pilihan metode dan verifikasi.</span>
+                                        <?php else: ?>
+                                            <i class="fa-solid fa-lock" style="color:#94a3b8;"></i>
+                                            <span>Tombol keputusan di bagian atas (<strong>Setujui</strong> / <strong>Revisi</strong> / <strong>Tolak</strong>) akan aktif setelah consent verifikasi di atas dicentang.</span>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -5604,7 +5633,7 @@ document.addEventListener('click', function(e) {
                                     <?php foreach ($showingEmployers as $vEmp):
                                         $vBrand = !empty($vEmp['brand_name']) ? $vEmp['brand_name'] : ($vEmp['owner_name'] ?: $vEmp['name']);
                                         $vOwner = !empty($vEmp['brand_name']) ? ($vEmp['owner_name'] ?: $vEmp['name']) : '';
-                                        $vDeadline = get_verification_deadline_info($vEmp['created_at'] ?? null, $vEmp['verification_status'] ?? 'PENDING');
+                                        $vDeadline = get_verification_deadline_info($vEmp['created_at'] ?? null, $vEmp['verification_status'] ?? 'PENDING', null, $vEmp['updated_at'] ?? null);
                                     ?>
                                         <tr style="<?php echo $vDeadline['row_style']; ?>">
                                             <td style="padding:14px 16px;">

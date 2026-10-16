@@ -1973,12 +1973,14 @@ function reject_profile_change_request(int $requestId, string $reviewerName, str
 /**
  * Menghitung SLA Deadline Verifikasi (3 hari kalender) dan menghasilkan badge tampilan sesuai desain
  */
-function get_verification_deadline_info(?string $createdAt, string $status = 'PENDING', ?int $referenceNow = null): array
+function get_verification_deadline_info(?string $createdAt, string $status = 'PENDING', ?int $referenceNow = null, ?string $updatedAt = null): array
 {
     $isResolved = in_array($status, ['APPROVED', 'REJECTED', 'ACTIVE_VERIFIED', 'FULL_DISABLED', 'Tayang', 'Ditolak', 'CANCELED'], true);
-    if ($isResolved || empty($createdAt)) {
+    $isRevision = in_array($status, ['NEEDS_REVISION', 'REVISION', 'Perlu Direvisi', 'Perlu Revisi'], true);
+
+    if ($isResolved || $isRevision || empty($createdAt)) {
         return [
-            'status' => 'RESOLVED',
+            'status' => $isRevision ? 'PAUSED' : 'RESOLVED',
             'days_left' => null,
             'is_overdue' => false,
             'deadline_time' => null,
@@ -1989,7 +1991,11 @@ function get_verification_deadline_info(?string $createdAt, string $status = 'PE
     }
 
     $now = $referenceNow ?? time();
-    $createdTs = strtotime($createdAt);
+    $baseDate = $createdAt;
+    if (!empty($updatedAt) && strtotime($updatedAt) > strtotime($createdAt)) {
+        $baseDate = $updatedAt;
+    }
+    $createdTs = strtotime($baseDate);
     $deadlineTs = $createdTs + (3 * 86400); // 3 hari kalender (72 jam)
     $secondsLeft = $deadlineTs - $now;
     $hoursLeft = $secondsLeft / 3600;
