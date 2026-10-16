@@ -432,146 +432,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
         exit;
     }
 
-    // 7. PERPANJANGAN HAK AKSES PEMBERI KERJA INDIVIDU (1, 2, ATAU 3 HARI)
-    if ($action === 'approve_extension') {
-        $targetUserId = (int)$_POST['user_id'];
-        $pdo = db();
-        $pdo->beginTransaction();
-
-        try {
-            // Lock employer profile row with FOR UPDATE
-            $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-            $forUpdate = $driver === 'sqlite' ? '' : ' FOR UPDATE';
-            $empStmt = $pdo->prepare('SELECT * FROM employer_profiles WHERE user_id = ?' . $forUpdate);
-            $empStmt->execute([$targetUserId]);
-            $targetEmp = $empStmt->fetch();
-
-            if (!$targetEmp) {
-                $pdo->rollBack();
-                flash('error', 'Pemberi Kerja tidak ditemukan.');
-                redirect($redirectUrl);
-                exit;
-            }
-
-            // Scope Check: Admin Dinas must match employer's domicile_city_id
-            $adminDomicileCity = (string)($user['domicile_city_id'] ?? '');
-            if ($user['role'] === 'admin_dinas' || ($adminDomicileCity !== '' && $user['role'] !== 'admin' && $user['role'] !== 'admin_pusat')) {
-                $empDomicileCity = (string)($targetEmp['domicile_city_id'] ?? '');
-                if ($empDomicileCity === '' || $empDomicileCity !== $adminDomicileCity) {
-                    $pdo->rollBack();
-                    flash('error', 'Akses ditolak: Pemberi Kerja ini di luar wilayah kewenangan Dinas Anda (' . e($adminDomicileCity) . '). Scope Admin Dinas mengikuti domicile_city_id Pemberi Kerja secara persis.');
-                    redirect($redirectUrl);
-                    exit;
-                }
-            }
-
-            if (($targetEmp['extension_status'] ?? '') !== 'REQUESTED') {
-                $pdo->rollBack();
-                flash('error', 'Tidak ada permohonan perpanjangan Hak Akses Pemberi Kerja Individu yang berstatus REQUESTED.');
-                redirect($redirectUrl);
-                exit;
-            }
-
-            if (!isset($_POST['extension_days']) || !is_numeric($_POST['extension_days'])) {
-                $pdo->rollBack();
-                flash('error', 'Durasi perpanjangan Hak Akses Pemberi Kerja Individu wajib diisi.');
-                redirect($redirectUrl);
-                exit;
-            }
-
-            $extDays = (int)$_POST['extension_days'];
-            if ($extDays < 1 || $extDays > 3) {
-                $pdo->rollBack();
-                flash('error', 'Durasi perpanjangan Hak Akses Pemberi Kerja Individu tidak valid. Harus antara 1 sampai 3 hari.');
-                redirect($redirectUrl);
-                exit;
-            }
-
-            $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-            if ($driver === 'sqlite') {
-                $stmt = $pdo->prepare("UPDATE employer_profiles SET extension_status = 'APPROVED', verification_status = 'APPROVED', verified = 1, active_until = datetime('now', '+{$extDays} days') WHERE user_id = ?");
-            } else {
-                $stmt = $pdo->prepare("UPDATE employer_profiles SET extension_status = 'APPROVED', verification_status = 'APPROVED', verified = 1, active_until = DATE_ADD(NOW(), INTERVAL {$extDays} DAY) WHERE user_id = ?");
-            }
-        $stmt->execute([$targetUserId]);
-
-            // Record audit log INSIDE transaction before commit (strict mode for atomic rollback)
-            record_audit_log('employer', $targetUserId, 'EXTENSION_APPROVED', "Perpanjangan Hak Akses Pemberi Kerja Individu disetujui selama {$extDays} hari. Hak Akses diaktifkan kembali.", $user['name'], $user['role'] ?? 'admin', true);
-
-            $pdo->commit();
-
-            flash('success', "Permohonan perpanjangan Hak Akses Pemberi Kerja Individu ({$extDays} hari) berhasil disetujui. Hak Akses telah aktif kembali.");
-            redirect($redirectUrl);
-        exit;
-        } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            flash('error', 'Gagal memproses persetujuan perpanjangan: ' . $e->getMessage());
-            redirect($redirectUrl);
-            exit;
-        }
-    }
-
-    if ($action === 'reject_extension') {
-        $targetUserId = (int)$_POST['user_id'];
-        $pdo = db();
-        $pdo->beginTransaction();
-
-        try {
-            // Lock employer profile row with FOR UPDATE
-            $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-            $forUpdate = $driver === 'sqlite' ? '' : ' FOR UPDATE';
-            $empStmt = $pdo->prepare('SELECT * FROM employer_profiles WHERE user_id = ?' . $forUpdate);
-            $empStmt->execute([$targetUserId]);
-            $targetEmp = $empStmt->fetch();
-
-            if (!$targetEmp) {
-                $pdo->rollBack();
-                flash('error', 'Pemberi Kerja tidak ditemukan.');
-                redirect($redirectUrl);
-                exit;
-            }
-
-            // Scope Check: Admin Dinas must match employer's domicile_city_id
-            $adminDomicileCity = (string)($user['domicile_city_id'] ?? '');
-            if ($user['role'] === 'admin_dinas' || ($adminDomicileCity !== '' && $user['role'] !== 'admin' && $user['role'] !== 'admin_pusat')) {
-                $empDomicileCity = (string)($targetEmp['domicile_city_id'] ?? '');
-                if ($empDomicileCity === '' || $empDomicileCity !== $adminDomicileCity) {
-                    $pdo->rollBack();
-                    flash('error', 'Akses ditolak: Pemberi Kerja ini di luar wilayah kewenangan Dinas Anda (' . e($adminDomicileCity) . '). Scope Admin Dinas mengikuti domicile_city_id Pemberi Kerja secara persis.');
-                    redirect($redirectUrl);
-                    exit;
-                }
-            }
-
-            if (($targetEmp['extension_status'] ?? '') !== 'REQUESTED') {
-                $pdo->rollBack();
-                flash('error', 'Tidak ada permohonan perpanjangan Hak Akses Pemberi Kerja Individu yang berstatus REQUESTED.');
-                redirect($redirectUrl);
-                exit;
-            }
-
-            $stmt = $pdo->prepare('UPDATE employer_profiles SET extension_status = "REJECTED" WHERE user_id = ?');
-            $stmt->execute([$targetUserId]);
-
-            // Record audit log INSIDE transaction before commit (strict mode for atomic rollback)
-            record_audit_log('employer', $targetUserId, 'EXTENSION_REJECTED', "Permohonan perpanjangan Hak Akses Pemberi Kerja Individu ditolak.", $user['name'], $user['role'] ?? 'admin', true);
-
-            $pdo->commit();
-
-            flash('success', 'Permohonan perpanjangan Hak Akses Pemberi Kerja Individu ditolak.');
-            redirect($redirectUrl);
-            exit;
-        } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            flash('error', 'Gagal memproses penolakan perpanjangan: ' . $e->getMessage());
-            redirect($redirectUrl);
-            exit;
-        }
-    }
 
     // 8. AMBIL CASE / ASSIGN PEMERIKSA LOWONGAN
     if ($action === 'assign_job_case') {
@@ -1404,6 +1264,35 @@ if ($view === 'verifikasi_job') {
 
 $unread = unread_notification_count((int) $user['id']);
 $notifications = user_notifications((int) $user['id']);
+
+// Trigger notifikasi bell jika ada pengajuan pemberi kerja yang belum diverifikasi dan melewati batas SLA 3 hari
+try {
+    $slaLimitDate = date('Y-m-d H:i:s', time() - (3 * 86400));
+    $stmtOverdue = db()->prepare('
+        SELECT COUNT(*) 
+        FROM employer_profiles ep 
+        JOIN users u ON u.id = ep.user_id 
+        WHERE u.created_at <= ? 
+          AND (ep.verification_status NOT IN ("APPROVED", "REJECTED", "ACTIVE_VERIFIED", "FULL_DISABLED") OR ep.verification_status IS NULL)
+    ');
+    $stmtOverdue->execute([$slaLimitDate]);
+    $overdueEmployerCount = (int)$stmtOverdue->fetchColumn();
+
+    if ($overdueEmployerCount > 0) {
+        $unread += 1;
+        array_unshift($notifications, [
+            'id' => 'sla_overdue_alert',
+            'user_id' => $user['id'],
+            'title' => 'Peringatan SLA Verifikasi (' . $overdueEmployerCount . ' Pengajuan)',
+            'message' => 'Terdapat ' . $overdueEmployerCount . ' pengajuan verifikasi pemberi kerja yang belum diproses dan telah melewati batas SLA 3 hari. Segera lakukan verifikasi.',
+            'type' => 'SLA_OVERDUE_ALERT',
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+} catch (Throwable $e) {
+    // Graceful fallback
+}
 $adminInitial = strtoupper(mb_substr($user['name'], 0, 1));
 
 // Overall KPIs for Admin Overview
@@ -3814,9 +3703,14 @@ document.addEventListener('click', function(e) {
                                     </div>
                                     <div>
                                         <div style="color:#64748b; margin-bottom:4px; font-weight:500; display:flex; align-items:center; gap:6px;">
-                                            <i class="fa-regular fa-clock" style="color:#e11d48; font-size:12px;"></i> Deadline
+                                            <i class="fa-regular fa-clock" style="color:#e11d48; font-size:12px;"></i> Deadline Verifikasi
                                         </div>
-                                        <div style="font-weight:700; color:#0f172a;">-</div>
+                                        <div style="font-weight:700; color:#0f172a;">
+                                            <?php
+                                            $selDeadlineInfo = get_verification_deadline_info($selectedEmployer['created_at'] ?? null, $selectedEmployer['verification_status'] ?? 'PENDING');
+                                            echo $selDeadlineInfo['badge_html'];
+                                            ?>
+                                        </div>
                                     </div>
                                     <div style="grid-column: span 2;">
                                         <div style="color:#64748b; margin-bottom:4px; font-weight:500; display:flex; align-items:center; gap:6px;">
@@ -5681,7 +5575,7 @@ document.addEventListener('click', function(e) {
                     </div>
 
                     <div class="console-table-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; overflow-x:auto;">
-                        <table class="console-table" style="width:100%; border-collapse:collapse; min-width:1000px;">
+                        <table class="console-table" style="width:100%; border-collapse:collapse; min-width:1200px;">
                             <thead>
                                 <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0; text-align:left;">
                                     <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; min-width:200px;">
@@ -5689,18 +5583,18 @@ document.addEventListener('click', function(e) {
                                             Nama Brand Usaha <i class="fa-solid fa-arrows-up-down" style="font-size:11px; color:#94a3b8;"></i>
                                         </a>
                                     </th>
-                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569;">Jenis Entitas</th>
-                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569;">Lokasi</th>
-                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569;">Telepon</th>
-                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569;">Status</th>
-                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569;">Deadline</th>
-                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569;">Pemeriksa</th>
-                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569;">
+                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; white-space:nowrap;">Jenis Entitas</th>
+                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; min-width:160px;">Lokasi</th>
+                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; white-space:nowrap;">Telepon</th>
+                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; white-space:nowrap;">Status</th>
+                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; white-space:nowrap;">Deadline Verifikasi</th>
+                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; min-width:150px;">Pemeriksa</th>
+                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; white-space:nowrap;">
                                         <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=<?php echo e($tab); ?>&q=<?php echo urlencode($search); ?>&sort=<?php echo $sort === 'date_desc' ? 'date_asc' : 'date_desc'; ?><?php echo $filterParamsEmp; ?>" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
                                             Tanggal Daftar <i class="fa-solid fa-arrow-down" style="font-size:11px; color:#64748b;"></i>
                                         </a>
                                     </th>
-                                    <th style="padding:14px 16px; text-align:right;">Aksi</th>
+                                    <th style="padding:14px 16px; text-align:right; white-space:nowrap;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -5710,8 +5604,9 @@ document.addEventListener('click', function(e) {
                                     <?php foreach ($showingEmployers as $vEmp):
                                         $vBrand = !empty($vEmp['brand_name']) ? $vEmp['brand_name'] : ($vEmp['owner_name'] ?: $vEmp['name']);
                                         $vOwner = !empty($vEmp['brand_name']) ? ($vEmp['owner_name'] ?: $vEmp['name']) : '';
+                                        $vDeadline = get_verification_deadline_info($vEmp['created_at'] ?? null, $vEmp['verification_status'] ?? 'PENDING');
                                     ?>
-                                        <tr style="border-bottom:1px solid #f1f5f9;">
+                                        <tr style="<?php echo $vDeadline['row_style']; ?>">
                                             <td style="padding:14px 16px;">
                                                 <div style="display:flex; align-items:center; gap:12px;">
                                                     <div class="item-avatar-box">
@@ -5729,9 +5624,9 @@ document.addEventListener('click', function(e) {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td style="padding:14px 16px;"><span class="pill-badge verified"><?php echo e($vEmp['entity_type'] ?? 'Individu'); ?></span></td>
+                                            <td style="padding:14px 16px; white-space:nowrap;"><span class="pill-badge verified"><?php echo e($vEmp['entity_type'] ?? 'Individu'); ?></span></td>
                                             <td style="padding:14px 16px; color:#334155; font-size:13px;"><?php echo e($vEmp['city'] ?: '-'); ?></td>
-                                            <td style="padding:14px 16px; color:#334155; font-size:13px;"><?php echo e($vEmp['phone'] ?: '0'); ?></td>
+                                            <td style="padding:14px 16px; color:#334155; font-size:13px; white-space:nowrap;"><?php echo e($vEmp['phone'] ?: '0'); ?></td>
                                             <td style="padding:14px 16px; font-size:13px; white-space:nowrap;">
                                                 <?php if ($vEmp['verification_status'] === 'APPROVED'): ?>
                                                     <span class="pill-badge verified" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;">● Terverifikasi</span>
@@ -5753,7 +5648,7 @@ document.addEventListener('click', function(e) {
                                                     </div>
                                                 <?php endif; ?>
                                             </td>
-                                            <td style="padding:14px 16px; color:#64748b; font-size:13px;">-</td>
+                                            <td style="padding:14px 16px; font-size:13px; white-space:nowrap;"><?php echo $vDeadline['badge_html']; ?></td>
                                             <td style="padding:14px 16px; font-size:13px;">
                                                 <?php if (!empty($vEmp['assigned_to'])): ?>
                                                     <span style="font-weight:600; color:#0284c7;"><?php echo e($vEmp['assigned_to']); ?></span>

@@ -771,7 +771,12 @@ function render_notif_dropdown(array $notifications, int $unread, string $verSta
             // Custom icon and styling based on notification type / title
             $iconHtml = '';
             $extraStyle = '';
-            if (stripos($title, 'Disetujui') !== false) {
+            $isSlaOverdue = (($row['type'] ?? '') === 'SLA_OVERDUE_ALERT' || stripos($title, 'SLA Verifikasi') !== false);
+            if ($isSlaOverdue) {
+                $iconHtml = '<i class="fa-solid fa-triangle-exclamation" style="color:#dc2626; font-size:12px; margin-right:4px;"></i> ';
+                $extraStyle = 'border-left:3px solid #dc2626; background:#fff1f2;';
+                $modalAttr = ' onclick="window.location.href=\'admin.php?view=verifikasi_employer&tab=process\';" style="cursor:pointer;"';
+            } elseif (stripos($title, 'Disetujui') !== false) {
                 $iconHtml = '<i class="fa-solid fa-circle-check" style="color:#10b981; font-size:12px; margin-right:4px;"></i> ';
                 $extraStyle = 'border-left:3px solid #10b981; background:#f0fdf4;';
             } elseif (stripos($title, 'Ditolak') !== false) {
@@ -1963,5 +1968,89 @@ function reject_profile_change_request(int $requestId, string $reviewerName, str
     notify_user($userId, 'Perubahan Profil Ditolak', 'Permintaan perubahan profil Anda belum dapat disetujui oleh Admin. Alasan: ' . $adminNotes, 'error');
 
     return ['success' => true];
+}
+
+/**
+ * Menghitung SLA Deadline Verifikasi (3 hari kalender) dan menghasilkan badge tampilan sesuai desain
+ */
+function get_verification_deadline_info(?string $createdAt, string $status = 'PENDING', ?int $referenceNow = null): array
+{
+    $isResolved = in_array($status, ['APPROVED', 'REJECTED', 'ACTIVE_VERIFIED', 'FULL_DISABLED', 'Tayang', 'Ditolak', 'CANCELED'], true);
+    if ($isResolved || empty($createdAt)) {
+        return [
+            'status' => 'RESOLVED',
+            'days_left' => null,
+            'is_overdue' => false,
+            'deadline_time' => null,
+            'badge_html' => '<span style="color:#94a3b8;">-</span>',
+            'row_bg' => '',
+            'row_style' => 'border-bottom:1px solid #f1f5f9;',
+        ];
+    }
+
+    $now = $referenceNow ?? time();
+    $createdTs = strtotime($createdAt);
+    $deadlineTs = $createdTs + (3 * 86400); // 3 hari kalender (72 jam)
+    $secondsLeft = $deadlineTs - $now;
+    $hoursLeft = $secondsLeft / 3600;
+
+    // Lewat dari 3 hari (SLA Terlampaui)
+    if ($secondsLeft <= 0) {
+        return [
+            'status' => 'OVERDUE',
+            'days_left' => 0,
+            'is_overdue' => true,
+            'deadline_time' => $deadlineTs,
+            'badge_html' => '<span style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-exclamation" style="color:#dc2626; font-size:11px;"></i> Segera Verifikasi</span>',
+            'row_bg' => 'background:#fff1f2;',
+            'row_style' => 'background:#fff1f2; border-bottom:1px solid #ffe4e6;',
+        ];
+    }
+
+    if ($hoursLeft >= 60) {
+        // 3 hari lagi (Biru muda #0284c7)
+        return [
+            'status' => '3_DAYS',
+            'days_left' => 3,
+            'is_overdue' => false,
+            'deadline_time' => $deadlineTs,
+            'badge_html' => '<span style="background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-info" style="color:#0284c7; font-size:11px;"></i> 3 hari lagi</span>',
+            'row_bg' => '',
+            'row_style' => 'border-bottom:1px solid #f1f5f9;',
+        ];
+    } elseif ($hoursLeft >= 40) {
+        // 2 hari lagi (Indigo #6366f1)
+        return [
+            'status' => '2_DAYS',
+            'days_left' => 2,
+            'is_overdue' => false,
+            'deadline_time' => $deadlineTs,
+            'badge_html' => '<span style="background:#ede9fe; color:#6366f1; border:1px solid #ddd6fe; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-info" style="color:#6366f1; font-size:11px;"></i> 2 hari lagi</span>',
+            'row_bg' => '',
+            'row_style' => 'border-bottom:1px solid #f1f5f9;',
+        ];
+    } elseif ($hoursLeft >= 20) {
+        // 1 hari lagi (Ungu #7c3aed)
+        return [
+            'status' => '1_DAY',
+            'days_left' => 1,
+            'is_overdue' => false,
+            'deadline_time' => $deadlineTs,
+            'badge_html' => '<span style="background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-info" style="color:#7c3aed; font-size:11px;"></i> 1 hari lagi</span>',
+            'row_bg' => '',
+            'row_style' => 'border-bottom:1px solid #f1f5f9;',
+        ];
+    } else {
+        // 0 hari lagi (Amber / Kuning oranye #b45309)
+        return [
+            'status' => '0_DAYS',
+            'days_left' => 0,
+            'is_overdue' => false,
+            'deadline_time' => $deadlineTs,
+            'badge_html' => '<span style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-clock" style="color:#d97706; font-size:11px;"></i> 0 hari lagi</span>',
+            'row_bg' => '',
+            'row_style' => 'border-bottom:1px solid #f1f5f9;',
+        ];
+    }
 }
 
