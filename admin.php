@@ -3954,12 +3954,12 @@ document.addEventListener('click', function(e) {
                                     <!-- 2. PANEL ONLINE -->
                                     <div id="panelMetodeOnline" style="display:<?php echo ($savedMethod === 'ONLINE') ? 'block' : 'none'; ?>; background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; padding:16px; margin-bottom:18px;">
                                         <div style="font-size:13px; font-weight:800; color:#0369a1; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
-                                            <i class="fa-solid fa-shield-check"></i> Consent Verifikasi Online
+                                            <i class="fa-solid fa-shield-check"></i> Consent Verifikasi Online <span style="color:#ef4444; font-weight:700;">*</span>
                                         </div>
                                         <label id="labelConsentOnline" style="display:flex; align-items:flex-start; gap:12px; cursor:pointer; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:8px; padding:14px; transition:border-color 0.2s;">
                                             <input type="checkbox" id="checkConsentOnline" name="consent_online" value="1" onchange="onConsentChange()" style="margin-top:2px; width:18px; height:18px; accent-color:#0284c7; cursor:pointer; flex-shrink:0;">
                                             <span style="font-size:13px; color:#0f172a; line-height:1.5; font-weight:500;">
-                                                “Saya telah melakukan pemeriksaan/verifikasi secara online terhadap data dan dokumen pengajuan Pemberi Kerja Individu serta memberikan hasil pemeriksaan berdasarkan informasi yang tersedia pada sistem.” <span style="color:#ef4444; font-weight:700;">*</span>
+                                                “Saya telah melakukan pemeriksaan/verifikasi secara online terhadap data dan dokumen pengajuan Pemberi Kerja Individu serta memberikan hasil pemeriksaan berdasarkan informasi yang tersedia pada sistem.”
                                             </span>
                                         </label>
                                     </div>
@@ -4012,10 +4012,13 @@ document.addEventListener('click', function(e) {
 
                                         <!-- Checkbox wajib Pernyataan Pemeriksaan Lapangan -->
                                         <div>
+                                            <div style="font-size:13px; font-weight:800; color:#92400e; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                                                <i class="fa-solid fa-clipboard-check"></i> Pernyataan Pemeriksaan Lapangan <span style="color:#ef4444; font-weight:700;">*</span>
+                                            </div>
                                             <label id="labelConsentField" style="display:flex; align-items:flex-start; gap:12px; cursor:pointer; background:#ffffff; border:1.5px solid #fcd34d; border-radius:8px; padding:14px; transition:border-color 0.2s;">
                                                 <input type="checkbox" id="checkConsentField" name="consent_field" value="1" onchange="onConsentChange()" style="margin-top:2px; width:18px; height:18px; accent-color:#d97706; cursor:pointer; flex-shrink:0;">
                                                 <span style="font-size:13px; color:#0f172a; line-height:1.5; font-weight:500;">
-                                                    “Saya telah melakukan pemeriksaan/verifikasi lapangan terhadap pengajuan Pemberi Kerja Individu dan memberikan hasil pemeriksaan berdasarkan kondisi yang saya temukan.” <span style="color:#ef4444; font-weight:700;">*</span>
+                                                    “Saya telah melakukan pemeriksaan/verifikasi lapangan terhadap pengajuan Pemberi Kerja Individu dan memberikan hasil pemeriksaan berdasarkan kondisi yang saya temukan.”
                                                 </span>
                                             </label>
                                         </div>
