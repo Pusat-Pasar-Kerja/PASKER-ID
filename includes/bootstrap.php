@@ -194,6 +194,12 @@ function ensure_sqlite_extra_tables(PDO $pdo): void
             if (!in_array('business_logo', $cols, true)) {
                 $pdo->exec('ALTER TABLE employer_profiles ADD COLUMN business_logo TEXT');
             }
+            if (!in_array('verification_method', $cols, true)) {
+                $pdo->exec('ALTER TABLE employer_profiles ADD COLUMN verification_method TEXT DEFAULT "ONLINE"');
+            }
+            if (!in_array('location_check_result', $cols, true)) {
+                $pdo->exec('ALTER TABLE employer_profiles ADD COLUMN location_check_result TEXT');
+            }
         } catch (Throwable $ignored) {}
     } catch (Throwable $ignored) {}
 
@@ -614,6 +620,8 @@ function ensure_database_schema(PDO $pdo): void
                 'officer_statement' => "TEXT NULL AFTER consent_given_at",
                 'officer_name' => "VARCHAR(120) NULL AFTER officer_statement",
                 'entity_type' => "VARCHAR(50) DEFAULT 'Individu' AFTER officer_name",
+                'verification_method' => "VARCHAR(30) DEFAULT 'ONLINE' AFTER entity_type",
+                'location_check_result' => "VARCHAR(30) NULL AFTER verification_method",
             ];
 
             foreach ($addCols as $col => $definition) {

@@ -138,29 +138,59 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
                 }
             }
 
-        if (($decision === 'revision' || $decision === 'reject') && $notes === '') {
+            $verifMethod = strtoupper(trim((string)($_POST['verification_method'] ?? 'ONLINE')));
+            if ($verifMethod !== 'OFFLINE') {
+                $verifMethod = 'ONLINE';
+            }
+            $onlineConsent = !empty($_POST['online_consent']);
+            $fieldConsent = !empty($_POST['field_inspection_consent']);
+            $locationResult = strtoupper(trim((string)($_POST['location_check_result'] ?? '')));
+            if ($verifMethod === 'OFFLINE' && $locationResult !== 'TIDAK_SESUAI') {
+                $locationResult = 'SESUAI';
+            }
+
+            // Behavior: Tombol keputusan Setujui / Revisi / Tolak hanya dapat diproses setelah consent sesuai metode verifikasi telah dicentang.
+            if ($verifMethod === 'ONLINE' && !$onlineConsent) {
                 $pdo->rollBack();
-            flash('error', 'Catatan Verifikator wajib diisi untuk keputusan Revisi atau Tolak.');
+                flash('error', 'Consent Verifikasi Online wajib dicentang sebelum keputusan dapat diproses.');
                 redirect($redirectUrl);
                 exit;
             }
 
+            if ($verifMethod === 'OFFLINE' && !$fieldConsent) {
+                $pdo->rollBack();
+                flash('error', 'Pernyataan Pemeriksaan Lapangan wajib dicentang sebelum keputusan dapat diproses.');
+                redirect($redirectUrl);
+                exit;
+            }
+
+            // Behavior: Field Alasan/Temuan wajib ketika Admin memilih Revisi atau Tolak.
+            if (($decision === 'revision' || $decision === 'reject') && $notes === '') {
+                $pdo->rollBack();
+                flash('error', 'Field Alasan/Temuan wajib diisi ketika Admin memilih Revisi atau Tolak.');
+                redirect($redirectUrl);
+                exit;
+            }
+
+            $savedLocationResult = ($verifMethod === 'OFFLINE') ? $locationResult : null;
+            $methodLog = "Metode: " . ($verifMethod === 'OFFLINE' ? "Offline (Lokasi: {$locationResult})" : "Online");
+
             if ($decision === 'approve') {
                 $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                 if ($driver === 'sqlite') {
-                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 1, verification_status = "APPROVED", active_until = datetime("now", "+6 months"), last_activated_at = datetime("now"), extension_requested = 0, extension_status = "NONE", manual_review_status = NULL, verifier_notes = ?, verification_checklist = ? WHERE user_id = ?');
+                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 1, verification_status = "APPROVED", active_until = datetime("now", "+6 months"), last_activated_at = datetime("now"), extension_requested = 0, extension_status = "NONE", manual_review_status = NULL, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE user_id = ?');
                 } else {
-                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 1, verification_status = "APPROVED", active_until = DATE_ADD(NOW(), INTERVAL 6 MONTH), last_activated_at = NOW(), extension_requested = 0, extension_status = "NONE", manual_review_status = NULL, verifier_notes = ?, verification_checklist = ? WHERE user_id = ?');
+                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 1, verification_status = "APPROVED", active_until = DATE_ADD(NOW(), INTERVAL 6 MONTH), last_activated_at = NOW(), extension_requested = 0, extension_status = "NONE", manual_review_status = NULL, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE user_id = ?');
                 }
-                $stmt->execute([$notes, $checklist, $targetUserId]);
+                $stmt->execute([$notes, $checklist, $verifMethod, $savedLocationResult, $targetUserId]);
                 $pdo->prepare('UPDATE users SET profile_complete = 1 WHERE id = ?')->execute([$targetUserId]);
 
                 $isReactivationApproval = !empty($targetEmp['last_activated_at']);
                 $auditAction = $isReactivationApproval ? 'REACTIVATION_APPROVED' : 'APPROVED';
                 $notesStr = !empty($notes) ? " Catatan: {$notes}" : "";
                 $auditText = $isReactivationApproval
-                    ? "Permohonan reaktivasi Hak Akses online disetujui. Masa aktif baru berlaku 6 bulan.{$notesStr}"
-                    : "Profil disetujui. Masa aktif berlaku 6 bulan.{$notesStr}";
+                    ? "Permohonan reaktivasi Hak Akses online disetujui ({$methodLog}). Masa aktif baru berlaku 6 bulan.{$notesStr}"
+                    : "Profil disetujui ({$methodLog}). Masa aktif berlaku 6 bulan.{$notesStr}";
 
                 record_audit_log('employer', $targetUserId, $auditAction, $auditText, $user['name'], $user['role'] ?? 'admin', true);
                 notify_user($targetUserId, 'Profil Disetujui', 'Selamat! Hak Akses Pemberi Kerja Individu Anda telah disetujui dan aktif selama 6 bulan.', 'success');
@@ -172,21 +202,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
                 $manualStatus = ($newRevisionCount >= 3) ? 'MANUAL_DINAS_REVIEW' : 'NONE';
 
                 try {
-                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "NEEDS_REVISION", revision_count = ?, rejection_count = ?, manual_review_status = ?, verifier_notes = ?, verification_checklist = ? WHERE user_id = ?');
-                    $stmt->execute([$newRevisionCount, $newRevisionCount, $manualStatus, $notes, $checklist, $targetUserId]);
+                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "NEEDS_REVISION", revision_count = ?, rejection_count = ?, manual_review_status = ?, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE user_id = ?');
+                    $stmt->execute([$newRevisionCount, $newRevisionCount, $manualStatus, $notes, $checklist, $verifMethod, $savedLocationResult, $targetUserId]);
                 } catch (Throwable $ignore) {
-                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "NEEDS_REVISION", rejection_count = ?, verifier_notes = ?, verification_checklist = ? WHERE user_id = ?');
-                    $stmt->execute([$newRevisionCount, $notes, $checklist, $targetUserId]);
+                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "NEEDS_REVISION", rejection_count = ?, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE user_id = ?');
+                    $stmt->execute([$newRevisionCount, $notes, $checklist, $verifMethod, $savedLocationResult, $targetUserId]);
                 }
-                record_audit_log('employer', $targetUserId, 'REVISION_REQUESTED', "Permintaan perbaikan data (Revisi ke-{$newRevisionCount}) dikirim ke pemohon. Catatan: {$notes}", $user['name'], $user['role'] ?? 'admin', true);
+                record_audit_log('employer', $targetUserId, 'REVISION_REQUESTED', "Permintaan perbaikan data (Revisi ke-{$newRevisionCount}) dikirim ke pemohon. {$methodLog}. Catatan: {$notes}", $user['name'], $user['role'] ?? 'admin', true);
                 notify_user($targetUserId, "Perbaikan Profil Diperlukan (Revisi ke-{$newRevisionCount})", 'Verifikator meminta perbaikan profil: ' . $notes, 'warning');
                 $pdo->commit();
                 flash('success', "Profil dikembalikan ke pemohon untuk diperbaiki (Diminta Revisi ke-{$newRevisionCount}).");
             } elseif ($decision === 'reject') {
                 $newRejectionCount = (int)($targetEmp['rejection_count'] ?? 0) + 1;
-                $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "REJECTED", rejection_count = ?, verifier_notes = ?, verification_checklist = ? WHERE user_id = ?');
-                $stmt->execute([$newRejectionCount, $notes, $checklist, $targetUserId]);
-                record_audit_log('employer', $targetUserId, 'REJECTED', "Profil ditolak. Catatan: {$notes}", $user['name'], $user['role'] ?? 'admin', true);
+                $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "REJECTED", rejection_count = ?, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE user_id = ?');
+                $stmt->execute([$newRejectionCount, $notes, $checklist, $verifMethod, $savedLocationResult, $targetUserId]);
+                record_audit_log('employer', $targetUserId, 'REJECTED', "Profil ditolak. {$methodLog}. Catatan: {$notes}", $user['name'], $user['role'] ?? 'admin', true);
                 notify_user($targetUserId, 'Profil Ditolak', 'Verifikator menolak profil Anda: ' . $notes, 'error');
                 $pdo->commit();
                 flash('success', 'Profil Pemberi Kerja telah Ditolak.');
@@ -1049,6 +1079,7 @@ if ($view === 'verifikasi_employer') {
                ep.verification_checklist, ep.assigned_to, ep.assigned_at, ep.assignment_reason, ep.rejection_count,
                ep.manual_review_status, ep.consent_data_hash, ep.consent_given_at, ep.officer_statement, ep.officer_name, ep.entity_type,
                ep.doc_permission, ep.permit_document, ep.doc_location_photo, ep.workplace_photo, ep.social_media, ep.instagram, ep.linkedin, ep.facebook, ep.domicile_city_id,
+               ep.verification_method, ep.location_check_result,
                (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') AS pending_profile_changes,
                (SELECT id FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING' ORDER BY id DESC LIMIT 1) AS pending_pcr_id
     SQL;
@@ -3468,13 +3499,13 @@ document.addEventListener('click', function(e) {
                                     <button type="button" data-open-modal="modal-confirm-unassign" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:999px; padding:8px 16px; font-size:13px; font-weight:700; color:#475569; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
                                         Batalkan Penugasan
                                     </button>
-                                    <button type="button" data-open-modal="modal-header-revisi" style="background:#fffbeb; border:1px solid #fde68a; border-radius:999px; padding:8px 18px; font-size:13px; font-weight:700; color:#b45309; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                                    <button type="button" id="headerBtnRevisi" onclick="handleHeaderDecisionClick('revision')" disabled style="background:#fffbeb; border:1px solid #fde68a; border-radius:999px; padding:8px 18px; font-size:13px; font-weight:700; color:#b45309; cursor:not-allowed; opacity:0.5; box-shadow:0 1px 3px rgba(0,0,0,0.05); transition:all 0.2s;">
                                         Revisi
                                     </button>
-                                    <button type="button" data-open-modal="modal-header-tolak" style="background:#fef2f2; border:1px solid #fecaca; border-radius:999px; padding:8px 18px; font-size:13px; font-weight:700; color:#b91c1c; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                                    <button type="button" id="headerBtnTolak" onclick="handleHeaderDecisionClick('reject')" disabled style="background:#fef2f2; border:1px solid #fecaca; border-radius:999px; padding:8px 18px; font-size:13px; font-weight:700; color:#b91c1c; cursor:not-allowed; opacity:0.5; box-shadow:0 1px 3px rgba(0,0,0,0.05); transition:all 0.2s;">
                                         Tolak
                                     </button>
-                                    <button type="button" data-open-modal="modal-header-setujui" style="background:#0284c7; border:none; border-radius:999px; padding:8px 20px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.3);">
+                                    <button type="button" id="headerBtnSetujui" onclick="handleHeaderDecisionClick('approve')" disabled style="background:#0284c7; border:none; border-radius:999px; padding:8px 20px; font-size:13px; font-weight:700; color:#ffffff; cursor:not-allowed; opacity:0.5; box-shadow:0 2px 6px rgba(2,132,199,0.3); transition:all 0.2s;">
                                         Setujui
                                     </button>
                                 </div>
@@ -3807,6 +3838,197 @@ document.addEventListener('click', function(e) {
                                 </div>
                             </div>
 
+                            <!-- SECTION METODE VERIFIKASI (DIATAS DATA PROFIL PEMBERI KERJA INDIVIDU) -->
+                            <?php
+                            $savedMethod = !empty($selectedEmployer['verification_method']) ? strtoupper($selectedEmployer['verification_method']) : 'ONLINE';
+                            $savedLocResult = !empty($selectedEmployer['location_check_result']) ? strtoupper($selectedEmployer['location_check_result']) : 'SESUAI';
+                            $isVerifiedOrRejected = in_array($status, ['APPROVED', 'REJECTED'], true);
+                            ?>
+                            <div id="sectionMetodeVerifikasi" class="section-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:22px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                                <div class="section-card-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <div style="width:28px; height:28px; border-radius:6px; background:#e0f2fe; color:#0284c7; display:flex; align-items:center; justify-content:center; font-size:14px;">
+                                            <i class="fa-solid fa-clipboard-check"></i>
+                                        </div>
+                                        <span>Metode Verifikasi</span>
+                                    </div>
+                                    <?php if ($isVerifiedOrRejected): ?>
+                                        <span class="pill-badge" style="background:<?php echo $status === 'APPROVED' ? '#dcfce7; color:#15803d; border:1px solid #bbf7d0;' : '#fee2e2; color:#b91c1c; border:1px solid #fecaca;'; ?> font-size:12px; font-weight:700;">
+                                            <i class="fa-solid <?php echo $status === 'APPROVED' ? 'fa-check' : 'fa-xmark'; ?>"></i> Selesai Diverifikasi
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if ($isVerifiedOrRejected): ?>
+                                    <!-- DISPLAY HASIL METODE VERIFIKASI SEBELUMNYA (READ-ONLY) -->
+                                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px;">
+                                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:14px;">
+                                            <div>
+                                                <div style="font-size:12px; color:#64748b; font-weight:600; margin-bottom:4px;">Metode Digunakan</div>
+                                                <div style="font-size:14px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                                                    <?php if ($savedMethod === 'OFFLINE'): ?>
+                                                        <i class="fa-solid fa-map-location-dot" style="color:#d97706;"></i> Offline (Pemeriksaan Lapangan)
+                                                    <?php else: ?>
+                                                        <i class="fa-solid fa-globe" style="color:#0284c7;"></i> Online (Pemeriksaan Sistem)
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                            <?php if ($savedMethod === 'OFFLINE'): ?>
+                                                <div>
+                                                    <div style="font-size:12px; color:#64748b; font-weight:600; margin-bottom:4px;">Hasil Pemeriksaan Lokasi</div>
+                                                    <div style="font-size:14px; font-weight:700; color:<?php echo $savedLocResult === 'SESUAI' ? '#15803d' : '#b45309'; ?>; display:flex; align-items:center; gap:6px;">
+                                                        <i class="fa-solid <?php echo $savedLocResult === 'SESUAI' ? 'fa-circle-check' : 'fa-triangle-exclamation'; ?>"></i>
+                                                        <?php echo $savedLocResult === 'SESUAI' ? 'Sesuai' : 'Tidak Sesuai'; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
+                                            <div>
+                                                <div style="font-size:12px; color:#64748b; font-weight:600; margin-bottom:4px;">Pemeriksa</div>
+                                                <div style="font-size:13.5px; font-weight:700; color:#0f172a;">
+                                                    <?php echo e($selectedEmployer['assigned_to'] ?: '-'); ?>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <?php if ($savedMethod === 'OFFLINE'): ?>
+                                            <div style="background:#ffffff; border:1px solid #fcd34d; border-radius:8px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                                                <span style="font-size:12.5px; color:#475569;">Alamat yang dilakukan pemeriksaan: <strong><?php echo e($selectedEmployer['address'] ?: '-'); ?></strong></span>
+                                                <span class="badge-field-inspected" style="display:inline-flex; align-items:center; gap:5px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">
+                                                    <i class="fa-solid fa-star" style="color:#eab308; font-size:11px;"></i> Sudah Dilakukan Pemeriksaan Lapangan
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <?php if (!empty($selectedEmployer['verifier_notes'])): ?>
+                                            <div style="border-top:1px solid #e2e8f0; padding-top:12px; margin-top:8px;">
+                                                <div style="font-size:12px; color:#64748b; font-weight:600; margin-bottom:2px;">Catatan / Temuan Verifikator:</div>
+                                                <div style="font-size:13px; color:#1e293b; line-height:1.5;"><?php echo nl2br(e($selectedEmployer['verifier_notes'])); ?></div>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <!-- FORM INTERAKTIF METODE VERIFIKASI -->
+                                    <?php if (!$hasAssignment): ?>
+                                        <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:12px 14px; margin-bottom:16px; display:flex; align-items:flex-start; gap:10px;">
+                                            <i class="fa-solid fa-circle-info" style="color:#b45309; margin-top:2px;"></i>
+                                            <div style="font-size:12.5px; color:#92400e; line-height:1.4;">
+                                                Pemberi kerja belum memiliki penugasan aktif. Silakan klik tombol <strong>"Ambil Pengajuan"</strong> pada bagian header terlebih dahulu untuk mengaktifkan proses verifikasi dan keputusan.
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <!-- 1. RADIO BUTTON PILIHAN METODE -->
+                                    <div style="margin-bottom:18px;">
+                                        <label style="font-size:13px; font-weight:700; color:#0f172a; display:block; margin-bottom:8px;">
+                                            Pilih Metode Verifikasi <span style="color:#ef4444;">*</span>
+                                        </label>
+                                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
+                                            <!-- Pilihan Online -->
+                                            <label id="optVerifOnlineCard" style="display:flex; align-items:flex-start; gap:12px; padding:14px; border:2px solid <?php echo ($savedMethod === 'ONLINE') ? '#0284c7' : '#e2e8f0'; ?>; background:<?php echo ($savedMethod === 'ONLINE') ? '#f0f9ff' : '#ffffff'; ?>; border-radius:12px; cursor:pointer; transition:all 0.2s;">
+                                                <input type="radio" name="verification_method_radio" value="ONLINE" <?php echo ($savedMethod === 'ONLINE') ? 'checked' : ''; ?> onchange="onMetodeVerifikasiChange('ONLINE')" style="margin-top:2px; width:17px; height:17px; accent-color:#0284c7; cursor:pointer;">
+                                                <div>
+                                                    <div style="font-size:13.5px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                                                        <i class="fa-solid fa-globe" style="color:#0284c7;"></i> Online
+                                                    </div>
+                                                    <div style="font-size:12px; color:#64748b; margin-top:2px; line-height:1.4;">
+                                                        Pemeriksaan dokumen & kesesuaian data pengajuan secara digital pada sistem.
+                                                    </div>
+                                                </div>
+                                            </label>
+
+                                            <!-- Pilihan Offline -->
+                                            <label id="optVerifOfflineCard" style="display:flex; align-items:flex-start; gap:12px; padding:14px; border:2px solid <?php echo ($savedMethod === 'OFFLINE') ? '#0284c7' : '#e2e8f0'; ?>; background:<?php echo ($savedMethod === 'OFFLINE') ? '#f0f9ff' : '#ffffff'; ?>; border-radius:12px; cursor:pointer; transition:all 0.2s;">
+                                                <input type="radio" name="verification_method_radio" value="OFFLINE" <?php echo ($savedMethod === 'OFFLINE') ? 'checked' : ''; ?> onchange="onMetodeVerifikasiChange('OFFLINE')" style="margin-top:2px; width:17px; height:17px; accent-color:#0284c7; cursor:pointer;">
+                                                <div>
+                                                    <div style="font-size:13.5px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                                                        <i class="fa-solid fa-map-location-dot" style="color:#d97706;"></i> Offline
+                                                    </div>
+                                                    <div style="font-size:12px; color:#64748b; margin-top:2px; line-height:1.4;">
+                                                        Pemeriksaan / verifikasi lapangan langsung ke alamat lokasi tempat usaha.
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- 2. PANEL ONLINE -->
+                                    <div id="panelMetodeOnline" style="display:<?php echo ($savedMethod === 'ONLINE') ? 'block' : 'none'; ?>; background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; padding:16px; margin-bottom:18px;">
+                                        <div style="font-size:13px; font-weight:800; color:#0369a1; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                                            <i class="fa-solid fa-shield-check"></i> Consent Verifikasi Online
+                                        </div>
+                                        <label id="labelConsentOnline" style="display:flex; align-items:flex-start; gap:12px; cursor:pointer; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:8px; padding:14px; transition:border-color 0.2s;">
+                                            <input type="checkbox" id="checkConsentOnline" name="consent_online" value="1" onchange="onConsentChange()" style="margin-top:2px; width:18px; height:18px; accent-color:#0284c7; cursor:pointer; flex-shrink:0;">
+                                            <span style="font-size:13px; color:#0f172a; line-height:1.5; font-weight:500;">
+                                                “Saya telah melakukan pemeriksaan/verifikasi secara online terhadap data dan dokumen pengajuan Pemberi Kerja Individu serta memberikan hasil pemeriksaan berdasarkan informasi yang tersedia pada sistem.” <span style="color:#ef4444; font-weight:700;">*</span>
+                                            </span>
+                                        </label>
+                                    </div>
+
+                                    <!-- 3. PANEL OFFLINE -->
+                                    <div id="panelMetodeOffline" style="display:<?php echo ($savedMethod === 'OFFLINE') ? 'block' : 'none'; ?>; background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:16px; margin-bottom:18px;">
+                                        <div style="font-size:13px; font-weight:800; color:#92400e; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                                            <i class="fa-solid fa-person-walking-luggage"></i> Pemeriksaan Lapangan (Offline)
+                                        </div>
+
+                                        <!-- Alamat dengan badge/bintang -->
+                                        <div style="background:#ffffff; border:1px solid #fcd34d; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+                                            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:4px;">
+                                                <span style="font-size:12px; color:#64748b; font-weight:600;">Alamat Pemeriksaan Lapangan:</span>
+                                                <span id="badgeAlamatSection" class="badge-field-inspected" style="display:<?php echo ($savedMethod === 'OFFLINE') ? 'inline-flex' : 'none'; ?>; align-items:center; gap:5px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">
+                                                    <i class="fa-solid fa-star" style="color:#eab308; font-size:11px;"></i> Sudah Dilakukan Pemeriksaan Lapangan
+                                                </span>
+                                            </div>
+                                            <div style="font-size:13.5px; font-weight:700; color:#0f172a; line-height:1.4;">
+                                                <?php echo e($selectedEmployer['address'] ?: 'Jl. Ir. H. Juanda No. 25'); ?><?php echo !empty($selectedEmployer['city']) ? ', ' . e($selectedEmployer['city']) : ''; ?>
+                                            </div>
+                                            <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                                                Patokan / Detail: <?php echo e($selectedEmployer['address_detail'] ?: '-'); ?> | Kode Pos: <?php echo e($selectedEmployer['postal_code'] ?: '-'); ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- Radio button Hasil Pemeriksaan Lokasi/Alamat: Sesuai / Tidak Sesuai -->
+                                        <div style="margin-bottom:14px;">
+                                            <label style="font-size:13px; font-weight:700; color:#0f172a; display:block; margin-bottom:8px;">
+                                                Hasil Pemeriksaan Lokasi/Alamat <span style="color:#ef4444;">*</span>
+                                            </label>
+                                            <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                                                <label id="labelLocSesuai" style="display:inline-flex; align-items:center; gap:8px; background:#ffffff; border:1.5px solid <?php echo ($savedLocResult !== 'TIDAK_SESUAI') ? '#10b981' : '#cbd5e1'; ?>; padding:8px 16px; border-radius:8px; cursor:pointer; transition:all 0.2s;">
+                                                    <input type="radio" name="location_check_result_radio" value="SESUAI" <?php echo ($savedLocResult !== 'TIDAK_SESUAI') ? 'checked' : ''; ?> onchange="onLocationResultChange('SESUAI')" style="accent-color:#10b981; width:16px; height:16px; cursor:pointer;">
+                                                    <span style="font-size:13px; font-weight:700; color:#065f46; display:flex; align-items:center; gap:6px;">
+                                                        <i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Sesuai
+                                                    </span>
+                                                </label>
+                                                <label id="labelLocTidakSesuai" style="display:inline-flex; align-items:center; gap:8px; background:#ffffff; border:1.5px solid <?php echo ($savedLocResult === 'TIDAK_SESUAI') ? '#f59e0b' : '#cbd5e1'; ?>; padding:8px 16px; border-radius:8px; cursor:pointer; transition:all 0.2s;">
+                                                    <input type="radio" name="location_check_result_radio" value="TIDAK_SESUAI" <?php echo ($savedLocResult === 'TIDAK_SESUAI') ? 'checked' : ''; ?> onchange="onLocationResultChange('TIDAK_SESUAI')" style="accent-color:#f59e0b; width:16px; height:16px; cursor:pointer;">
+                                                    <span style="font-size:13px; font-weight:700; color:#92400e; display:flex; align-items:center; gap:6px;">
+                                                        <i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;"></i> Tidak Sesuai
+                                                    </span>
+                                                </label>
+                                            </div>
+                                            <div id="offlineResultNotice" style="font-size:12px; color:#92400e; margin-top:6px; display:<?php echo ($savedLocResult === 'TIDAK_SESUAI') ? 'block' : 'none'; ?>;">
+                                                <i class="fa-solid fa-circle-info"></i> Catatan: Pada metode Offline, hasil alamat <strong>Tidak Sesuai</strong> tidak otomatis menonaktifkan tombol Setujui jika verifikator memiliki pertimbangan khusus.
+                                            </div>
+                                        </div>
+
+                                        <!-- Checkbox wajib Pernyataan Pemeriksaan Lapangan -->
+                                        <div>
+                                            <label id="labelConsentField" style="display:flex; align-items:flex-start; gap:12px; cursor:pointer; background:#ffffff; border:1.5px solid #fcd34d; border-radius:8px; padding:14px; transition:border-color 0.2s;">
+                                                <input type="checkbox" id="checkConsentField" name="consent_field" value="1" onchange="onConsentChange()" style="margin-top:2px; width:18px; height:18px; accent-color:#d97706; cursor:pointer; flex-shrink:0;">
+                                                <span style="font-size:13px; color:#0f172a; line-height:1.5; font-weight:500;">
+                                                    “Saya telah melakukan pemeriksaan/verifikasi lapangan terhadap pengajuan Pemberi Kerja Individu dan memberikan hasil pemeriksaan berdasarkan kondisi yang saya temukan.” <span style="color:#ef4444; font-weight:700;">*</span>
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- 5. PETUNJUK KEPUTUSAN VERIFIKASI -->
+                                    <div id="consentStatusNotice" style="font-size:12.5px; color:#64748b; display:flex; align-items:center; gap:8px; border-top:1px solid #e2e8f0; padding-top:14px; margin-top:4px;">
+                                        <i class="fa-solid fa-lock" style="color:#94a3b8;"></i>
+                                        <span>Tombol keputusan di bagian atas (<strong>Setujui</strong> / <strong>Revisi</strong> / <strong>Tolak</strong>) akan aktif setelah consent verifikasi di atas dicentang.</span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
                             <!-- CARD 3: DATA PROFIL TABLE (INDIVIDUAL VS PERUSAHAAN/OSS) -->
                             <?php if (strcasecmp((string)($selectedEmployer['entity_type'] ?? 'Individual'), 'Perusahaan') === 0): ?>
                                 <!-- TABLE FOR PERUSAHAAN (PERBANDINGAN DATA OSS) -->
@@ -3870,7 +4092,17 @@ document.addEventListener('click', function(e) {
                                                      ]);
                                                      echo e(!empty($empLocParts) ? implode(', ', $empLocParts) : ($selectedEmployer['city'] ?: 'Dago, Coblong, Kota Bandung, Jawa Barat'));
                                                  ?></td></tr>
-                                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 14px; font-weight:600; color:#334155;">Alamat Lengkap</td><td style="padding:10px 14px; color:#0f172a;"><?php echo e($selectedEmployer['address'] ?: 'Jl. Ir. H. Juanda No. 25'); ?></td></tr>
+                                                <tr style="border-bottom:1px solid #f1f5f9;">
+                                                    <td style="padding:10px 14px; font-weight:600; color:#334155;">Alamat Lengkap</td>
+                                                    <td style="padding:10px 14px; color:#0f172a;">
+                                                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                                            <span><?php echo e($selectedEmployer['address'] ?: 'Jl. Ir. H. Juanda No. 25'); ?></span>
+                                                            <span id="badgeAlamatTable" class="badge-field-inspected" style="display:<?php echo (!empty($selectedEmployer['verification_method']) && strtoupper($selectedEmployer['verification_method']) === 'OFFLINE') ? 'inline-flex' : 'none'; ?>; align-items:center; gap:5px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">
+                                                                <i class="fa-solid fa-star" style="color:#eab308; font-size:11px;"></i> Sudah Dilakukan Pemeriksaan Lapangan
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
                                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 14px; font-weight:600; color:#334155;">Detail Alamat / Patokan</td><td style="padding:10px 14px; color:#0f172a;"><?php echo e($selectedEmployer['address_detail'] ?: 'Dekat persimpangan utama'); ?></td></tr>
                                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 14px; font-weight:600; color:#334155;">Kode Pos</td><td style="padding:10px 14px; color:#0f172a;"><?php echo e($selectedEmployer['postal_code'] ?: '40135'); ?></td></tr>
                                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 14px; font-weight:600; color:#334155;">Nama Brand Usaha</td><td style="padding:10px 14px; color:#0f172a;"><?php echo e($selectedEmployer['brand_name'] ?: '-'); ?></td></tr>
@@ -4034,7 +4266,12 @@ document.addEventListener('click', function(e) {
                                         <div style="color:#64748b; margin-bottom:2px; font-weight:500; display:flex; align-items:center; gap:6px;">
                                             <i class="fa-solid fa-house" style="color:#94a3b8;"></i> Alamat Lengkap
                                         </div>
-                                        <div style="font-weight:600; color:#0f172a;"><?php echo e($selectedEmployer['address'] ?: 'Jl. Ir. H. Juanda No. 25'); ?></div>
+                                        <div style="font-weight:600; color:#0f172a; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                            <span><?php echo e($selectedEmployer['address'] ?: 'Jl. Ir. H. Juanda No. 25'); ?></span>
+                                            <span id="badgeAlamatDetail" class="badge-field-inspected" style="display:<?php echo (!empty($selectedEmployer['verification_method']) && strtoupper($selectedEmployer['verification_method']) === 'OFFLINE') ? 'inline-flex' : 'none'; ?>; align-items:center; gap:5px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">
+                                                <i class="fa-solid fa-star" style="color:#eab308; font-size:11px;"></i> Sudah Dilakukan Pemeriksaan Lapangan
+                                            </span>
+                                        </div>
                                         <div style="font-size:12px; color:#64748b; margin-top:2px;">Kode Pos: <?php echo e($selectedEmployer['postal_code'] ?: '40135'); ?></div>
                                     </div>
                                 </div>
@@ -4779,6 +5016,10 @@ document.addEventListener('click', function(e) {
                                 <input type="hidden" name="admin_action" value="verify_employer">
                                 <input type="hidden" name="user_id" value="<?php echo $selectedEmployer['user_id']; ?>">
                                 <input type="hidden" name="decision" value="revision">
+                                <input type="hidden" name="verification_method" class="modal-sync-method" value="ONLINE">
+                                <input type="hidden" name="online_consent" class="modal-sync-online-consent" value="0">
+                                <input type="hidden" name="location_check_result" class="modal-sync-location-result" value="">
+                                <input type="hidden" name="field_inspection_consent" class="modal-sync-field-consent" value="0">
                                 <div style="margin-bottom:16px;">
                                     <label style="font-size:13px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">Catatan Perbaikan <span style="color:#ef4444;">*</span></label>
                                     <textarea name="verifier_notes" required placeholder="Tuliskan catatan perbaikan atau dokumen yang perlu dilengkapi..." style="width:100%; min-height:90px; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; color:#0f172a; outline:none; font-family:inherit;"></textarea>
@@ -4808,6 +5049,10 @@ document.addEventListener('click', function(e) {
                                 <input type="hidden" name="admin_action" value="verify_employer">
                                 <input type="hidden" name="user_id" value="<?php echo $selectedEmployer['user_id']; ?>">
                                 <input type="hidden" name="decision" value="reject">
+                                <input type="hidden" name="verification_method" class="modal-sync-method" value="ONLINE">
+                                <input type="hidden" name="online_consent" class="modal-sync-online-consent" value="0">
+                                <input type="hidden" name="location_check_result" class="modal-sync-location-result" value="">
+                                <input type="hidden" name="field_inspection_consent" class="modal-sync-field-consent" value="0">
                                 <div style="margin-bottom:16px;">
                                     <label style="font-size:13px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">Alasan Penolakan <span style="color:#ef4444;">*</span></label>
                                     <textarea name="verifier_notes" required placeholder="Tuliskan alasan penolakan..." style="width:100%; min-height:90px; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; color:#0f172a; outline:none; font-family:inherit;"></textarea>
@@ -4840,6 +5085,11 @@ document.addEventListener('click', function(e) {
                                 <input type="hidden" name="admin_action" value="verify_employer">
                                 <input type="hidden" name="user_id" value="<?php echo $selectedEmployer['user_id']; ?>">
                                 <input type="hidden" name="decision" value="approve">
+                                <input type="hidden" name="verification_method" class="modal-sync-method" value="ONLINE">
+                                <input type="hidden" name="online_consent" class="modal-sync-online-consent" value="0">
+                                <input type="hidden" name="location_check_result" class="modal-sync-location-result" value="">
+                                <input type="hidden" name="field_inspection_consent" class="modal-sync-field-consent" value="0">
+                                <input type="hidden" name="verifier_notes" value="">
                                 <div style="display:flex; justify-content:flex-end; gap:12px;">
                                     <button type="button" class="ghost-btn" data-close-modal="modal-header-setujui" style="border:1px solid #cbd5e1; border-radius:999px; padding:8px 20px; font-size:13px; font-weight:700; color:#475569; background:#ffffff; cursor:pointer;">
                                         Batal
@@ -5033,6 +5283,172 @@ document.addEventListener('click', function(e) {
                             modalCard.style.display = 'none';
                         }
                     });
+
+                    // --- METODE VERIFIKASI INTERACTION LOGIC ---
+                    let currentVerifMethod = '<?php echo $savedMethod ?? 'ONLINE'; ?>';
+                    let currentLocationResult = '<?php echo $savedLocResult ?? 'SESUAI'; ?>';
+
+                    function onMetodeVerifikasiChange(method) {
+                        currentVerifMethod = method;
+                        const isOnline = (method === 'ONLINE');
+
+                        const optOnline = document.getElementById('optVerifOnlineCard');
+                        const optOffline = document.getElementById('optVerifOfflineCard');
+                        const panelOnline = document.getElementById('panelMetodeOnline');
+                        const panelOffline = document.getElementById('panelMetodeOffline');
+
+                        if (optOnline) {
+                            optOnline.style.borderColor = isOnline ? '#0284c7' : '#e2e8f0';
+                            optOnline.style.background = isOnline ? '#f0f9ff' : '#ffffff';
+                        }
+                        if (optOffline) {
+                            optOffline.style.borderColor = !isOnline ? '#0284c7' : '#e2e8f0';
+                            optOffline.style.background = !isOnline ? '#f0f9ff' : '#ffffff';
+                        }
+                        if (panelOnline) panelOnline.style.display = isOnline ? 'block' : 'none';
+                        if (panelOffline) panelOffline.style.display = !isOnline ? 'block' : 'none';
+
+                        // Tampilkan badge/bintang pada alamat ketika Offline dipilih
+                        document.querySelectorAll('.badge-field-inspected').forEach(b => {
+                            b.style.display = !isOnline ? 'inline-flex' : 'none';
+                        });
+
+                        syncToModals();
+                        updateVerificationButtonsState();
+                    }
+
+                    function onLocationResultChange(result) {
+                        currentLocationResult = result;
+                        const labelSesuai = document.getElementById('labelLocSesuai');
+                        const labelTidakSesuai = document.getElementById('labelLocTidakSesuai');
+                        const notice = document.getElementById('offlineResultNotice');
+
+                        if (labelSesuai) {
+                            labelSesuai.style.borderColor = (result === 'SESUAI') ? '#10b981' : '#cbd5e1';
+                        }
+                        if (labelTidakSesuai) {
+                            labelTidakSesuai.style.borderColor = (result === 'TIDAK_SESUAI') ? '#f59e0b' : '#cbd5e1';
+                        }
+                        if (notice) {
+                            notice.style.display = (result === 'TIDAK_SESUAI') ? 'block' : 'none';
+                        }
+
+                        syncToModals();
+                        // Pada metode Offline, hasil alamat Tidak Sesuai tidak otomatis menonaktifkan tombol Setujui
+                        updateVerificationButtonsState();
+                    }
+
+                    function onConsentChange() {
+                        syncToModals();
+                        updateVerificationButtonsState();
+                    }                    function isCurrentConsentChecked() {
+                        if (currentVerifMethod === 'ONLINE') {
+                            const c = document.getElementById('checkConsentOnline');
+                            return c ? c.checked : false;
+                        } else {
+                            const c = document.getElementById('checkConsentField');
+                            return c ? c.checked : false;
+                        }
+                    }
+
+                    function syncToModals() {
+                        const isOnline = (currentVerifMethod === 'ONLINE');
+                        const onlineConsent = (document.getElementById('checkConsentOnline')?.checked) ? '1' : '0';
+                        const fieldConsent = (document.getElementById('checkConsentField')?.checked) ? '1' : '0';
+
+                        document.querySelectorAll('.modal-sync-method').forEach(el => el.value = currentVerifMethod);
+                        document.querySelectorAll('.modal-sync-online-consent').forEach(el => el.value = onlineConsent);
+                        document.querySelectorAll('.modal-sync-location-result').forEach(el => el.value = isOnline ? '' : currentLocationResult);
+                        document.querySelectorAll('.modal-sync-field-consent').forEach(el => el.value = fieldConsent);
+                    }
+
+                    function updateVerificationButtonsState() {
+                        const isConsentGiven = isCurrentConsentChecked();
+                        const notice = document.getElementById('consentStatusNotice');
+
+                        const btnHdrRevisi = document.getElementById('headerBtnRevisi');
+                        const btnHdrTolak = document.getElementById('headerBtnTolak');
+                        const btnHdrSetujui = document.getElementById('headerBtnSetujui');
+
+                        const headerButtons = [btnHdrRevisi, btnHdrTolak, btnHdrSetujui].filter(Boolean);
+
+                        if (isConsentGiven) {
+                            headerButtons.forEach(btn => {
+                                btn.disabled = false;
+                                btn.style.opacity = '1';
+                                btn.style.cursor = 'pointer';
+                            });
+                            if (notice) {
+                                notice.innerHTML = '<span style="color:#059669; font-weight:700;"><i class="fa-solid fa-circle-check"></i> Consent telah dicentang. Silakan ambil keputusan verifikasi melalui tombol di bagian atas (Header).</span>';
+                            }
+                        } else {
+                            headerButtons.forEach(btn => {
+                                btn.disabled = true;
+                                btn.style.opacity = '0.5';
+                                btn.style.cursor = 'not-allowed';
+                            });
+                            if (notice) {
+                                notice.innerHTML = '<i class="fa-solid fa-lock" style="color:#94a3b8;"></i> <span>Tombol keputusan di bagian atas (<strong>Setujui</strong> / <strong>Revisi</strong> / <strong>Tolak</strong>) akan aktif setelah consent verifikasi di atas dicentang.</span>';
+                            }
+                        }
+                    }
+
+                    function handleHeaderDecisionClick(decision) {
+                        if (!isCurrentConsentChecked()) {
+                            highlightConsentRequired();
+                            return false;
+                        }
+
+                        syncToModals();
+
+                        if (decision === 'approve') {
+                            openModalDirect('modal-header-setujui');
+                        } else if (decision === 'revision') {
+                            openModalDirect('modal-header-revisi');
+                        } else if (decision === 'reject') {
+                            openModalDirect('modal-header-tolak');
+                        }
+                        return true;
+                    }
+
+                    function highlightConsentRequired() {
+                        alert('Consent Verifikasi wajib dicentang pada section Metode Verifikasi sebelum keputusan dapat diproses.');
+                        const sec = document.getElementById('sectionMetodeVerifikasi');
+                        if (sec) {
+                            sec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        const labelId = (currentVerifMethod === 'ONLINE') ? 'labelConsentOnline' : 'labelConsentField';
+                        const label = document.getElementById(labelId);
+                        if (label) {
+                            label.style.borderColor = '#ef4444';
+                            label.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';
+                            setTimeout(() => {
+                                label.style.borderColor = (currentVerifMethod === 'ONLINE') ? '#cbd5e1' : '#fcd34d';
+                                label.style.boxShadow = 'none';
+                            }, 2500);
+                        }
+                        const checkId = (currentVerifMethod === 'ONLINE') ? 'checkConsentOnline' : 'checkConsentField';
+                        const check = document.getElementById(checkId);
+                        if (check) check.focus();
+                    }
+
+                    function openModalDirect(modalId) {
+                        const modal = document.querySelector(`[data-modal="${modalId}"]`);
+                        if (modal) {
+                            modal.style.display = 'flex';
+                            modal.classList.add('open');
+                            modal.dispatchEvent(new CustomEvent('modal:open'));
+                        }
+                    }
+
+                    // Initialize button states and syncing on page ready
+                    document.addEventListener('DOMContentLoaded', () => {
+                        syncToModals();
+                        updateVerificationButtonsState();
+                    });
+                    // Also run immediately in case DOM is already parsed
+                    syncToModals();
+                    updateVerificationButtonsState();
                     </script>
 
                 <?php else: ?>

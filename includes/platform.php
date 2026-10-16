@@ -31,6 +31,8 @@ function ensure_platform_schema(): void
         'active_until' => 'DATETIME NULL',
         'last_activated_at' => 'DATETIME NULL',
         'extension_requested' => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'verification_method' => "VARCHAR(30) DEFAULT 'ONLINE'",
+        'location_check_result' => "VARCHAR(30) NULL",
     ];
     foreach ($employerAdds as $name => $definition) {
         if (!in_array($name, $employerColumns, true)) {
