@@ -996,9 +996,9 @@ if ($view === 'directory_individual') {
     $query .= ' AND (ep.entity_type = "Individu" OR ep.entity_type = "Individual" OR ep.entity_type IS NULL)';
 
     if ($search !== '') {
-        $query .= ' AND (u.name LIKE ? OR u.email LIKE ? OR ep.phone LIKE ? OR ep.city LIKE ? OR ep.address LIKE ? OR ep.npwp LIKE ? OR ep.owner_name LIKE ?)';
+        $query .= ' AND (u.name LIKE ? OR u.email LIKE ? OR ep.phone LIKE ? OR ep.city LIKE ? OR ep.address LIKE ? OR ep.npwp LIKE ? OR ep.owner_name LIKE ? OR ep.brand_name LIKE ?)';
         $like = '%' . $search . '%';
-        $params = array_merge($params, [$like, $like, $like, $like, $like, $like, $like]);
+        $params = array_merge($params, [$like, $like, $like, $like, $like, $like, $like, $like]);
     }
 
     if ($startDate !== '') {
@@ -1035,9 +1035,9 @@ if ($view === 'directory_individual') {
 
     $sort = $_GET['sort'] ?? 'date_desc';
     if ($sort === 'name_asc') {
-        $query .= ' ORDER BY COALESCE(NULLIF(ep.owner_name, ""), u.name) ASC';
+        $query .= ' ORDER BY COALESCE(NULLIF(ep.brand_name, ""), NULLIF(ep.owner_name, ""), u.name) ASC';
     } elseif ($sort === 'name_desc') {
-        $query .= ' ORDER BY COALESCE(NULLIF(ep.owner_name, ""), u.name) DESC';
+        $query .= ' ORDER BY COALESCE(NULLIF(ep.brand_name, ""), NULLIF(ep.owner_name, ""), u.name) DESC';
     } elseif ($sort === 'date_asc') {
         $query .= ' ORDER BY u.created_at ASC';
     } else {
@@ -1099,9 +1099,9 @@ if ($view === 'verifikasi_employer') {
     }
 
     if ($search !== '') {
-        $baseFilter .= ' AND (u.name LIKE ? OR u.email LIKE ? OR ep.owner_name LIKE ? OR ep.phone LIKE ? OR ep.city LIKE ? OR ep.address LIKE ? OR ep.npwp LIKE ?)';
+        $baseFilter .= ' AND (u.name LIKE ? OR u.email LIKE ? OR ep.owner_name LIKE ? OR ep.brand_name LIKE ? OR ep.phone LIKE ? OR ep.city LIKE ? OR ep.address LIKE ? OR ep.npwp LIKE ?)';
         $like = '%' . $search . '%';
-        $paramsCommon = array_merge($paramsCommon, [$like, $like, $like, $like, $like, $like, $like]);
+        $paramsCommon = array_merge($paramsCommon, [$like, $like, $like, $like, $like, $like, $like, $like]);
     }
 
     if ($startDate !== '') {
@@ -1155,9 +1155,9 @@ if ($view === 'verifikasi_employer') {
     $sort = $_GET['sort'] ?? 'date_desc';
     $orderBy = ' ORDER BY u.created_at DESC';
     if ($sort === 'name_asc') {
-        $orderBy = ' ORDER BY ep.owner_name ASC, u.name ASC';
+        $orderBy = ' ORDER BY COALESCE(NULLIF(ep.brand_name, ""), NULLIF(ep.owner_name, ""), u.name) ASC';
     } elseif ($sort === 'name_desc') {
-        $orderBy = ' ORDER BY ep.owner_name DESC, u.name DESC';
+        $orderBy = ' ORDER BY COALESCE(NULLIF(ep.brand_name, ""), NULLIF(ep.owner_name, ""), u.name) DESC';
     } elseif ($sort === 'date_asc') {
         $orderBy = ' ORDER BY u.created_at ASC';
     }
@@ -1933,7 +1933,7 @@ window.CITY_MASTER = [
                     $adminCity = (string)($user['domicile_city_id'] ?? '');
                     $isScopeMatchSelected = ($user['role'] === 'admin' || $user['role'] === 'admin_pusat' || empty($adminCity) || ($selectedEmployer['domicile_city_id'] ?? '') === $adminCity);
                     $canReactivateSelected = ($selectedEmpStatus['can_direct_reactivate'] && $isScopeMatchSelected);
-                    $displayName = $selectedEmployer['owner_name'] ?: $selectedEmployer['name'];
+                    $displayName = !empty($selectedEmployer['brand_name']) ? $selectedEmployer['brand_name'] : ($selectedEmployer['owner_name'] ?: $selectedEmployer['name']);
                     $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $displayName)) . '-x7k2p';
 
                     $vStatus = $selectedEmployer['verification_status'] ?? '';
@@ -2007,6 +2007,10 @@ window.CITY_MASTER = [
                                     <?php echo $headerStatusBadge; ?>
                                 </div>
                                 <div style="font-size:12.5px; color:#64748b; margin-top:5px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                    <?php if (!empty($selectedEmployer['brand_name']) && ($selectedEmployer['owner_name'] || $selectedEmployer['name'])): ?>
+                                        <span>Pemilik: <strong style="color:#334155;"><?php echo e($selectedEmployer['owner_name'] ?: $selectedEmployer['name']); ?></strong></span>
+                                        <span>|</span>
+                                    <?php endif; ?>
                                     <span>Slug: <code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:12px; color:#334155;"><?php echo e($slug); ?></code></span>
                                     <span>|</span>
                                     <span style="font-weight:600; color:#475569;">Individual</span>
@@ -3072,9 +3076,9 @@ document.addEventListener('click', function(e) {
                         <table class="console-table" style="width:100%; border-collapse:collapse; min-width:1000px;">
                             <thead>
                                 <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0; text-align:left;">
-                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; min-width:160px;">
+                                    <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; min-width:180px;">
                                         <a href="admin.php?view=directory_individual&tab=<?php echo e($tab); ?>&q=<?php echo urlencode($search); ?>&sort=<?php echo $sort === 'name_asc' ? 'name_desc' : 'name_asc'; ?><?php echo $filterParams; ?>" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
-                                            Nama <i class="fa-solid fa-arrows-up-down" style="font-size:11px; color:#94a3b8;"></i>
+                                            Nama Brand Usaha <i class="fa-solid fa-arrows-up-down" style="font-size:11px; color:#94a3b8;"></i>
                                         </a>
                                     </th>
                                     <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; min-width:180px;">Email</th>
@@ -3099,7 +3103,8 @@ document.addEventListener('click', function(e) {
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach ($showingList as $emp):
-                                        $nameStr = $emp['owner_name'] ?: $emp['name'];
+                                        $brandStr = !empty($emp['brand_name']) ? $emp['brand_name'] : ($emp['owner_name'] ?: $emp['name']);
+                                        $ownerStr = !empty($emp['brand_name']) ? ($emp['owner_name'] ?: $emp['name']) : '';
                                         $emailStr = $emp['email'];
                                         $phoneStr = $emp['phone'] ?: ($emp['whatsapp'] ?: '-');
                                         $addressStr = $emp['address'] ?: ($emp['address_detail'] ?: '-');
@@ -3126,7 +3131,15 @@ document.addEventListener('click', function(e) {
                                         $dateStr = date('d M Y, H:i', strtotime($emp['created_at']));
                                     ?>
                                         <tr style="border-bottom:1px solid #f1f5f9;">
-                                            <td style="padding:14px 16px; font-weight:600; color:#0f172a; font-size:13px;"><?php echo e($nameStr); ?></td>
+                                            <td style="padding:14px 16px;">
+                                                <div style="font-weight:700; color:#0f172a; font-size:13px;"><?php echo e($brandStr); ?></div>
+                                                <?php if ($ownerStr && strcasecmp($ownerStr, $brandStr) !== 0): ?>
+                                                    <div style="font-size:11.5px; color:#64748b; margin-top:2px; display:flex; align-items:center; gap:4px;">
+                                                        <i class="fa-solid fa-user" style="font-size:10px; color:#94a3b8;"></i>
+                                                        <span><?php echo e($ownerStr); ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </td>
                                             <td style="padding:14px 16px; color:#334155; font-size:13px;"><?php echo e($emailStr); ?></td>
                                             <td style="padding:14px 16px; color:#334155; font-size:13px; white-space:nowrap;"><?php echo e($phoneStr); ?></td>
                                             <td style="padding:14px 16px; color:#334155; font-size:13px; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?php echo e($addressStr); ?>"><?php echo e($addressStr); ?></td>
@@ -3433,15 +3446,19 @@ document.addEventListener('click', function(e) {
                     <!-- TOP HEADER BAR -->
                     <div class="detail-header-bar" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px 24px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
                         <div style="display:flex; align-items:center; gap:16px;">
+                            <?php
+                                $empBrandTitle = !empty($selectedEmployer['brand_name']) ? $selectedEmployer['brand_name'] : ($selectedEmployer['owner_name'] ?: $selectedEmployer['name']);
+                                $empOwnerSubtitle = !empty($selectedEmployer['brand_name']) ? ($selectedEmployer['owner_name'] ?: $selectedEmployer['name']) : '';
+                            ?>
                             <div class="item-avatar-box" style="width:52px; height:52px; font-size:18px; border-radius:12px; background:#f1f5f9; color:#0f172a; display:flex; align-items:center; justify-content:center; font-weight:700;">
-                                <?php echo strtoupper(substr($selectedEmployer['owner_name'] ?: $selectedEmployer['name'], 0, 2)); ?>
+                                <?php echo strtoupper(substr($empBrandTitle, 0, 2)); ?>
                             </div>
                             <div>
                                 <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; color:#64748b; margin-bottom:4px;">
                                     DETAIL PENGAJUAN VERIFIKASI
                                 </div>
                                 <div style="display:flex; align-items:center; gap:10px;">
-                                    <h1 style="font-size:20px; font-weight:800; margin:0; color:#0f172a;"><?php echo e($selectedEmployer['owner_name'] ?: $selectedEmployer['name']); ?></h1>
+                                    <h1 style="font-size:20px; font-weight:800; margin:0; color:#0f172a;"><?php echo e($empBrandTitle); ?></h1>
                                     <?php
                                         $status = $selectedEmployer['verification_status'] ?? 'PENDING';
                                         $isRevisionStatus = in_array(strtoupper($status), ['REVISION', 'NEEDS_REVISION']) || ($tab === 'revision');
@@ -3481,7 +3498,10 @@ document.addEventListener('click', function(e) {
                                     <?php endif; ?>
                                 </div>
                                 <div style="font-size:12px; color:#64748b; margin-top:4px;">
-                                    Slug: <code><?php echo strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $selectedEmployer['owner_name'] ?: $selectedEmployer['name'])); ?></code> &nbsp;|&nbsp;
+                                    <?php if ($empOwnerSubtitle && strcasecmp($empOwnerSubtitle, $empBrandTitle) !== 0): ?>
+                                        <span>Pemilik: <strong style="color:#334155;"><?php echo e($empOwnerSubtitle); ?></strong></span> &nbsp;|&nbsp;
+                                    <?php endif; ?>
+                                    Slug: <code><?php echo strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $empBrandTitle)); ?></code> &nbsp;|&nbsp;
                                     <strong><?php echo e($selectedEmployer['entity_type'] ?? 'Individual'); ?></strong> &nbsp;|&nbsp;
                                     Didaftarkan: <?php echo date('d M Y, H:i', strtotime($selectedEmployer['created_at'])); ?> &nbsp;|&nbsp;
                                     <?php echo e($selectedEmployer['city'] ?: 'Dalung, Kuta Utara, Kab. Badung, Bali'); ?>
@@ -5666,7 +5686,7 @@ document.addEventListener('click', function(e) {
                                 <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0; text-align:left;">
                                     <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569; min-width:200px;">
                                         <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=<?php echo e($tab); ?>&q=<?php echo urlencode($search); ?>&sort=<?php echo $sort === 'name_asc' ? 'name_desc' : 'name_asc'; ?><?php echo $filterParamsEmp; ?>" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
-                                            Nama Pemberi Kerja <i class="fa-solid fa-arrows-up-down" style="font-size:11px; color:#94a3b8;"></i>
+                                            Nama Brand Usaha <i class="fa-solid fa-arrows-up-down" style="font-size:11px; color:#94a3b8;"></i>
                                         </a>
                                     </th>
                                     <th style="padding:14px 16px; font-size:12.5px; font-weight:600; color:#475569;">Jenis Entitas</th>
@@ -5687,15 +5707,24 @@ document.addEventListener('click', function(e) {
                                 <?php if (!$showingEmployers): ?>
                                     <tr><td colspan="9" style="text-align:center; padding:60px 20px; color:#64748b; font-size:13.5px;">Tidak ada data pemberi kerja.</td></tr>
                                 <?php else: ?>
-                                    <?php foreach ($showingEmployers as $vEmp): ?>
+                                    <?php foreach ($showingEmployers as $vEmp):
+                                        $vBrand = !empty($vEmp['brand_name']) ? $vEmp['brand_name'] : ($vEmp['owner_name'] ?: $vEmp['name']);
+                                        $vOwner = !empty($vEmp['brand_name']) ? ($vEmp['owner_name'] ?: $vEmp['name']) : '';
+                                    ?>
                                         <tr style="border-bottom:1px solid #f1f5f9;">
                                             <td style="padding:14px 16px;">
                                                 <div style="display:flex; align-items:center; gap:12px;">
                                                     <div class="item-avatar-box">
-                                                        <?php echo strtoupper(substr($vEmp['owner_name'] ?: $vEmp['name'], 0, 2)); ?>
+                                                        <?php echo strtoupper(substr($vBrand, 0, 2)); ?>
                                                     </div>
                                                     <div>
-                                                        <strong><?php echo e($vEmp['owner_name'] ?: $vEmp['name']); ?></strong><br>
+                                                        <strong style="color:#0f172a; font-size:13.5px;"><?php echo e($vBrand); ?></strong>
+                                                        <?php if ($vOwner && strcasecmp($vOwner, $vBrand) !== 0): ?>
+                                                            <div style="color:#64748b; font-size:11.5px; margin-top:1px; display:flex; align-items:center; gap:4px;">
+                                                                <i class="fa-solid fa-user" style="font-size:10px; color:#94a3b8;"></i>
+                                                                <span><?php echo e($vOwner); ?></span>
+                                                            </div>
+                                                        <?php endif; ?>
                                                         <small style="color:#94a3b8; font-size:11px;"><?php echo e($vEmp['email']); ?></small>
                                                     </div>
                                                 </div>
