@@ -260,6 +260,7 @@
         initPhoneWhatsappSync();
         initNpwpStatusSync();
         initSocialMediaRepeater();
+        initUploadDragAndDrop();
         forms.forEach(f => initValidation(f));
         updateMapPreview();
     }
@@ -1028,12 +1029,10 @@
 
         if (textBox) {
             textBox.classList.remove('has-file');
-            textBox.textContent = fieldId === 'permit_document'
-                ? 'Pilih file untuk diunggah'
-                : (fieldId === 'business_logo' ? 'Pilih foto logo untuk diunggah' : 'Pilih foto untuk diunggah');
+            textBox.innerHTML = '<span>Klik dan letakkan file di sini atau <strong style="color:#2563eb;">Pilih File</strong></span>';
         }
 
-        if (btn) btn.textContent = 'Upload';
+        if (btn) btn.textContent = 'Pilih File';
 
         if (box) {
             const clearBtn = box.querySelector('.pki-upload-clear-btn');
@@ -1041,6 +1040,41 @@
         }
         setUploadSizeInfo(fieldId, 0);
     };
+
+    // ─── 5a. Drag & Drop for Upload Boxes ───
+    function initUploadDragAndDrop() {
+        ['business_logo', 'permit_document', 'workplace_photo'].forEach(fieldId => {
+            const box = document.getElementById(`pki_box_${fieldId}`);
+            const input = document.getElementById(`pki_input_${fieldId}`);
+            if (!box || !input) return;
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                box.addEventListener(eventName, function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    box.style.borderColor = '#2563eb';
+                    box.style.backgroundColor = '#eff6ff';
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                box.addEventListener(eventName, function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    box.style.borderColor = '';
+                    box.style.backgroundColor = '';
+                }, false);
+            });
+
+            box.addEventListener('drop', function (e) {
+                const dt = e.dataTransfer;
+                if (dt && dt.files && dt.files.length > 0) {
+                    input.files = dt.files;
+                    pkiHandleFileChange(input, fieldId);
+                }
+            }, false);
+        });
+    }
 
     // ─── 5b. Social Media Repeater Manager ───
     function initSocialMediaRepeater() {
@@ -1317,7 +1351,7 @@
 
     function initValidation(form) {
         // Live clear on input
-        ['owner_name', 'phone', 'whatsapp', 'brand_name'].forEach(id => {
+        ['owner_name', 'phone', 'whatsapp', 'brand_name', 'description'].forEach(id => {
             const input = document.getElementById(`pki_${id}`);
             if (input) {
                 input.addEventListener('input', () => clearFieldError(id));
@@ -1520,34 +1554,22 @@
                     clearFieldError('npwp');
                 }
             } else if (stepNumber === 2) {
-                // 7. Lokasi Tempat Usaha / Kegiatan
-                const village = document.getElementById('pki_hiddenVillage')?.value?.trim();
-                if (!village) {
-                    flagError('location', 'Lokasi tempat usaha/kegiatan wajib dipilih secara berjenjang.', document.getElementById('pki_hierarchicalLocationInput'));
+                // 1. Nama Brand Usaha (Wajib)
+                const brandName = document.getElementById('pki_brand_name')?.value?.trim();
+                if (!brandName) {
+                    flagError('brand_name', 'Nama Brand Usaha wajib diisi.', document.getElementById('pki_brand_name'));
                 } else {
-                    clearFieldError('location');
+                    clearFieldError('brand_name');
                 }
 
-                // 8. Alamat Lengkap Tempat Usaha
-                const address = document.getElementById('pki_inputAddress')?.value?.trim();
-                if (!address) {
-                    flagError('address', 'Alamat lengkap tempat usaha/kegiatan wajib diisi.', document.getElementById('pki_inputAddress'));
-                } else {
-                    clearFieldError('address');
-                }
-
-                // 9. Kode Pos
-                const postalCode = document.getElementById('pki_selectPostalCode')?.value?.trim();
-                if (!postalCode) {
-                    flagError('postal_code', 'Kode pos wajib dipilih/diisi.', document.getElementById('pki_selectPostalCode'));
-                } else {
-                    clearFieldError('postal_code');
-                }
-
-                // Logo Usaha (Opsional, validasi file jika dipilih)
+                // 2. Logo Usaha (Wajib: file baru atau file yang sudah diunggah sebelumnya)
                 const logoFileInput = document.getElementById('pki_input_business_logo');
+                const existingLogo = document.getElementById('pki_existing_business_logo')?.value?.trim();
                 const logoFile = logoFileInput?.files?.[0];
-                if (logoFile) {
+                const hasLogo = Boolean(logoFile) || Boolean(existingLogo);
+                if (!hasLogo) {
+                    flagError('business_logo', 'Logo Usaha wajib diunggah (PNG/JPG, maks 2MB).', document.getElementById('pki_box_business_logo'));
+                } else if (logoFile) {
                     const logoExt = (logoFile.name.split('.').pop() || '').toLowerCase();
                     if (!['png', 'jpg', 'jpeg'].includes(logoExt) || logoFile.size > 2 * 1024 * 1024) {
                         flagError('business_logo', 'Format PNG, JPG. Ukuran Maksimal 2MB.', document.getElementById('pki_box_business_logo'));
@@ -1556,6 +1578,38 @@
                     }
                 } else {
                     clearFieldError('business_logo');
+                }
+
+                // 3. Deskripsi Singkat Usaha / Rekrutmen (Wajib)
+                const desc = document.getElementById('pki_description')?.value?.trim();
+                if (!desc) {
+                    flagError('description', 'Deskripsi Singkat Usaha / Rekrutmen wajib diisi.', document.getElementById('pki_description'));
+                } else {
+                    clearFieldError('description');
+                }
+
+                // 4. Lokasi Tempat Usaha / Kegiatan
+                const village = document.getElementById('pki_hiddenVillage')?.value?.trim();
+                if (!village) {
+                    flagError('location', 'Lokasi tempat usaha/kegiatan wajib dipilih secara berjenjang.', document.getElementById('pki_hierarchicalLocationInput'));
+                } else {
+                    clearFieldError('location');
+                }
+
+                // 5. Alamat Lengkap Tempat Usaha
+                const address = document.getElementById('pki_inputAddress')?.value?.trim();
+                if (!address) {
+                    flagError('address', 'Alamat lengkap tempat usaha/kegiatan wajib diisi.', document.getElementById('pki_inputAddress'));
+                } else {
+                    clearFieldError('address');
+                }
+
+                // 6. Kode Pos
+                const postalCode = document.getElementById('pki_selectPostalCode')?.value?.trim();
+                if (!postalCode) {
+                    flagError('postal_code', 'Kode pos wajib dipilih/diisi.', document.getElementById('pki_selectPostalCode'));
+                } else {
+                    clearFieldError('postal_code');
                 }
             } else if (stepNumber === 3) {
                 // 10. Dokumen Perizinan Usaha

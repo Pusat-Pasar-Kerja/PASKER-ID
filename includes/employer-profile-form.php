@@ -57,13 +57,20 @@ if (!empty($vPhoto)) {
     }
 }
 $vBrandName = e($formData['brand_name'] ?? '');
+if (empty($vBrandName) && ($isRevision || !empty($formData['owner_name']))) {
+    $vBrandName = !empty($formData['owner_name']) ? ('Usaha ' . e($formData['owner_name'])) : '';
+}
+
 $vLogo = $formData['business_logo'] ?? ($formData['brand_logo'] ?? '');
+if (empty($vLogo) && ($isRevision || !empty($formData['owner_name']))) {
+    $vLogo = 'public/images/jobii.png';
+}
 $vLogoSizeText = '';
 if (!empty($vLogo)) {
     $baseDir = realpath(__DIR__ . '/..');
     $logoRelative = ltrim(str_replace('\\', '/', (string) $vLogo), '/');
     $logoAbsolute = realpath(__DIR__ . '/../' . $logoRelative);
-    if ($baseDir && $photoAbsolute && str_starts_with($logoAbsolute, $baseDir) && is_file($logoAbsolute)) {
+    if ($baseDir && $logoAbsolute && str_starts_with($logoAbsolute, $baseDir) && is_file($logoAbsolute)) {
         $bytes = (int) filesize($logoAbsolute);
         if ($bytes > 0) {
             $vLogoSizeText = $bytes >= 1024 * 1024
@@ -88,6 +95,12 @@ if (empty($existingSocials)) {
 }
 
 $vDescription = e($formData['description'] ?? '');
+if (empty($vDescription) && ($isRevision || !empty($formData['owner_name']))) {
+    $profName = $formData['profession'] ?? '';
+    $vDescription = !empty($profName)
+        ? ('Profil usaha dan rekrutmen bidang ' . e($profName) . ' yang dijalankan secara mandiri.')
+        : 'Profil usaha perseorangan untuk kebutuhan kegiatan usaha dan rekrutmen tenaga kerja.';
+}
 $vConsent = !empty($formData['user_consent']);
 
 // Location display text
@@ -379,7 +392,7 @@ if (file_exists($pkiCssPath)) {
     <div class="pki-grid-2">
         <div class="pki-field">
             <label class="pki-field-label" id="label_brand_name" for="pki_brand_name">
-                Nama Brand Usaha
+                Nama Brand Usaha <span class="req">*</span>
                 <span class="pki-tooltip" tabindex="0" role="tooltip">
                     <?php echo $infoIconSvg; ?>
                     <span class="tooltip-popover">Nama merek dagang, brand, atau nama komersial tempat usaha/kegiatan Anda.</span>
@@ -390,7 +403,7 @@ if (file_exists($pkiCssPath)) {
         </div>
         <div class="pki-field">
             <label class="pki-field-label" id="label_business_logo">
-                Logo Usaha
+                Logo Usaha <span class="req">*</span>
                 <span class="pki-tooltip" tabindex="0" role="tooltip">
                     <?php echo $infoIconSvg; ?>
                     <span class="tooltip-popover">Unggah logo resmi atau foto identitas visual usaha/kegiatan Anda.</span>
@@ -426,7 +439,7 @@ if (file_exists($pkiCssPath)) {
 
     <div class="pki-field">
         <label class="pki-field-label" id="label_description" for="pki_description">
-            Deskripsi Singkat Usaha / Rekrutmen
+            Deskripsi Singkat Usaha / Rekrutmen <span class="req">*</span>
             <span class="pki-tooltip" tabindex="0" role="tooltip">
                 <?php echo $infoIconSvg; ?>
                 <span class="tooltip-popover">Jelaskan secara singkat usaha atau kegiatan yang dijalankan serta gambaran kebutuhan rekrutmen yang dilakukan.</span>

@@ -462,9 +462,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $description = trim($_POST['description'] ?? '');
         $brandName   = trim($_POST['brand_name'] ?? '');
         $consent     = isset($_POST['user_consent']) ? 1 : 0;
-
-        if ($ownerName === '' || $nik === '' || $phone === '' || $whatsapp === '' || $profession === '' || $npwp === '' || ($linkedin === '' && $facebook === '' && $instagram === '' && $tiktok === '') || !$consent) {
-            flash('error', 'Lengkapi semua field wajib (termasuk minimal salah satu media sosial) dan centang persetujuan pengguna.');
+        if ($ownerName === '' || $nik === '' || $phone === '' || $whatsapp === '' || $profession === '' || $npwp === '' || $brandName === '' || $description === '' || ($linkedin === '' && $facebook === '' && $instagram === '' && $tiktok === '') || !$consent) {
+            $_SESSION['profile_modal_error'] = 'Lengkapi semua field wajib (termasuk Nama Brand Usaha, Deskripsi Singkat Usaha, dan minimal salah satu media sosial) serta centang persetujuan pengguna.';
+            flash('error', 'Lengkapi semua field wajib (termasuk Nama Brand Usaha, Deskripsi Singkat Usaha, dan minimal salah satu media sosial) serta centang persetujuan pengguna.');
             redirect('dashboard.php?open_profile=1');
             exit;
         }
@@ -530,11 +530,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $permitDoc = $permitDoc ?: ($existingPermit ?: ($profile['permit_document'] ?? $profile['doc_permission'] ?? null));
         $workplacePhoto = $workplacePhoto ?: ($existingWorkplace ?: ($profile['workplace_photo'] ?? $profile['doc_location_photo'] ?? null));
 
+        if (empty($businessLogo) && (is_demo_env() || !empty($profile['owner_name']))) {
+            $businessLogo = 'public/images/jobii.png';
+        }
         if (empty($permitDoc) && (is_demo_env() || !empty($profile['owner_name']))) {
             $permitDoc = 'dokumen-legalitas.pdf';
         }
         if (empty($workplacePhoto) && (is_demo_env() || !empty($profile['owner_name']))) {
             $workplacePhoto = 'foto-rumah.jpg';
+        }
+
+        if (empty($businessLogo)) {
+            $_SESSION['profile_modal_error'] = 'Logo Usaha wajib diunggah.';
+            flash('error', 'Logo Usaha wajib diunggah.');
+            redirect('dashboard.php?open_profile=1');
+            exit;
         }
 
         if (empty($permitDoc)) {

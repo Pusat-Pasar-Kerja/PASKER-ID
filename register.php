@@ -54,6 +54,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
         $description = trim($_POST['description'] ?? '');
         $brandName = trim($_POST['brand_name'] ?? '');
 
+        if ($brandName === '') {
+            flash('error', 'Nama Brand Usaha wajib diisi.');
+            redirect('register.php');
+            exit;
+        }
+
+        if ($description === '') {
+            flash('error', 'Deskripsi Singkat Usaha / Rekrutmen wajib diisi.');
+            redirect('register.php');
+            exit;
+        }
+
         if ($linkedin === '' && $facebook === '' && $instagram === '' && $tiktok === '') {
             flash('error', 'Wajib mengisi minimal salah satu media sosial (LinkedIn, Facebook, Instagram, atau TikTok).');
             redirect('register.php');
@@ -101,17 +113,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
             }
             $workplacePhoto = store_upload('workplace_photo', 'employer/' . $userId, ['png', 'jpg', 'jpeg']);
 
-            if (!empty($_FILES['business_logo']['name'])) {
-                $logoExt = strtolower(pathinfo((string) $_FILES['business_logo']['name'], PATHINFO_EXTENSION));
-                $logoSize = (int) ($_FILES['business_logo']['size'] ?? 0);
-                $logoErr = (int) ($_FILES['business_logo']['error'] ?? UPLOAD_ERR_NO_FILE);
-                if ($logoErr !== UPLOAD_ERR_OK || !in_array($logoExt, ['png', 'jpg', 'jpeg'], true) || $logoSize > 2 * 1024 * 1024) {
-                    flash('error', 'Logo Usaha harus berformat PNG atau JPG dengan ukuran maksimal 2MB.');
-                    redirect('register.php');
-                    exit;
-                }
+            $hasLogoFile = !empty($_FILES['business_logo']['name']) && (int) ($_FILES['business_logo']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+            if (!$hasLogoFile) {
+                flash('error', 'Logo Usaha wajib diunggah.');
+                redirect('register.php');
+                exit;
+            }
+            $logoExt = strtolower(pathinfo((string) $_FILES['business_logo']['name'], PATHINFO_EXTENSION));
+            $logoSize = (int) ($_FILES['business_logo']['size'] ?? 0);
+            $logoErr = (int) ($_FILES['business_logo']['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($logoErr !== UPLOAD_ERR_OK || !in_array($logoExt, ['png', 'jpg', 'jpeg'], true) || $logoSize > 2 * 1024 * 1024) {
+                flash('error', 'Logo Usaha harus berformat PNG atau JPG dengan ukuran maksimal 2MB.');
+                redirect('register.php');
+                exit;
             }
             $businessLogo = store_upload('business_logo', 'employer/' . $userId, ['png', 'jpg', 'jpeg']);
+            if (empty($businessLogo)) {
+                $businessLogo = 'public/images/jobii.png';
+            }
 
             // Update user profile complete and domicile
             db()->prepare('UPDATE users SET profile_complete = 1, domicile_city_id = ?, city = ? WHERE id = ?')->execute([$domicileCityId, $city, $userId]);
