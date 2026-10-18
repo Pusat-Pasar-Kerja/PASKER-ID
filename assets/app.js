@@ -1408,6 +1408,10 @@ function initJobCreateWizard() {
 
     const setJobCreateMode = (mode, adminNotes = '') => {
         modal.dataset.jobFormMode = mode;
+        const actionInput = modal.querySelector('input[name="job_action"]');
+        if (actionInput) {
+            actionInput.value = (mode === 'revise') ? 'revise' : 'save';
+        }
         if (mode === 'revise') {
             if (titleEl) {
                 titleEl.textContent = 'Revisi Lowongan';
@@ -2386,16 +2390,30 @@ document.addEventListener('DOMContentLoaded', () => {
     window.selectApplicantStatus = selectApplicantStatus;
 
     function moveCardToKanbanStage(appId, targetStage) {
-        const card = document.querySelector(`.app-card-item[data-app-id="${appId}"]`);
-        if (!card) return;
-        
-        card.setAttribute('data-stage', targetStage);
-        const targetZone = document.querySelector(`.kanban-drop-zone[data-stage="${targetStage}"]`);
-        if (targetZone) {
-            const emptyPlaceholder = targetZone.querySelector('.kanban-empty-placeholder');
-            if (emptyPlaceholder) emptyPlaceholder.remove();
-            targetZone.appendChild(card);
+        const card = document.querySelector(`.kanban-card[data-app-id="${appId}"]`) || document.querySelector(`.app-card-item[data-app-id="${appId}"]`);
+        if (card) {
+            card.setAttribute('data-stage', targetStage);
+            const targetZone = document.querySelector(`.kanban-drop-zone[data-stage="${targetStage}"]`);
+            if (targetZone) {
+                const emptyPlaceholder = targetZone.querySelector('.kanban-empty-placeholder');
+                if (emptyPlaceholder) emptyPlaceholder.remove();
+                targetZone.appendChild(card);
+            }
         }
+
+        // Keep status labels and classes in sync across Grid and List views
+        const statusClassMap = {
+            'Lamaran Masuk': 'in',
+            'Sedang Dipelajari': 'review',
+            'Wawancara': 'interview',
+            'Diterima': 'hired',
+            'Ditolak': 'rejected'
+        };
+        document.querySelectorAll(`.app-card-item[data-app-id="${appId}"] .tag`).forEach(tag => {
+            tag.className = 'tag ' + (statusClassMap[targetStage] || 'in');
+            tag.textContent = targetStage;
+        });
+
         updateKanbanBadges();
     }
     window.moveCardToKanbanStage = moveCardToKanbanStage;
@@ -2405,7 +2423,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const stage = col.getAttribute('data-stage');
             const zone = col.querySelector('.kanban-drop-zone');
             if (!zone) return;
-            const cards = zone.querySelectorAll('.app-card-item');
+            const cards = zone.querySelectorAll('.kanban-card, .app-card-item');
             const badge = col.querySelector('.kanban-stage-badge');
             if (badge) badge.textContent = cards.length;
             

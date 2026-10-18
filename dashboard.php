@@ -833,10 +833,38 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
         if ($title !== '' && $location !== '' && $kbjiCode !== '' && $quota > 0 && $description !== '') {
             if ($jobId > 0) {
-                // Update existing job maintaining its identity and draft/revision status
-                $stmt = db()->prepare('UPDATE job_posts SET title = ?, location = ?, job_type = ?, industry = ?, kbji_code = ?, min_education = ?, min_experience = ?, quota = ?, description = ?, salary_min = ?, salary_max = ?, details = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?');
-                $stmt->execute([$title, $location, $jobType, $industry, $kbjiCode, $minEducation, $minExperience, $quota, $description, $salaryMin, $salaryMax, $detailsJson, $jobId, $user['id']]);
-                flash('success', 'Draft lowongan berhasil diperbarui.');
+                $chk = db()->prepare('SELECT id, status, kbji_code, title FROM job_posts WHERE id = ? AND user_id = ?');
+                $chk->execute([$jobId, $user['id']]);
+                $existingJob = $chk->fetch();
+
+                $jobAction = trim($_POST['job_action'] ?? '');
+                $isRevising = ($jobAction === 'revise') || ($existingJob && in_array($existingJob['status'], ['Perlu Direvisi', 'Perlu Revisi'], true));
+
+                if ($isRevising) {
+                    $stmt = db()->prepare('UPDATE job_posts SET title = ?, location = ?, job_type = ?, industry = ?, kbji_code = ?, min_education = ?, min_experience = ?, quota = ?, description = ?, salary_min = ?, salary_max = ?, details = ?, status = "Menunggu Verifikasi", updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?');
+                    $stmt->execute([$title, $location, $jobType, $industry, $kbjiCode, $minEducation, $minExperience, $quota, $description, $salaryMin, $salaryMax, $detailsJson, $jobId, $user['id']]);
+
+                    try {
+                        $verCheck = db()->prepare('SELECT id FROM job_verifications WHERE job_id = ?');
+                        $verCheck->execute([$jobId]);
+                        if ($verCheck->fetch()) {
+                            $verUpdate = db()->prepare('UPDATE job_verifications SET status = "PENDING", updated_at = CURRENT_TIMESTAMP WHERE job_id = ?');
+                            $verUpdate->execute([$jobId]);
+                        } else {
+                            $verInsert = db()->prepare('INSERT INTO job_verifications (job_id, user_id, kbji_code, status) VALUES (?, ?, ?, "PENDING")');
+                            $verInsert->execute([$jobId, $user['id'], $kbjiCode]);
+                        }
+                    } catch (Throwable $e) {
+                        error_log('[Karirhub Revision Error] ' . $e->getMessage());
+                    }
+
+                    record_audit_log('job', $jobId, 'REVISION_SUBMITTED', "Perbaikan lowongan '{$title}' telah dikirim ulang oleh pemberi kerja dan sedang Menunggu Verifikasi oleh Admin.", $user['name']);
+                    flash('success', 'Perbaikan lowongan berhasil dikirim ulang. Status lowongan kini Menunggu Verifikasi oleh Admin.');
+                } else {
+                    $stmt = db()->prepare('UPDATE job_posts SET title = ?, location = ?, job_type = ?, industry = ?, kbji_code = ?, min_education = ?, min_experience = ?, quota = ?, description = ?, salary_min = ?, salary_max = ?, details = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?');
+                    $stmt->execute([$title, $location, $jobType, $industry, $kbjiCode, $minEducation, $minExperience, $quota, $description, $salaryMin, $salaryMax, $detailsJson, $jobId, $user['id']]);
+                    flash('success', 'Draft lowongan berhasil diperbarui.');
+                }
             } else {
                 // Always create as Draft with NO rules engine checks
                 $stmt = db()->prepare('INSERT INTO job_posts (user_id, title, description, location, job_type, industry, entity_type, status, quota, kbji_code, min_education, min_experience, salary_min, salary_max, details, created_at) VALUES (?, ?, ?, ?, ?, ?, "Individu", "Draft", ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)');
@@ -2874,6 +2902,7 @@ $modal = <<<HTML
 
                     <!-- Custom Dropdown Container -->
                     <div style="position:relative;" id="customStatusDropdownContainer">
+                        <input type="hidden" id="applicantId" name="applicant_id" value="">
                         <input type="hidden" name="status" id="applicantStatus" value="Lamaran Masuk">
                         <button type="button" id="customStatusDropdownBtn" onclick="toggleCustomStatusDropdown(event)" style="display:inline-flex; align-items:center; gap:8px; padding:6px 12px; background:#fff; border:1px solid #cbd5e1; border-radius:8px; cursor:pointer; font-size:12.5px; font-weight:600; color:#1e293b; transition:all 0.15s;">
                             <span id="customStatusDot" style="width:8px; height:8px; border-radius:50%; background:#f59e0b; flex-shrink:0;"></span>
