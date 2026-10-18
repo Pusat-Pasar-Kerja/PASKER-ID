@@ -4236,7 +4236,7 @@ document.addEventListener('click', function(e) {
                             <!-- CARD 5: ASSIGN / REASSIGN PEMERIKSA -->
                             <div class="section-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px;">
                                 <div class="section-card-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:14px;">
-                                    <?php echo $hasAssignment ? 'Reassign Pemeriksa' : 'Assign Pemeriksa'; ?>
+                                    Assign Pemeriksa
                                 </div>
 
                                 <?php if (!$hasAssignment): ?>
@@ -4296,8 +4296,8 @@ document.addEventListener('click', function(e) {
                                             <textarea name="assignment_reason" required minlength="10" placeholder="Masukkan alasan penugasan (minimal 10 karakter)..." style="width:100%; min-height:80px; padding:10px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; color:#0f172a; outline:none; font-family:inherit;"></textarea>
                                         </div>
 
-                                        <button type="submit" style="width:100%; height:42px; background:#0284c7; border:none; border-radius:10px; color:#ffffff; font-weight:700; font-size:13.5px; cursor:pointer; transition:background 0.2s;">
-                                            Reassign Pemeriksa
+                                        <button type="submit" id="btnSubmitAssignPemeriksa" disabled style="width:100%; height:42px; background:#7dd3fc; opacity:0.6; border:none; border-radius:10px; color:#0369a1; font-weight:700; font-size:13.5px; cursor:not-allowed; transition:all 0.2s;">
+                                            Assign Pemeriksa
                                         </button>
                                     </form>
                                 <?php endif; ?>
@@ -5152,7 +5152,49 @@ document.addEventListener('click', function(e) {
                         }
                         const card = document.getElementById('assignPemeriksaDropdownCard');
                         if (card) card.style.display = 'none';
+
+                        updateAssignPemeriksaButtonState();
                     }
+
+                    function updateAssignPemeriksaButtonState() {
+                        const input = document.getElementById('inputAssignPemeriksa');
+                        const btn = document.getElementById('btnSubmitAssignPemeriksa');
+                        if (!btn) return;
+
+                        const hasVerifier = input && input.value && input.value.trim() !== '';
+
+                        if (hasVerifier) {
+                            btn.disabled = false;
+                            btn.style.background = '#0284c7';
+                            btn.style.opacity = '1';
+                            btn.style.color = '#ffffff';
+                            btn.style.cursor = 'pointer';
+                        } else {
+                            btn.disabled = true;
+                            btn.style.background = '#7dd3fc';
+                            btn.style.opacity = '0.6';
+                            btn.style.color = '#0369a1';
+                            btn.style.cursor = 'not-allowed';
+                        }
+                    }
+
+                    document.addEventListener('DOMContentLoaded', function() {
+                        updateAssignPemeriksaButtonState();
+                        const btn = document.getElementById('btnSubmitAssignPemeriksa');
+                        if (btn) {
+                            btn.addEventListener('mouseenter', function() {
+                                if (!this.disabled) {
+                                    this.style.background = '#0369a1';
+                                }
+                            });
+                            btn.addEventListener('mouseleave', function() {
+                                if (!this.disabled) {
+                                    this.style.background = '#0284c7';
+                                }
+                            });
+                        }
+                    });
+                    updateAssignPemeriksaButtonState();
 
                     function toggleAssignPemeriksaModalDropdown(e) {
                         if (e) e.stopPropagation();
