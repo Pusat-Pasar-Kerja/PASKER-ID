@@ -25,9 +25,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
     // 1. AMBIL CASE / ASSIGN PEMERIKSA (EMPLOYER)
     if ($action === 'assign_employer_case') {
         $targetUserId = (int)$_POST['user_id'];
-        $verifierName = trim($_POST['verifier_name'] ?? 'Pandu Isdiyanto, S.T., M.M');
+        $verifierName = trim($_POST['verifier_name'] ?? '');
         $reason = trim($_POST['assignment_reason'] ?? '');
         $isSelfAssign = !empty($_POST['self_assign']);
+        if ($isSelfAssign && empty($verifierName)) {
+            $verifierName = $user['name'] ?: 'Pandu Isdiyanto, S.T., M.M';
+        }
 
         $adminDomicileCity = (string)($user['domicile_city_id'] ?? '');
         if ($user['role'] === 'admin_dinas' || ($adminDomicileCity !== '' && $user['role'] !== 'admin' && $user['role'] !== 'admin_pusat')) {
@@ -42,7 +45,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
             }
         }
 
-        if (!$isSelfAssign && strlen($reason) < 10) {
+        if (!$isSelfAssign && empty($verifierName)) {
+            flash('error', 'Pemeriksa wajib dipilih terlebih dahulu.');
+        } elseif (!$isSelfAssign && strlen($reason) < 10) {
             flash('error', 'Alasan penugasan wajib diisi minimal 10 karakter.');
         } else {
             $reasonText = $isSelfAssign ? 'Pengambilan case mandiri oleh pemeriksa.' : $reason;
@@ -5178,24 +5183,6 @@ document.addEventListener('click', function(e) {
                         }
                     }
 
-                    document.addEventListener('DOMContentLoaded', function() {
-                        updateAssignPemeriksaButtonState();
-                        const btn = document.getElementById('btnSubmitAssignPemeriksa');
-                        if (btn) {
-                            btn.addEventListener('mouseenter', function() {
-                                if (!this.disabled) {
-                                    this.style.background = '#0369a1';
-                                }
-                            });
-                            btn.addEventListener('mouseleave', function() {
-                                if (!this.disabled) {
-                                    this.style.background = '#0284c7';
-                                }
-                            });
-                        }
-                    });
-                    updateAssignPemeriksaButtonState();
-
                     function toggleAssignPemeriksaModalDropdown(e) {
                         if (e) e.stopPropagation();
                         const card = document.getElementById('assignPemeriksaModalDropdownCard');
@@ -5271,6 +5258,20 @@ document.addEventListener('click', function(e) {
                             modalCard.style.display = 'none';
                         }
                     });
+
+                    document.addEventListener('DOMContentLoaded', function() {
+                        updateAssignPemeriksaButtonState();
+                        const btnAssignSubmit = document.getElementById('btnSubmitAssignPemeriksa');
+                        if (btnAssignSubmit) {
+                            btnAssignSubmit.addEventListener('mouseenter', function() {
+                                if (!this.disabled) this.style.background = '#0369a1';
+                            });
+                            btnAssignSubmit.addEventListener('mouseleave', function() {
+                                if (!this.disabled) this.style.background = '#0284c7';
+                            });
+                        }
+                    });
+                    updateAssignPemeriksaButtonState();
 
                     // --- METODE VERIFIKASI INTERACTION LOGIC ---
                     let currentVerifMethod = '<?php echo $savedMethod ?? 'ONLINE'; ?>';
