@@ -106,6 +106,17 @@ function setActivePage(pageName) {
     if (navDrawer) navDrawer.classList.remove('open');
     if (drawerBackdrop) drawerBackdrop.classList.remove('open');
 
+    if (targetPage !== 'lowongan') {
+        const kbjiModal = document.querySelector('[data-modal="kbji-conflict"]');
+        if (kbjiModal && (kbjiModal.classList.contains('open') || kbjiModal.style.display !== 'none')) {
+            kbjiModal.classList.remove('open');
+            kbjiModal.style.display = 'none';
+        }
+    }
+    if (typeof cleanKbjiConflictUrl === 'function') {
+        cleanKbjiConflictUrl();
+    }
+
     const currentCrumb = document.querySelector('[data-current-crumb]') || document.getElementById('crumbCurrent');
     const labelMap = {
         dashboard: 'Dasbor',
@@ -194,6 +205,9 @@ function bindModalsAndDrawers() {
                 modal.style.display = 'none';
                 modal.classList.remove('open');
                 modal.dispatchEvent(new CustomEvent('modal:close'));
+            }
+            if (modalId === 'kbji-conflict' && typeof cleanKbjiConflictUrl === 'function') {
+                cleanKbjiConflictUrl();
             }
         }
     });

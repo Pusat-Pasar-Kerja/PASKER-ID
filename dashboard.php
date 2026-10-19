@@ -926,7 +926,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                     'active_job_title' => $rulesResult['conflict_job']['title'] ?? '',
                     'active_job_status' => $rulesResult['conflict_job']['status'] ?? ''
                 ];
-                redirect('dashboard.php?kbji_conflict=1&draft_id=' . $jobId . '#lowongan');
+                redirect('dashboard.php#lowongan');
                 exit;
             } else {
                 // Layer 3: Monthly quota exceeded (>10) - Open modal directly without top toast notification
@@ -1482,7 +1482,7 @@ $showProfileModal = $isOpenProfile;
 $flashData = get_flash();
 $flashHtml = '';
 $pendingPopupMessage = null;
-$isAnyModalActive = (!empty($_GET['open_draft']) || !empty($_GET['job_detail']) || !empty($_GET['layer3_error']) || !empty($_GET['kbji_conflict']) || !empty($_GET['open_profile']) || !empty($_SESSION['kbji_duplicate_error']));
+$isAnyModalActive = (!empty($_GET['open_draft']) || !empty($_GET['job_detail']) || !empty($_GET['layer3_error']) || !empty($_GET['open_profile']) || !empty($_SESSION['kbji_duplicate_error']));
 
 if ($flashData && $flashData['type'] === 'pending_popup') {
     $pendingPopupMessage = $flashData['message'];
