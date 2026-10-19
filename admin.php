@@ -675,13 +675,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
 
         // 4. Validate Checklist Inputs: Berkas telah ditinjau = Ya wajib
         if ($docReviewed !== 'Ya') {
-            flash('error', 'Admin hanya boleh memberikan keputusan setelah Berkas telah ditinjau = Ya.');
+            flash('error', 'Keputusan hanya dapat diberikan setelah opsi "Berkas telah ditinjau" dipilih "Ya".');
             redirect($redirectUrl . '&detail_id=' . $jobId);
             exit;
         }
 
         if (!in_array($fieldVisit, ['Ya', 'Tidak'], true)) {
-            $fieldVisit = 'Tidak';
+            flash('error', 'Pilihan Kunjungan Lapangan wajib diisi.');
+            redirect($redirectUrl . '&detail_id=' . $jobId);
+            exit;
         }
 
         if ($decision === 'reject' && $notes === '') {
@@ -6502,27 +6504,30 @@ document.addEventListener('click', function(e) {
                                                 <span>Tidak</span>
                                             </label>
                                         </div>
+                                        <div style="font-size:11px; color:#64748b; margin-top:4px;">
+                                            * Keputusan hanya dapat diberikan setelah opsi "Berkas telah ditinjau" dipilih "Ya".
+                                        </div>
                                         <div id="docReviewedError" style="display:none; color:#ef4444; font-size:12px; margin-top:4px;">
-                                            Admin hanya boleh memberikan keputusan setelah Berkas telah ditinjau = Ya.
+                                            Keputusan hanya dapat diberikan setelah opsi "Berkas telah ditinjau" dipilih "Ya".
                                         </div>
                                     </div>
 
                                     <div style="margin-bottom:16px;">
                                         <label style="display:block; font-size:13px; font-weight:700; color:#0f172a; margin-bottom:8px;">
-                                            Kunjungan Lapangan
+                                            Kunjungan Lapangan <span style="color:#ef4444;">*</span>
                                         </label>
                                         <div style="display:flex; align-items:center; gap:24px; font-size:13px; color:#334155;">
                                             <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
-                                                <input type="radio" name="field_visit" value="Ya">
+                                                <input type="radio" name="field_visit" value="Ya" required>
                                                 <span>Ya</span>
                                             </label>
                                             <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
-                                                <input type="radio" name="field_visit" value="Tidak" checked>
+                                                <input type="radio" name="field_visit" value="Tidak" checked required>
                                                 <span>Tidak</span>
                                             </label>
                                         </div>
                                         <div style="font-size:11px; color:#64748b; margin-top:4px;">
-                                            * Kunjungan Lapangan = Tidak tidak otomatis berarti dokumen ditolak; hanya merupakan informasi apakah kunjungan dilakukan atau tidak.
+                                            * Kunjungan Lapangan = Tidak, tidak otomatis berarti dokumen ditolak; hanya merupakan informasi apakah kunjungan dilakukan atau tidak.
                                         </div>
                                     </div>
 
@@ -7233,10 +7238,17 @@ document.addEventListener('click', function(e) {
     if (!yaRadio || !yaRadio.checked) {
         event.preventDefault();
         if (errBox) errBox.style.display = 'block';
-        alert('Admin hanya boleh memberikan keputusan setelah Berkas telah ditinjau = Ya.');
+        alert('Keputusan hanya dapat diberikan setelah opsi "Berkas telah ditinjau" dipilih "Ya".');
         return false;
     }
     if (errBox) errBox.style.display = 'none';
+
+    const fieldVisitChecked = document.querySelector('input[name="field_visit"]:checked');
+    if (!fieldVisitChecked) {
+        event.preventDefault();
+        alert('Pilihan Kunjungan Lapangan wajib diisi.');
+        return false;
+    }
 
     const submitter = event.submitter;
     if (submitter && submitter.value === 'reject') {
