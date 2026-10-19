@@ -25,6 +25,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
     // 1. AMBIL CASE / ASSIGN PEMERIKSA (EMPLOYER)
     if ($action === 'assign_employer_case') {
         $targetUserId = (int)$_POST['user_id'];
+        $targetProfileId = (int)($_POST['profile_id'] ?? 0);
         $verifierName = trim($_POST['verifier_name'] ?? '');
         $reason = trim($_POST['assignment_reason'] ?? '');
         $isSelfAssign = !empty($_POST['self_assign']);
@@ -34,8 +35,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
 
         $adminDomicileCity = (string)($user['domicile_city_id'] ?? '');
         if ($user['role'] === 'admin_dinas' || ($adminDomicileCity !== '' && $user['role'] !== 'admin' && $user['role'] !== 'admin_pusat')) {
-            $stmtCheck = db()->prepare('SELECT domicile_city_id FROM employer_profiles WHERE user_id = ?');
-            $stmtCheck->execute([$targetUserId]);
+            $checkSql = ($targetProfileId > 0)
+                ? 'SELECT domicile_city_id FROM employer_profiles WHERE id = ?'
+                : 'SELECT domicile_city_id FROM employer_profiles WHERE user_id = ?';
+            $stmtCheck = db()->prepare($checkSql);
+            $stmtCheck->execute([$targetProfileId > 0 ? $targetProfileId : $targetUserId]);
             $empRow = $stmtCheck->fetch();
             $empDomicileCity = (string)($empRow['domicile_city_id'] ?? '');
             if ($empDomicileCity === '' || $empDomicileCity !== $adminDomicileCity) {
@@ -51,12 +55,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
             flash('error', 'Alasan penugasan wajib diisi minimal 10 karakter.');
         } else {
             $reasonText = $isSelfAssign ? 'Pengambilan case mandiri oleh pemeriksa.' : $reason;
-            $stmt = db()->prepare('UPDATE employer_profiles SET assigned_to = ?, assigned_at = datetime("now"), assignment_reason = ? WHERE user_id = ?');
+            $whereClause = ($targetProfileId > 0) ? 'WHERE id = ?' : 'WHERE user_id = ?';
+            $targetParam = ($targetProfileId > 0) ? $targetProfileId : $targetUserId;
+            $stmt = db()->prepare("UPDATE employer_profiles SET assigned_to = ?, assigned_at = datetime('now'), assignment_reason = ? {$whereClause}");
             try {
-                $stmt->execute([$verifierName, $reasonText, $targetUserId]);
+                $stmt->execute([$verifierName, $reasonText, $targetParam]);
             } catch (Throwable $e) {
-                $stmt = db()->prepare('UPDATE employer_profiles SET assigned_to = ?, assigned_at = NOW(), assignment_reason = ? WHERE user_id = ?');
-                $stmt->execute([$verifierName, $reasonText, $targetUserId]);
+                $stmt = db()->prepare("UPDATE employer_profiles SET assigned_to = ?, assigned_at = NOW(), assignment_reason = ? {$whereClause}");
+                $stmt->execute([$verifierName, $reasonText, $targetParam]);
             }
             if ($isSelfAssign) {
                 record_audit_log('employer', $targetUserId, 'CASE_ASSIGNED', "Ditugaskan ke {$verifierName}.", $user['name']);
@@ -73,8 +79,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
 
     if ($action === 'unassign_employer_case') {
         $targetUserId = (int)$_POST['user_id'];
-        $stmt = db()->prepare('UPDATE employer_profiles SET assigned_to = NULL, assigned_at = NULL, assignment_reason = NULL WHERE user_id = ?');
-        $stmt->execute([$targetUserId]);
+        $targetProfileId = (int)($_POST['profile_id'] ?? 0);
+        $whereClause = ($targetProfileId > 0) ? 'WHERE id = ?' : 'WHERE user_id = ?';
+        $targetParam = ($targetProfileId > 0) ? $targetProfileId : $targetUserId;
+        $stmt = db()->prepare("UPDATE employer_profiles SET assigned_to = NULL, assigned_at = NULL, assignment_reason = NULL {$whereClause}");
+        $stmt->execute([$targetParam]);
         record_audit_log('employer', $targetUserId, 'CASE_UNASSIGNED', "Penugasan dibatalkan.", $user['name']);
         flash('success', "Penugasan pemeriksa berhasil dibatalkan.");
         redirect($redirectUrl);
@@ -84,6 +93,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
     // 2. KEPUTUSAN VERIFIKASI PEMBERI KERJA
     if ($action === 'verify_employer') {
         $targetUserId = (int)$_POST['user_id'];
+        $targetProfileId = (int)($_POST['profile_id'] ?? 0);
         $decision = $_POST['decision']; // approve | revision | reject
         $notes = trim($_POST['verifier_notes'] ?? '');
         $checklist = isset($_POST['checklist']) ? implode(', ', $_POST['checklist']) : '';
@@ -95,8 +105,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
             // Lock row with FOR UPDATE
             $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
             $forUpdate = $driver === 'sqlite' ? '' : ' FOR UPDATE';
-            $stmtEmp = $pdo->prepare('SELECT ep.*, u.name, u.email FROM employer_profiles ep JOIN users u ON u.id = ep.user_id WHERE ep.user_id = ?' . $forUpdate);
-            $stmtEmp->execute([$targetUserId]);
+            $whereEmp = ($targetProfileId > 0) ? 'ep.id = ?' : 'ep.user_id = ?';
+            $stmtEmp = $pdo->prepare('SELECT ep.*, u.name, u.email FROM employer_profiles ep JOIN users u ON u.id = ep.user_id WHERE ' . $whereEmp . $forUpdate);
+            $stmtEmp->execute([$targetProfileId > 0 ? $targetProfileId : $targetUserId]);
             $targetEmp = $stmtEmp->fetch();
 
             if (!$targetEmp) {
@@ -180,14 +191,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
             $savedLocationResult = ($verifMethod === 'OFFLINE') ? $locationResult : null;
             $methodLog = "Metode: " . ($verifMethod === 'OFFLINE' ? "Offline (Lokasi: {$locationResult})" : "Online");
 
+            $profileIdToUpdate = (int)($targetEmp['id'] ?? 0);
             if ($decision === 'approve') {
                 $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                 if ($driver === 'sqlite') {
-                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 1, verification_status = "APPROVED", active_until = datetime("now", "+6 months"), last_activated_at = datetime("now"), extension_requested = 0, extension_status = "NONE", manual_review_status = NULL, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE user_id = ?');
+                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 1, verification_status = "APPROVED", active_until = datetime("now", "+6 months"), last_activated_at = datetime("now"), extension_requested = 0, extension_status = "NONE", manual_review_status = NULL, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE id = ?');
                 } else {
-                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 1, verification_status = "APPROVED", active_until = DATE_ADD(NOW(), INTERVAL 6 MONTH), last_activated_at = NOW(), extension_requested = 0, extension_status = "NONE", manual_review_status = NULL, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE user_id = ?');
+                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 1, verification_status = "APPROVED", active_until = DATE_ADD(NOW(), INTERVAL 6 MONTH), last_activated_at = NOW(), extension_requested = 0, extension_status = "NONE", manual_review_status = NULL, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE id = ?');
                 }
-                $stmt->execute([$notes, $checklist, $verifMethod, $savedLocationResult, $targetUserId]);
+                $stmt->execute([$notes, $checklist, $verifMethod, $savedLocationResult, $profileIdToUpdate]);
                 $pdo->prepare('UPDATE users SET profile_complete = 1 WHERE id = ?')->execute([$targetUserId]);
 
                 $isReactivationApproval = !empty($targetEmp['last_activated_at']);
@@ -207,11 +219,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
                 $manualStatus = ($newRevisionCount >= 3) ? 'MANUAL_DINAS_REVIEW' : 'NONE';
 
                 try {
-                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "NEEDS_REVISION", revision_count = ?, rejection_count = ?, manual_review_status = ?, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE user_id = ?');
-                    $stmt->execute([$newRevisionCount, $newRevisionCount, $manualStatus, $notes, $checklist, $verifMethod, $savedLocationResult, $targetUserId]);
+                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "NEEDS_REVISION", revision_count = ?, rejection_count = ?, manual_review_status = ?, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE id = ?');
+                    $stmt->execute([$newRevisionCount, $newRevisionCount, $manualStatus, $notes, $checklist, $verifMethod, $savedLocationResult, $profileIdToUpdate]);
                 } catch (Throwable $ignore) {
-                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "NEEDS_REVISION", rejection_count = ?, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE user_id = ?');
-                    $stmt->execute([$newRevisionCount, $notes, $checklist, $verifMethod, $savedLocationResult, $targetUserId]);
+                    $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "NEEDS_REVISION", rejection_count = ?, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE id = ?');
+                    $stmt->execute([$newRevisionCount, $notes, $checklist, $verifMethod, $savedLocationResult, $profileIdToUpdate]);
                 }
                 record_audit_log('employer', $targetUserId, 'REVISION_REQUESTED', "Permintaan perbaikan data (Revisi ke-{$newRevisionCount}) dikirim ke pemohon. {$methodLog}. Catatan: {$notes}", $user['name'], $user['role'] ?? 'admin', true);
                 notify_user($targetUserId, "Perbaikan Profil Diperlukan (Revisi ke-{$newRevisionCount})", 'Verifikator meminta perbaikan profil: ' . $notes, 'warning');
@@ -219,8 +231,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
                 flash('success', "Profil dikembalikan ke pemohon untuk diperbaiki (Revisi Diminta ke-{$newRevisionCount}).");
             } elseif ($decision === 'reject') {
                 $newRejectionCount = (int)($targetEmp['rejection_count'] ?? 0) + 1;
-                $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "REJECTED", rejection_count = ?, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE user_id = ?');
-                $stmt->execute([$newRejectionCount, $notes, $checklist, $verifMethod, $savedLocationResult, $targetUserId]);
+                $stmt = $pdo->prepare('UPDATE employer_profiles SET verified = 0, verification_status = "REJECTED", rejection_count = ?, verifier_notes = ?, verification_checklist = ?, verification_method = ?, location_check_result = ? WHERE id = ?');
+                $stmt->execute([$newRejectionCount, $notes, $checklist, $verifMethod, $savedLocationResult, $profileIdToUpdate]);
                 record_audit_log('employer', $targetUserId, 'REJECTED', "Profil ditolak. {$methodLog}. Catatan: {$notes}", $user['name'], $user['role'] ?? 'admin', true);
                 notify_user($targetUserId, 'Profil Ditolak', 'Verifikator menolak profil Anda: ' . $notes, 'error');
                 $pdo->commit();
@@ -1088,10 +1100,18 @@ if ($view === 'verifikasi_employer') {
     $activeProfileChange = null;
     $profileVersions = [];
     if ($detailId > 0) {
-        $stmtSel = db()->prepare('SELECT u.id as user_id, u.name, u.email, u.created_at, ep.*,
-            (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") AS pending_profile_changes
-            FROM employer_profiles ep JOIN users u ON u.id = ep.user_id WHERE ep.user_id = ? LIMIT 1');
-        $stmtSel->execute([$detailId]);
+        $reqProfileId = (int)($_GET['profile_id'] ?? 0);
+        if ($reqProfileId > 0) {
+            $stmtSel = db()->prepare('SELECT u.id as user_id, u.name, u.email, u.created_at, ep.*,
+                (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") AS pending_profile_changes
+                FROM employer_profiles ep JOIN users u ON u.id = ep.user_id WHERE ep.id = ? LIMIT 1');
+            $stmtSel->execute([$reqProfileId]);
+        } else {
+            $stmtSel = db()->prepare('SELECT u.id as user_id, u.name, u.email, u.created_at, ep.*,
+                (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") AS pending_profile_changes
+                FROM employer_profiles ep JOIN users u ON u.id = ep.user_id WHERE ep.id = ? OR ep.user_id = ? ORDER BY (CASE WHEN ep.id = ? THEN 1 ELSE 2 END) LIMIT 1');
+            $stmtSel->execute([$detailId, $detailId, $detailId]);
+        }
         $selectedEmployer = $stmtSel->fetch();
         if ($selectedEmployer) {
             $adminDomicileCity = (string)($user['domicile_city_id'] ?? '');
@@ -5732,7 +5752,7 @@ document.addEventListener('click', function(e) {
                                             </td>
                                             <td style="padding:14px 16px; color:#64748b; font-size:12.5px; white-space:nowrap;"><?php echo date('d M Y, H:i', strtotime($vEmp['created_at'])); ?></td>
                                             <td style="padding:14px 16px; text-align:right; white-space:nowrap;">
-                                                <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=<?php echo e($tab); ?>&detail_id=<?php echo $vEmp['user_id']; ?>" class="btn-lihat-detail">
+                                                <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=<?php echo e($tab); ?>&detail_id=<?php echo $vEmp['profile_id'] ?: $vEmp['user_id']; ?>&profile_id=<?php echo $vEmp['profile_id']; ?>" class="btn-lihat-detail">
                                                     Lihat Detail
                                                 </a>
                                             </td>

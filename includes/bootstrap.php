@@ -259,6 +259,12 @@ function ensure_sqlite_extra_tables(PDO $pdo): void
         if (!in_array('additional_doc_filename', $cols, true)) {
             $pdo->exec('ALTER TABLE job_posts ADD COLUMN additional_doc_filename TEXT');
         }
+        if (!in_array('employer_profile_id', $cols, true)) {
+            $pdo->exec('ALTER TABLE job_posts ADD COLUMN employer_profile_id INTEGER NULL');
+            try {
+                $pdo->exec('UPDATE job_posts SET employer_profile_id = (SELECT id FROM employer_profiles WHERE employer_profiles.user_id = job_posts.user_id ORDER BY id ASC LIMIT 1) WHERE employer_profile_id IS NULL');
+            } catch (Throwable $ignored) {}
+        }
 
         $docCols = array_column($pdo->query('PRAGMA table_info(job_additional_documents)')->fetchAll(), 'name');
         if (!in_array('document_blob', $docCols, true)) {

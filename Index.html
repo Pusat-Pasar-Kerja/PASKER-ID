@@ -1816,13 +1816,13 @@
                         <div class="notif" data-open-modal="modal-notifications" style="cursor:pointer;" title="Notifikasi"><i class="fa-regular fa-bell"></i></div>
                     <?php } ?>
 
-                    <div class="company-profile-pill" data-open-modal="modal-user-account" title="Pengaturan Akun / Profil">
-                        <div class="company-pill-avatar" id="topbarAvatar"><?php echo mb_strtoupper(mb_substr($profile['owner_name'] ?? $user['name'], 0, 2)); ?></div>
+                    <div class="company-profile-pill" data-open-modal="modal-user-account" title="Pilih Usaha / Pengaturan Akun" style="cursor:pointer;">
+                        <div class="company-pill-avatar" id="topbarAvatar"><?php echo mb_strtoupper(mb_substr(!empty($profile['brand_name']) ? $profile['brand_name'] : ($profile['owner_name'] ?? $user['name']), 0, 2)); ?></div>
                         <div class="company-pill-text">
-                            <strong id="topbarCompName"><?php echo e($profile['owner_name'] ?? $user['name']); ?></strong>
-                            <span id="topbarCompType"><?php echo !empty($profile['profession']) ? e($profile['profession']) : 'Perusahaan'; ?></span>
+                            <strong id="topbarCompName"><?php echo e(!empty($profile['brand_name']) ? $profile['brand_name'] : ($profile['owner_name'] ?? $user['name'])); ?></strong>
+                            <span id="topbarCompType"><?php echo !empty($profile['profession']) ? e($profile['profession']) : 'Pemberi Kerja Individu'; ?></span>
                         </div>
-                        <i class="fa-solid fa-chevron-right company-pill-arrow"></i>
+                        <i class="fa-solid fa-chevron-down company-pill-arrow" style="font-size:11px; margin-left:6px; color:#64748b;"></i>
                     </div>
                 </div>
             </header>
@@ -1849,7 +1849,7 @@
                     <div class="dash-container">
                         <!-- HEADER DASHBOARD -->
                         <div class="lifecycle-header">
-                            <h1 class="lifecycle-title">Halo, <?php echo htmlspecialchars($ownerName, ENT_QUOTES, 'UTF-8'); ?></h1>
+                            <h1 class="lifecycle-title">Halo, <?php echo htmlspecialchars(!empty($profile['brand_name']) ? $profile['brand_name'] : $ownerName, ENT_QUOTES, 'UTF-8'); ?></h1>
 
                             <?php if (in_array($verificationStatus, ['ACTIVE_VERIFIED', 'APPROVED'], true)): ?>
                                 <?php if ($hasValidDates): ?>
@@ -4766,28 +4766,114 @@
         </div>
     </div>
 
-    <!-- ─── MODAL AKUN PENGGUNA ───────────────────────────────────────── -->
+    <!-- ─── MODAL ACCOUNT SWITCHER (AKUN & PILIHAN USAHA) ───────────────── -->
     <div class="modal-backdrop" data-modal="modal-user-account">
-        <div class="modal-panel" style="width: min(420px, 95vw);">
-            <div class="modal-header">
-                <div class="modal-title">Akun Pengguna</div>
-                <button type="button" class="ghost-btn" data-close-modal="modal-user-account">×</button>
+        <div class="modal-panel" style="width: min(460px, 95vw); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); background:#ffffff;">
+            <div class="modal-header" style="background:#ffffff; border-bottom:1px solid #f1f5f9; padding:18px 22px; display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <div class="modal-title" style="font-size:16px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-store" style="color:#0284c7;"></i> Pilihan Usaha & Akun
+                    </div>
+                    <div class="modal-subtitle" style="font-size:12px; color:#64748b; margin-top:2px;">Beralih konteks usaha atau kelola akun Anda</div>
+                </div>
+                <button type="button" class="ghost-btn" data-close-modal="modal-user-account" style="font-size:18px; padding:2px 8px; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer;">×</button>
             </div>
-            <div class="modal-body">
-                <div style="display:flex; align-items:center; gap:14px; padding:16px; background:#f8fafc; border-radius:12px; margin-bottom:16px;">
-                    <div class="profile-avatar" style="width:48px; height:48px; font-size:18px; display:flex; align-items:center; justify-content:center; background:#0284c7; color:#fff; border-radius:10px; font-weight:800;">
-                        <?php echo mb_strtoupper(mb_substr($profile['owner_name'] ?? $user['name'], 0, 2)); ?>
+            <div class="modal-body" style="padding:18px 22px; max-height:80vh; overflow-y:auto;">
+                <!-- OWNER PROFILE SUMMARY CARD -->
+                <div style="display:flex; align-items:center; gap:12px; padding:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; margin-bottom:16px;">
+                    <div class="profile-avatar" style="width:44px; height:44px; font-size:16px; display:flex; align-items:center; justify-content:center; background:#0284c7; color:#fff; border-radius:10px; font-weight:800; flex-shrink:0;">
+                        <?php echo mb_strtoupper(mb_substr($ownerName, 0, 2)); ?>
                     </div>
                     <div style="flex:1; min-width:0;">
-                        <strong style="display:block; font-size:15px; color:#0f172a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo e($profile['owner_name'] ?? $user['name']); ?></strong>
-                        <span style="display:block; font-size:13px; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo e($user['email']); ?></span>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <strong style="font-size:14px; color:#0f172a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo e($ownerName); ?></strong>
+                            <span style="font-size:10px; font-weight:700; background:#e0f2fe; color:#0369a1; padding:1px 6px; border-radius:999px;">Pemilik</span>
+                        </div>
+                        <span style="display:block; font-size:12px; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px;"><?php echo e($user['email']); ?></span>
                     </div>
                 </div>
-                <div style="display:grid; gap:10px;">
-                    <button type="button" class="ghost-btn" style="justify-content:flex-start; height:40px; border:1px solid #e2e8f0; font-size:13px; font-weight:600;" data-nav="profil" data-close-modal="modal-user-account">
-                        <i class="fa-solid fa-gear" style="margin-right:8px; color:#0284c7;"></i> Pengaturan Profil
+
+                <!-- SECTION: DAFTAR USAHA (ACCOUNT SWITCHER LIST) -->
+                <div style="margin-bottom:16px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                        <span style="font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">
+                            Daftar Usaha Anda (<?php echo count($userBusinesses); ?>)
+                        </span>
+                        <span style="font-size:11px; color:#64748b;">Klik untuk beralih</span>
+                    </div>
+
+                    <div style="display:grid; gap:8px;">
+                        <?php foreach ($userBusinesses as $biz): 
+                            $bId = (int)$biz['id'];
+                            $isBizActive = ($bId === $activeBusinessId);
+                            $bBrand = !empty($biz['brand_name']) ? $biz['brand_name'] : ('Usaha #' . $bId);
+                            $bProf = !empty($biz['profession']) ? $biz['profession'] : 'Pemberi Kerja Individu';
+                            $bStatus = $biz['verification_status'] ?? 'PENDING';
+                            $bInitials = mb_strtoupper(mb_substr($bBrand, 0, 2));
+                        ?>
+                            <div class="business-switcher-item <?php echo $isBizActive ? 'active' : ''; ?>" 
+                                 onclick="<?php echo $isBizActive ? 'void(0)' : "window.location.href='dashboard.php?switch_business={$bId}'"; ?>"
+                                 style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:12px; border:<?php echo $isBizActive ? '2px solid #0284c7' : '1px solid #e2e8f0'; ?>; background:<?php echo $isBizActive ? '#f0f9ff' : '#ffffff'; ?>; cursor:<?php echo $isBizActive ? 'default' : 'pointer'; ?>; transition:all 0.15s ease;"
+                                 onmouseover="<?php echo $isBizActive ? '' : "this.style.background='#f8fafc'; this.style.borderColor='#93c5fd';"; ?>"
+                                 onmouseout="<?php echo $isBizActive ? '' : "this.style.background='#ffffff'; this.style.borderColor='#e2e8f0';"; ?>">
+                                <div style="display:flex; align-items:center; gap:12px; min-width:0; flex:1;">
+                                    <div style="width:38px; height:38px; border-radius:8px; background:<?php echo $isBizActive ? '#0284c7' : '#e2e8f0'; ?>; color:<?php echo $isBizActive ? '#fff' : '#475569'; ?>; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; flex-shrink:0;">
+                                        <?php echo $bInitials; ?>
+                                    </div>
+                                    <div style="min-width:0; flex:1;">
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <strong style="font-size:13.5px; color:#0f172a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo e($bBrand); ?></strong>
+                                            <?php if ($isBizActive): ?>
+                                                <span style="font-size:10px; font-weight:700; background:#0284c7; color:#fff; padding:2px 6px; border-radius:999px; white-space:nowrap;">
+                                                    <i class="fa-solid fa-check"></i> Aktif
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+                                            <span style="font-size:12px; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo e($bProf); ?></span>
+                                            <span style="color:#cbd5e1;">•</span>
+                                            <?php if ($bStatus === 'APPROVED' || $bStatus === 'ACTIVE_VERIFIED'): ?>
+                                                <span style="font-size:11px; font-weight:600; color:#15803d; background:#dcfce7; padding:1px 6px; border-radius:999px;">Terverifikasi</span>
+                                            <?php elseif ($bStatus === 'PENDING'): ?>
+                                                <span style="font-size:11px; font-weight:600; color:#92400e; background:#fef3c7; padding:1px 6px; border-radius:999px;">Menunggu Verifikasi</span>
+                                            <?php elseif ($bStatus === 'NEEDS_REVISION'): ?>
+                                                <span style="font-size:11px; font-weight:600; color:#c2410c; background:#ffedd5; padding:1px 6px; border-radius:999px;">Perlu Revisi</span>
+                                            <?php elseif ($bStatus === 'REJECTED'): ?>
+                                                <span style="font-size:11px; font-weight:600; color:#991b1b; background:#fee2e2; padding:1px 6px; border-radius:999px;">Ditolak</span>
+                                            <?php else: ?>
+                                                <span style="font-size:11px; font-weight:600; color:#475569; background:#f1f5f9; padding:1px 6px; border-radius:999px;"><?php echo e($bStatus); ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <?php if ($isBizActive): ?>
+                                        <div style="width:20px; height:20px; border-radius:50%; background:#0284c7; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px;">
+                                            <i class="fa-solid fa-check"></i>
+                                        </div>
+                                    <?php else: ?>
+                                        <span style="font-size:12px; font-weight:600; color:#0284c7;">Pilih</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- TOMBOL PILIH TAMBAH USAHA BARU -->
+                <button type="button" class="btn-tambah-usaha" onclick="openAddBusinessModal()" style="width:100%; height:44px; border:1.5px dashed #0284c7; background:#f0f9ff; color:#0284c7; border-radius:12px; font-size:13.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; margin-bottom:16px; transition:all 0.15s ease;"
+                        onmouseover="this.style.background='#e0f2fe'; this.style.borderColor='#0369a1';"
+                        onmouseout="this.style.background='#f0f9ff'; this.style.borderColor='#0284c7';">
+                    <i class="fa-solid fa-plus-circle" style="font-size:16px;"></i> Pilih Tambah Usaha Baru
+                </button>
+
+                <!-- FOOTER ACTIONS -->
+                <div style="display:grid; gap:8px; border-top:1px solid #f1f5f9; padding-top:14px;">
+                    <button type="button" class="ghost-btn" style="justify-content:flex-start; height:38px; border:1px solid #e2e8f0; font-size:13px; font-weight:600;" data-nav="profil" data-close-modal="modal-user-account">
+                        <i class="fa-solid fa-gear" style="margin-right:8px; color:#0284c7;"></i> Pengaturan Profil Usaha Aktif
                     </button>
-                    <a href="logout.php" class="primary-btn" style="background:#dc2626; color:#fff; display:flex; align-items:center; justify-content:center; gap:8px; height:40px; text-decoration:none; font-size:13px; font-weight:700; border-radius:10px;">
+                    <a href="logout.php" class="primary-btn" style="background:#dc2626; color:#fff; display:flex; align-items:center; justify-content:center; gap:8px; height:38px; text-decoration:none; font-size:13px; font-weight:700; border-radius:10px;">
                         <i class="fa-solid fa-right-from-bracket"></i> Keluar
                     </a>
                 </div>
@@ -4795,10 +4881,313 @@
         </div>
     </div>
 
+    <!-- ─── MODAL DRAFT PROFIL USAHA BARU (TAMBAH USAHA BARU) ─────────────── -->
+    <div class="modal-backdrop <?php echo !empty($_GET['open_add_business']) ? 'open' : ''; ?>" data-modal="modal-add-business" <?php echo !empty($_GET['open_add_business']) ? 'style="display:flex;"' : ''; ?>>
+        <div class="modal-panel" style="width: min(720px, 95vw); max-height: 92vh; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; background: #ffffff; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+            <div class="modal-header" style="background:#ffffff; border-bottom:1px solid #f1f5f9; padding:20px 24px 16px; flex-shrink:0;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div>
+                        <div class="modal-title" style="font-size:18px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:10px;">
+                            <i class="fa-solid fa-building-circle-check" style="color:#0284c7;"></i> Draft Profil Usaha Baru
+                        </div>
+                        <div class="modal-subtitle" style="font-size:13px; color:#64748b; margin-top:3px;">
+                            Lengkapi data usaha baru Anda. Identitas pemilik terdaftar bersifat tetap (Read-Only).
+                        </div>
+                    </div>
+                    <button type="button" class="ghost-btn" data-close-modal="modal-add-business" style="font-size:20px; padding:2px 8px; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer;">×</button>
+                </div>
+            </div>
+
+            <form method="post" action="dashboard.php" enctype="multipart/form-data" id="formAddBusiness" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; margin:0;">
+                <input type="hidden" name="action_create_business" value="1">
+
+                <div class="modal-body" style="padding:22px 24px; flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:20px; background:#f8fafc;">
+                    
+                    <!-- SECTION 1: IDENTITAS PEMILIK (READ-ONLY) -->
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #f1f5f9;">
+                            <div style="width:32px; height:32px; border-radius:8px; background:#e0f2fe; color:#0284c7; display:flex; align-items:center; justify-content:center; font-size:14px;">
+                                <i class="fa-solid fa-id-card"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin:0; font-size:14px; font-weight:700; color:#0f172a;">1. Identitas Pemilik Terdaftar (Read-Only)</h3>
+                                <p style="margin:0; font-size:12px; color:#64748b;">Menggunakan data akun resmi Anda di Karirhub Kemnaker</p>
+                            </div>
+                        </div>
+
+                        <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:10px 14px; margin-bottom:16px; font-size:12.5px; color:#0369a1; display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-circle-info" style="font-size:14px; flex-shrink:0;"></i>
+                            <span>Identitas pemilik otomatis terisi dan terkunci demi keamanan verifikasi. Usaha baru akan memiliki profil dan legalitas tersendiri.</span>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                            <div class="form-group">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                    Nama Pemilik <i class="fa-solid fa-lock" style="color:#94a3b8; font-size:11px; margin-left:4px;"></i>
+                                </label>
+                                <input type="text" name="owner_name" value="<?php echo e($primaryProfile['owner_name'] ?? $user['name']); ?>" readonly style="background:#f1f5f9; color:#475569; cursor:not-allowed; border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:13px; width:100%;">
+                                <small style="font-size:11px; color:#64748b; margin-top:3px; display:block;">Terdaftar dari akun utama</small>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                    NIK Pemilik <i class="fa-solid fa-lock" style="color:#94a3b8; font-size:11px; margin-left:4px;"></i>
+                                </label>
+                                <input type="text" name="nik" value="<?php echo e($primaryProfile['nik'] ?? ''); ?>" readonly style="background:#f1f5f9; color:#475569; cursor:not-allowed; border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:13px; width:100%;">
+                                <small style="font-size:11px; color:#64748b; margin-top:3px; display:block;">16 digit NIK terverifikasi</small>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:12px;">
+                            <div class="form-group">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                    Nomor Telepon Pemilik <i class="fa-solid fa-lock" style="color:#94a3b8; font-size:11px; margin-left:4px;"></i>
+                                </label>
+                                <input type="text" name="phone" value="<?php echo e($primaryProfile['phone'] ?? ''); ?>" readonly style="background:#f1f5f9; color:#475569; cursor:not-allowed; border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:13px; width:100%;">
+                                <small style="font-size:11px; color:#64748b; margin-top:3px; display:block;">Nomor telepon aktif pemilik</small>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                    Status NPWP <i class="fa-solid fa-lock" style="color:#94a3b8; font-size:11px; margin-left:4px;"></i>
+                                </label>
+                                <div style="display:flex; align-items:center; gap:8px; padding:9px 12px; background:#f1f5f9; border:1px solid #d1d5db; border-radius:8px; font-size:13px; color:#475569;">
+                                    <i class="fa-solid fa-check-circle" style="color:#16a34a;"></i>
+                                    <span>Menggunakan NIK sebagai NPWP terdaftar</span>
+                                </div>
+                                <small style="font-size:11px; color:#64748b; margin-top:3px; display:block;">Terverifikasi dengan NIK</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 2: PROFIL USAHA / KEGIATAN BARU -->
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #f1f5f9;">
+                            <div style="width:32px; height:32px; border-radius:8px; background:#fef3c7; color:#d97706; display:flex; align-items:center; justify-content:center; font-size:14px;">
+                                <i class="fa-solid fa-briefcase"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin:0; font-size:14px; font-weight:700; color:#0f172a;">2. Data Brand & Jenis Usaha Baru</h3>
+                                <p style="margin:0; font-size:12px; color:#64748b;">Tentukan nama brand, bidang kegiatan, dan profil usaha baru</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:14px;">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                Nama Brand Usaha <span style="color:#ef4444;">*</span>
+                            </label>
+                            <input type="text" name="brand_name" required placeholder="Contoh: Kedai Kopi Danendra, Klinik Medika Mandiri" style="border:1px solid #d1d5db; border-radius:8px; padding:10px 12px; font-size:13.5px; width:100%; box-sizing:border-box;">
+                            <small style="font-size:11px; color:#64748b; margin-top:3px; display:block;">Nama brand atau merek usaha/kegiatan yang akan tampil di lowongan dan dashboard.</small>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:14px;">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                Jenis Usaha Individu <span style="color:#ef4444;">*</span>
+                            </label>
+                            <select name="profession" required style="border:1px solid #d1d5db; border-radius:8px; padding:10px 12px; font-size:13.5px; width:100%; box-sizing:border-box; background:#fff;">
+                                <option value="">Pilih Jenis Usaha Individu</option>
+                                <?php
+                                $bizTypes = function_exists('individual_business_types') ? individual_business_types() : [];
+                                foreach ($bizTypes as $group => $items): ?>
+                                    <optgroup label="<?php echo htmlspecialchars($group, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php foreach ($items as $item): ?>
+                                            <option value="<?php echo htmlspecialchars($item, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($item, ENT_QUOTES, 'UTF-8'); ?></option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                <?php endforeach; ?>
+                            </select>
+                            <small style="font-size:11px; color:#64748b; margin-top:3px; display:block;">Pilih kategori sektor usaha perorangan yang dijalankan.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                Deskripsi Singkat Usaha <span style="color:#ef4444;">*</span>
+                            </label>
+                            <textarea name="description" rows="3" required placeholder="Jelaskan bidang usaha, kegiatan operasional, produk/layanan, dan kebutuhan tenaga kerja..." style="border:1px solid #d1d5db; border-radius:8px; padding:10px 12px; font-size:13px; width:100%; box-sizing:border-box; resize:vertical;"></textarea>
+                            <small style="font-size:11px; color:#64748b; margin-top:3px; display:block;">Deskripsikan profil usaha, produk/layanan, atau kebutuhan rekrutmen.</small>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 3: LOKASI TEMPAT USAHA -->
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #f1f5f9;">
+                            <div style="width:32px; height:32px; border-radius:8px; background:#dcfce7; color:#15803d; display:flex; align-items:center; justify-content:center; font-size:14px;">
+                                <i class="fa-solid fa-location-dot"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin:0; font-size:14px; font-weight:700; color:#0f172a;">3. Lokasi Tempat Usaha / Kegiatan</h3>
+                                <p style="margin:0; font-size:12px; color:#64748b;">Alamat domisili operasional tempat usaha baru</p>
+                            </div>
+                        </div>
+
+                        <label style="display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:13px; color:#334155; cursor:pointer;">
+                            <input type="checkbox" id="chkSameDomicileNewBiz" onchange="toggleSameDomicileNewBiz(this)">
+                            <span>Gunakan alamat domisili pemilik akun (autofill)</span>
+                        </label>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+                            <div class="form-group">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                    Provinsi <span style="color:#ef4444;">*</span>
+                                </label>
+                                <input type="text" name="province" id="new_biz_province" required placeholder="Contoh: Jawa Barat" style="border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:13px; width:100%; box-sizing:border-box;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                    Kota / Kabupaten <span style="color:#ef4444;">*</span>
+                                </label>
+                                <input type="text" name="city" id="new_biz_city" required placeholder="Contoh: Kota Bandung" style="border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:13px; width:100%; box-sizing:border-box;">
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:14px;">
+                            <div class="form-group">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                    Kecamatan <span style="color:#ef4444;">*</span>
+                                </label>
+                                <input type="text" name="district" id="new_biz_district" required placeholder="Contoh: Coblong" style="border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:13px; width:100%; box-sizing:border-box;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                    Kelurahan / Desa <span style="color:#ef4444;">*</span>
+                                </label>
+                                <input type="text" name="village" id="new_biz_village" required placeholder="Contoh: Dago" style="border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:13px; width:100%; box-sizing:border-box;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                    Kode Pos <span style="color:#ef4444;">*</span>
+                                </label>
+                                <input type="text" name="postal_code" id="new_biz_postal_code" required placeholder="Contoh: 40135" style="border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:13px; width:100%; box-sizing:border-box;">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:14px;">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                Alamat Lengkap Tempat Usaha <span style="color:#ef4444;">*</span>
+                            </label>
+                            <textarea name="address" id="new_biz_address" rows="2" required placeholder="Jl. Ir. H. Juanda No. 120, RT 03 / RW 01" style="border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:13px; width:100%; box-sizing:border-box; resize:vertical;"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                Patokan / Keterangan Alamat
+                            </label>
+                            <input type="text" name="address_detail" placeholder="Opsional. Contoh: Ruko 2 lantai, sebelah kantor pos" style="border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:13px; width:100%; box-sizing:border-box;">
+                        </div>
+                    </div>
+
+                    <!-- SECTION 4: BERKAS DOKUMEN & MEDIA SOSIAL -->
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #f1f5f9;">
+                            <div style="width:32px; height:32px; border-radius:8px; background:#f3e8ff; color:#7e22ce; display:flex; align-items:center; justify-content:center; font-size:14px;">
+                                <i class="fa-solid fa-file-shield"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin:0; font-size:14px; font-weight:700; color:#0f172a;">4. Berkas Legalitas, Foto Usaha & Media Sosial</h3>
+                                <p style="margin:0; font-size:12px; color:#64748b;">Unggah logo usaha, foto lokasi, dokumen izin, dan tautan media sosial</p>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+                            <div class="form-group">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                    Logo Usaha <span style="color:#ef4444;">*</span>
+                                </label>
+                                <input type="file" name="business_logo" accept="image/png, image/jpeg" style="border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; font-size:12.5px; width:100%; box-sizing:border-box; background:#fff;">
+                                <small style="font-size:11px; color:#64748b; margin-top:3px; display:block;">Format PNG/JPG (Maksimal 2MB)</small>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                    Foto Bukti Tempat Usaha <span style="color:#ef4444;">*</span>
+                                </label>
+                                <input type="file" name="workplace_photo" accept="image/png, image/jpeg" style="border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; font-size:12.5px; width:100%; box-sizing:border-box; background:#fff;">
+                                <small style="font-size:11px; color:#64748b; margin-top:3px; display:block;">Foto tempat operasional usaha (PNG/JPG Maks 2MB)</small>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:16px;">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">
+                                Dokumen Perizinan Usaha (NIB / SKU / Surat Keterangan) <span style="color:#ef4444;">*</span>
+                            </label>
+                            <input type="file" name="permit_document" accept="application/pdf, .docx" style="border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; font-size:12.5px; width:100%; box-sizing:border-box; background:#fff;">
+                            <small style="font-size:11px; color:#64748b; margin-top:3px; display:block;">NIB, Izin Usaha, atau Surat Keterangan Usaha RT/RW/Kelurahan (PDF/Docx Maks 2MB)</small>
+                        </div>
+
+                        <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">
+                            Media Sosial Usaha (Minimal salah satu diisi):
+                        </label>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <input type="text" name="instagram" placeholder="Instagram (misal: @namausaha)" style="border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; font-size:12.5px; width:100%; box-sizing:border-box;">
+                            <input type="text" name="facebook" placeholder="Facebook (misal: facebook.com/...)" style="border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; font-size:12.5px; width:100%; box-sizing:border-box;">
+                            <input type="text" name="linkedin" placeholder="LinkedIn (misal: linkedin.com/in/...)" style="border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; font-size:12.5px; width:100%; box-sizing:border-box;">
+                            <input type="text" name="tiktok" placeholder="TikTok (misal: @tiktokusaha)" style="border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; font-size:12.5px; width:100%; box-sizing:border-box;">
+                        </div>
+                    </div>
+
+                    <!-- SECTION 5: PERNYATAAN & PERSETUJUAN -->
+                    <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:14px; padding:18px;">
+                        <div style="display:flex; align-items:flex-start; gap:12px;">
+                            <i class="fa-solid fa-file-contract" style="color:#d97706; font-size:18px; margin-top:2px; flex-shrink:0;"></i>
+                            <div>
+                                <h4 style="margin:0 0 4px; font-size:13.5px; font-weight:700; color:#92400e;">Pernyataan Pendaftaran Usaha Baru</h4>
+                                <p style="margin:0 0 10px; font-size:12px; color:#78350f; line-height:1.5;">
+                                    Dengan mendaftarkan usaha baru ini, saya menyatakan bahwa seluruh data, dokumen legalitas, dan bukti tempat usaha yang dilampirkan adalah benar dan sah. Usaha baru akan masuk ke antrean verifikasi oleh Admin Dinas Tenaga Kerja dengan alur yang sama seperti pendaftaran pemberi kerja individu.
+                                </p>
+                                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:700; color:#92400e;">
+                                    <input type="checkbox" name="user_consent" value="1" required style="width:16px; height:16px; accent-color:#0284c7;">
+                                    <span>Saya menyetujui pernyataan dan ketentuan di atas. <span style="color:#ef4444;">*</span></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer" style="background:#ffffff; border-top:1px solid #f1f5f9; padding:14px 24px; display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-shrink:0;">
+                    <button type="button" class="ghost-btn" data-close-modal="modal-add-business" style="height:40px; padding:0 20px; font-size:13.5px; font-weight:600; border-radius:10px; border:1px solid #d1d5db; cursor:pointer;">
+                        Batal
+                    </button>
+                    <button type="submit" class="primary-btn" style="background:#0284c7; color:#fff; height:40px; padding:0 24px; font-size:13.5px; font-weight:700; border-radius:10px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:0 1px 3px rgba(2,132,199,0.3);">
+                        <i class="fa-solid fa-paper-plane"></i> Simpan & Ajukan Verifikasi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="assets/app.js?v=<?php echo time(); ?>"></script>
     <script src="assets/pki-form.js?v=<?php echo time(); ?>"></script>
     <script>
+    // Feature-specific handler: Account Switcher & Tambah Usaha Baru
+    window.openAddBusinessModal = function() {
+        const acctModal = document.querySelector('[data-modal="modal-user-account"]');
+        if (acctModal) {
+            acctModal.style.display = 'none';
+            acctModal.classList.remove('open');
+        }
+        const addModal = document.querySelector('[data-modal="modal-add-business"]');
+        if (addModal) {
+            addModal.style.display = 'flex';
+            addModal.classList.add('open');
+        }
+    };
+
+    window.toggleSameDomicileNewBiz = function(chk) {
+        if (chk.checked) {
+            const p = document.getElementById('new_biz_province');
+            const c = document.getElementById('new_biz_city');
+            const d = document.getElementById('new_biz_district');
+            const v = document.getElementById('new_biz_village');
+            const pc = document.getElementById('new_biz_postal_code');
+            const a = document.getElementById('new_biz_address');
+            if (p) p.value = <?php echo json_encode($primaryProfile['province'] ?? ($profile['province'] ?? 'Jawa Barat')); ?>;
+            if (c) c.value = <?php echo json_encode($primaryProfile['city'] ?? ($profile['city'] ?? 'Kota Bandung')); ?>;
+            if (d) d.value = <?php echo json_encode($primaryProfile['district'] ?? ($profile['district'] ?? 'Coblong')); ?>;
+            if (v) v.value = <?php echo json_encode($primaryProfile['village'] ?? ($profile['village'] ?? 'Dago')); ?>;
+            if (pc) pc.value = <?php echo json_encode($primaryProfile['postal_code'] ?? ($profile['postal_code'] ?? '40135')); ?>;
+            if (a) a.value = <?php echo json_encode($primaryProfile['address'] ?? ($profile['address'] ?? '')); ?>;
+        }
+    };
+
     // Feature-specific handler: Tutup Lowongan
     window.testCloseJob = function(jobId, sisaKuota, quota, acceptedCount) {
         openConfirmCloseJobModal(jobId, quota, acceptedCount);

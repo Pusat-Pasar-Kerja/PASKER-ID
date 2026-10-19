@@ -3,34 +3,83 @@ require_once __DIR__ . '/includes/bootstrap.php';
 
 $user = require_role('employer');
 //test
-// Fetch Employer Profile
-$profileStatement = db()->prepare('SELECT * FROM employer_profiles WHERE user_id = ? LIMIT 1');
-$profileStatement->execute([$user['id']]);
-$profile = $profileStatement->fetch() ?: [];
+// Fetch All Businesses owned by this user
+$businessesStmt = db()->prepare('SELECT * FROM employer_profiles WHERE user_id = ? ORDER BY id ASC');
+$businessesStmt->execute([$user['id']]);
+$userBusinesses = $businessesStmt->fetchAll() ?: [];
+$primaryProfile = !empty($userBusinesses) ? $userBusinesses[0] : [];
+$firstBusinessId = (int)($primaryProfile['id'] ?? 0);
+
+// Handle Business Switch via GET (?switch_business=ID)
+if (isset($_GET['switch_business'])) {
+    $targetBizId = (int)$_GET['switch_business'];
+    foreach ($userBusinesses as $ub) {
+        if ((int)$ub['id'] === $targetBizId) {
+            $_SESSION['active_business_id'] = $targetBizId;
+            flash('success', 'Berhasil beralih ke konteks usaha: ' . ($ub['brand_name'] ?: 'Usaha #' . $ub['id']));
+            break;
+        }
+    }
+    redirect('dashboard.php');
+    exit;
+}
+
+// Handle Business Switch via POST
+if (isset($_POST['action_switch_business'])) {
+    $targetBizId = (int)($_POST['business_id'] ?? 0);
+    foreach ($userBusinesses as $ub) {
+        if ((int)$ub['id'] === $targetBizId) {
+            $_SESSION['active_business_id'] = $targetBizId;
+            flash('success', 'Berhasil beralih ke konteks usaha: ' . ($ub['brand_name'] ?: 'Usaha #' . $ub['id']));
+            break;
+        }
+    }
+    redirect('dashboard.php');
+    exit;
+}
+
+// Resolve Active Business Profile
+$activeBusinessId = (int)($_SESSION['active_business_id'] ?? 0);
+$activeBusiness = null;
+if ($activeBusinessId > 0) {
+    foreach ($userBusinesses as $ub) {
+        if ((int)$ub['id'] === $activeBusinessId) {
+            $activeBusiness = $ub;
+            break;
+        }
+    }
+}
+if (!$activeBusiness && !empty($userBusinesses)) {
+    $activeBusiness = $userBusinesses[0];
+    $_SESSION['active_business_id'] = (int)$activeBusiness['id'];
+}
+$profile = $activeBusiness ?: [];
+$activeBusinessId = (int)($profile['id'] ?? 0);
 
 // Fetch Seeker Profile (SIAPkerja data)
 $seekerStatement = db()->prepare('SELECT * FROM seeker_profiles WHERE user_id = ? LIMIT 1');
 $seekerStatement->execute([$user['id']]);
 $seekerProfile = $seekerStatement->fetch() ?: [];
 
-// Fetch Jobs
-$jobsStatement = db()->prepare('SELECT * FROM job_posts WHERE user_id = ? ORDER BY id DESC');
-$jobsStatement->execute([$user['id']]);
+// Fetch Jobs strictly filtered for active business
+$jobsStatement = db()->prepare('SELECT * FROM job_posts WHERE user_id = ? AND (employer_profile_id = ? OR (employer_profile_id IS NULL AND ? = ?)) ORDER BY id DESC');
+$jobsStatement->execute([$user['id'], $activeBusinessId, $activeBusinessId, $firstBusinessId]);
 $jobs = $jobsStatement->fetchAll() ?: [];
 
-// Monthly KBJI publication count for current employer (Layer 2 tracking)
+// Monthly KBJI publication count for current active business (Layer 2 tracking)
 $startOfMonth = date('Y-m-01 00:00:00');
 $endOfMonth   = date('Y-m-t 23:59:59');
 $kbjiPublishedCountsStmt = db()->prepare('
     SELECT kbji_code, COUNT(*) as cnt
     FROM job_posts
     WHERE user_id = ?
+      AND (employer_profile_id = ? OR (employer_profile_id IS NULL AND ? = ?))
       AND published_at IS NOT NULL
       AND published_at BETWEEN ? AND ?
       AND status NOT IN ("Draft", "Menunggu Verifikasi", "Dikirim/Menunggu Verifikasi", "Pending", "Perlu Direvisi", "Perlu Revisi", "Ditolak", "Dibatalkan", "CANCELED")
     GROUP BY kbji_code
 ');
-$kbjiPublishedCountsStmt->execute([$user['id'], $startOfMonth, $endOfMonth]);
+$kbjiPublishedCountsStmt->execute([$user['id'], $activeBusinessId, $activeBusinessId, $firstBusinessId, $startOfMonth, $endOfMonth]);
 $kbjiPublishedCounts = $kbjiPublishedCountsStmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
 
 $kbjiReached3 = [];
@@ -332,6 +381,163 @@ if (isset($_GET['job_json'])) {
 
 // --- POST HANDLERS ---
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    // 0. TAMBAH USAHA BARU (DRAFT PROFIL USAHA BARU)
+    if (isset($_POST['action_create_business'])) {
+        // Owner identity is fixed/read-only from registered user / primary profile
+        $ownerName   = trim($primaryProfile['owner_name'] ?? $user['name']);
+        $nik         = trim($primaryProfile['nik'] ?? '');
+        $phone       = trim($primaryProfile['phone'] ?? '');
+        $whatsapp    = trim($primaryProfile['whatsapp'] ?? ($primaryProfile['phone'] ?? ''));
+        $npwp        = trim($primaryProfile['npwp'] ?? '');
+
+        // New Business Information
+        $brandName   = trim($_POST['brand_name'] ?? '');
+        $profession  = trim($_POST['profession'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+
+        // Social media
+        $linkedin  = trim($_POST['linkedin'] ?? '');
+        $facebook  = trim($_POST['facebook'] ?? '');
+        $instagram = trim($_POST['instagram'] ?? '');
+        $tiktok    = trim($_POST['tiktok'] ?? '');
+        if (!empty($_POST['social_platform']) && is_array($_POST['social_platform'])) {
+            foreach ($_POST['social_platform'] as $idx => $plat) {
+                $h = trim($_POST['social_handle'][$idx] ?? '');
+                if ($h === '') continue;
+                $p = strtolower($plat);
+                if ($p === 'linkedin' && $linkedin === '') $linkedin = $h;
+                if ($p === 'facebook' && $facebook === '') $facebook = $h;
+                if ($p === 'instagram' && $instagram === '') $instagram = $h;
+                if ($p === 'tiktok' && $tiktok === '') $tiktok = $h;
+            }
+        }
+
+        // Location of the new business
+        $sameLoc        = isset($_POST['same_location_siapkerja']) ? 1 : 0;
+        $province       = trim($_POST['province'] ?? '');
+        $city           = trim($_POST['city'] ?? '');
+        $district       = trim($_POST['district'] ?? '');
+        $village        = trim($_POST['village'] ?? '');
+        $domicileCityId = trim($_POST['domicile_city_id'] ?? $city);
+        $postalCode     = trim($_POST['postal_code'] ?? '');
+        $sameAddr       = isset($_POST['same_address_siapkerja']) ? 1 : 0;
+        $address        = trim($_POST['address'] ?? '');
+        $addressDetail  = trim($_POST['address_detail'] ?? ($_POST['address_notes'] ?? ''));
+        $latitude       = trim($_POST['latitude'] ?? '-6.887844');
+        $longitude      = trim($_POST['longitude'] ?? '107.613038');
+        $consent        = isset($_POST['user_consent']) ? 1 : 0;
+
+        // Validation
+        if ($brandName === '') {
+            flash('error', 'Nama Brand Usaha wajib diisi.');
+            redirect('dashboard.php?open_add_business=1');
+            exit;
+        }
+        if ($profession === '') {
+            flash('error', 'Jenis Usaha Individu wajib dipilih.');
+            redirect('dashboard.php?open_add_business=1');
+            exit;
+        }
+        if ($description === '') {
+            flash('error', 'Deskripsi Singkat Usaha / Rekrutmen wajib diisi.');
+            redirect('dashboard.php?open_add_business=1');
+            exit;
+        }
+        if ($linkedin === '' && $facebook === '' && $instagram === '' && $tiktok === '') {
+            flash('error', 'Wajib mengisi minimal salah satu media sosial (LinkedIn, Facebook, Instagram, atau TikTok).');
+            redirect('dashboard.php?open_add_business=1');
+            exit;
+        }
+        if (!$consent) {
+            flash('error', 'Centang persetujuan pernyataan pengguna untuk melanjutkan.');
+            redirect('dashboard.php?open_add_business=1');
+            exit;
+        }
+
+        // File uploads
+        if (!empty($_FILES['permit_document']['name'])) {
+            $permitExt = strtolower(pathinfo((string) $_FILES['permit_document']['name'], PATHINFO_EXTENSION));
+            $permitSize = (int) ($_FILES['permit_document']['size'] ?? 0);
+            $permitErr = (int) ($_FILES['permit_document']['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($permitErr !== UPLOAD_ERR_OK || !in_array($permitExt, ['pdf', 'docx'], true) || $permitSize > 2 * 1024 * 1024) {
+                flash('error', 'Dokumen Perizinan Usaha harus berformat PDF atau Docx dengan ukuran maksimal 2MB.');
+                redirect('dashboard.php?open_add_business=1');
+                exit;
+            }
+        }
+        $permitDoc = store_upload('permit_document', 'employer/' . $user['id'], ['pdf', 'docx']);
+
+        if (!empty($_FILES['workplace_photo']['name'])) {
+            $photoExt = strtolower(pathinfo((string) $_FILES['workplace_photo']['name'], PATHINFO_EXTENSION));
+            $photoSize = (int) ($_FILES['workplace_photo']['size'] ?? 0);
+            $photoErr = (int) ($_FILES['workplace_photo']['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($photoErr !== UPLOAD_ERR_OK || !in_array($photoExt, ['png', 'jpg', 'jpeg'], true) || $photoSize > 2 * 1024 * 1024) {
+                flash('error', 'Foto bukti tempat usaha harus berformat PNG atau JPG dengan ukuran maksimal 2MB.');
+                redirect('dashboard.php?open_add_business=1');
+                exit;
+            }
+        }
+        $workplacePhoto = store_upload('workplace_photo', 'employer/' . $user['id'], ['png', 'jpg', 'jpeg']);
+
+        if (!empty($_FILES['business_logo']['name'])) {
+            $logoExt = strtolower(pathinfo((string) $_FILES['business_logo']['name'], PATHINFO_EXTENSION));
+            $logoSize = (int) ($_FILES['business_logo']['size'] ?? 0);
+            $logoErr = (int) ($_FILES['business_logo']['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($logoErr !== UPLOAD_ERR_OK || !in_array($logoExt, ['png', 'jpg', 'jpeg'], true) || $logoSize > 2 * 1024 * 1024) {
+                flash('error', 'Logo Usaha harus berformat PNG atau JPG dengan ukuran maksimal 2MB.');
+                redirect('dashboard.php?open_add_business=1');
+                exit;
+            }
+        }
+        $businessLogo = store_upload('business_logo', 'employer/' . $user['id'], ['png', 'jpg', 'jpeg']) ?: 'public/images/jobii.png';
+
+        $socialSummary = implode(', ', array_filter([
+            $instagram ? "Instagram: {$instagram}" : null,
+            $linkedin ? "LinkedIn: {$linkedin}" : null,
+            $facebook ? "Facebook: {$facebook}" : null,
+            $tiktok ? "TikTok: {$tiktok}" : null,
+        ]));
+
+        $stmt = db()->prepare('INSERT INTO employer_profiles (
+            user_id, owner_name, nik, phone, whatsapp, profession, npwp,
+            brand_name, business_logo,
+            linkedin, facebook, instagram, tiktok, social_media,
+            same_location_siapkerja, province, city, domicile_city_id, district, village, postal_code,
+            same_address_siapkerja, address, address_detail,
+            latitude, longitude, permit_document, doc_permission, workplace_photo, doc_location_photo,
+            description, user_consent, consent_agreed,
+            entity_type, verification_status, verified, active_until, extension_requested, extension_status,
+            created_at, updated_at
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?,
+            "Individu", "PENDING", 0, NULL, 0, "NONE",
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )');
+
+        $stmt->execute([
+            $user['id'], $ownerName, $nik, $phone, $whatsapp, $profession, $npwp,
+            $brandName, $businessLogo,
+            $linkedin, $facebook, $instagram, $tiktok, $socialSummary,
+            $sameLoc, $province, $city, $domicileCityId, $district, $village, $postalCode,
+            $sameAddr, $address, $addressDetail,
+            $latitude, $longitude, $permitDoc, $permitDoc, $workplacePhoto, $workplacePhoto,
+            $description, $consent, 1
+        ]);
+
+        $newBizId = (int)db()->lastInsertId();
+        $_SESSION['active_business_id'] = $newBizId;
+        record_audit_log('employer', $newBizId, 'CREATE_BUSINESS_DRAFT', "Pengajuan Draft Profil Usaha Baru '{$brandName}' berhasil didaftarkan dan menunggu verifikasi Admin.", $user['name'] ?: $ownerName, 'employer', true);
+        flash('success', "Draft Usaha baru '" . e($brandName) . "' berhasil diajukan! Profil usaha baru sedang dalam antrean verifikasi Admin.");
+        redirect('dashboard.php');
+        exit;
+    }
+
     // 1. UPDATE STATUS PELAMAR (Diizinkan saat ACTIVE_VERIFIED dan TRANSITION_LIMITED)
     if (isset($_POST['update_application_status'])) {
         $isAjax = !empty($_POST['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
@@ -410,6 +616,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         redirect('dashboard.php#lowongan');
         exit;
     }
+
 
     // 2. SIMPAN & AJUKAN PROFIL PEMBERI KERJA INDIVIDU (ONBOARDING / REVISION / REACTIVATION)
     if (isset($_POST['submit_profile'])) {
@@ -572,7 +779,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 assigned_to = NULL, assigned_at = NULL, verifier_notes = NULL, verification_checklist = NULL,
                 manual_review_status = NULL, consent_data_hash = NULL, consent_agreed = 1,
                 updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = ?');
+                WHERE id = ? AND user_id = ?');
             $stmt->execute([
                 $ownerName, $nik, $phone, $whatsapp, $profession, $npwp,
                 $brandName, $businessLogo,
@@ -583,6 +790,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $workplacePhoto, $workplacePhoto,
                 $description, $consent, $consent,
                 $newVerStatus,
+                $activeBusinessId,
                 $user['id']
             ]);
 
@@ -867,8 +1075,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 }
             } else {
                 // Always create as Draft with NO rules engine checks
-                $stmt = db()->prepare('INSERT INTO job_posts (user_id, title, description, location, job_type, industry, entity_type, status, quota, kbji_code, min_education, min_experience, salary_min, salary_max, details, created_at) VALUES (?, ?, ?, ?, ?, ?, "Individu", "Draft", ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)');
-                $stmt->execute([$user['id'], $title, $description, $location, $jobType, $industry, $quota, $kbjiCode, $minEducation, $minExperience, $salaryMin, $salaryMax, $detailsJson]);
+                $stmt = db()->prepare('INSERT INTO job_posts (user_id, employer_profile_id, title, description, location, job_type, industry, entity_type, status, quota, kbji_code, min_education, min_experience, salary_min, salary_max, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, "Individu", "Draft", ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)');
+                $stmt->execute([$user['id'], $activeBusinessId, $title, $description, $location, $jobType, $industry, $quota, $kbjiCode, $minEducation, $minExperience, $salaryMin, $salaryMax, $detailsJson]);
                 $jobId = (int)db()->lastInsertId();
                 flash('success', 'Lowongan berhasil disimpan sebagai Draft.');
             }
@@ -1188,13 +1396,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
                 // Create child posting with quota = sisa_kuota, copying ONLY business fields (original title preserved without suffix).
                 $insert = $pdo->prepare('INSERT INTO job_posts (
-                    user_id, title, description, location, job_type, industry, entity_type, status,
+                    user_id, employer_profile_id, title, description, location, job_type, industry, entity_type, status,
                     salary_min, salary_max, quota, accepted_count, kbji_code, details, min_education, min_experience,
                     additional_doc_required, additional_doc_file, additional_doc_notes, additional_doc_status,
                     parent_job_id, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, CURRENT_TIMESTAMP)');
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, CURRENT_TIMESTAMP)');
                 $insert->execute([
                     $user['id'],
+                    $oldJob['employer_profile_id'] ?? $activeBusinessId,
                     $oldJob['title'],
                     $oldJob['description'],
                     sanitize_job_location($oldJob['location'], $profile),
@@ -1521,9 +1730,8 @@ if ($selectedJobId > 0) {
         $detailData = job_to_form_data($detailJob);
 
         $startOfMonth = date('Y-m-01 00:00:00');
-        $endOfMonth = date('Y-m-t 23:59:59');
-        $mStmt = db()->prepare('SELECT SUM(quota) FROM job_posts WHERE user_id = ? AND status IN ("Tayang", "Menunggu Verifikasi", "ADDITIONAL_DOCUMENT_PENDING") AND created_at BETWEEN ? AND ?');
-        $mStmt->execute([$user['id'], $startOfMonth, $endOfMonth]);
+        $mStmt = db()->prepare('SELECT SUM(quota) FROM job_posts WHERE user_id = ? AND (employer_profile_id = ? OR (employer_profile_id IS NULL AND ? = ?)) AND status IN ("Tayang", "Menunggu Verifikasi", "ADDITIONAL_DOCUMENT_PENDING") AND created_at BETWEEN ? AND ?');
+        $mStmt->execute([$user['id'], $activeBusinessId, $activeBusinessId, $firstBusinessId, $startOfMonth, $endOfMonth]);
         $existingMonthly = (int)$mStmt->fetchColumn();
         $monthlyQuotaTotal = $existingMonthly + (int)($detailJob['quota'] ?? 1);
         $exceededAmount = max(0, $monthlyQuotaTotal - 10);
@@ -1564,10 +1772,10 @@ try {
         FROM job_applications a
         JOIN job_posts j ON j.id = a.job_id
         JOIN users u ON u.id = a.seeker_id
-        WHERE j.user_id = ?
+        WHERE j.user_id = ? AND (j.employer_profile_id = ? OR (j.employer_profile_id IS NULL AND ? = ?))
         ORDER BY a.id DESC
     ');
-    $appStmt->execute([$user['id']]);
+    $appStmt->execute([$user['id'], $activeBusinessId, $activeBusinessId, $firstBusinessId]);
     $userApplications = $appStmt->fetchAll() ?: [];
 } catch (Throwable $e) {
     $userApplications = [];
@@ -1599,6 +1807,10 @@ if ($flashHtml) {
     $html = preg_replace('/(<body[^>]*>)/i', '$1' . "\n" . $flashHtml, $html, 1);
 }
 
+$activeBrandName = !empty($profile['brand_name']) ? $profile['brand_name'] : $ownerName;
+$activeProfession = !empty($profile['profession']) ? $profile['profession'] : 'Pemberi Kerja Individu';
+$brandInitials = mb_strtoupper(mb_substr($activeBrandName, 0, 2));
+
 $initials = mb_strtoupper(mb_substr($ownerName, 0, 1));
 if (str_contains($ownerName, ' ')) {
     $parts = explode(' ', $ownerName);
@@ -1606,19 +1818,19 @@ if (str_contains($ownerName, ' ')) {
 }
 
 $replacements = [
-    'Karirhub - Pemberi Kerja Individu'   => 'Karirhub - ' . htmlspecialchars($ownerName, ENT_QUOTES, 'UTF-8'),
-    'Halo nama Pemberi Kerja Individu'    => 'Halo ' . htmlspecialchars($ownerName, ENT_QUOTES, 'UTF-8'),
-    'Halo PT. Pandu Jaya'                 => 'Halo ' . htmlspecialchars($ownerName, ENT_QUOTES, 'UTF-8'),
+    'Karirhub - Pemberi Kerja Individu'   => 'Karirhub - ' . htmlspecialchars($activeBrandName, ENT_QUOTES, 'UTF-8'),
+    'Halo nama Pemberi Kerja Individu'    => 'Halo ' . htmlspecialchars($activeBrandName, ENT_QUOTES, 'UTF-8'),
+    'Halo PT. Pandu Jaya'                 => 'Halo ' . htmlspecialchars($activeBrandName, ENT_QUOTES, 'UTF-8'),
     // Sidebar & Topbar
-    'id="sidebarAvatar">PI'               => 'id="sidebarAvatar">' . $initials,
-    'id="topbarAvatar">PI'                => 'id="topbarAvatar">' . $initials,
-    'id="topbarCompName">PT. Pandu Jaya'  => 'id="topbarCompName">' . htmlspecialchars($ownerName, ENT_QUOTES, 'UTF-8'),
-    'id="topbarCompType">Perusahaan'      => 'id="topbarCompType">' . htmlspecialchars($profession, ENT_QUOTES, 'UTF-8'),
+    'id="sidebarAvatar">PI'               => 'id="sidebarAvatar">' . $brandInitials,
+    'id="topbarAvatar">PI'                => 'id="topbarAvatar">' . $brandInitials,
+    'id="topbarCompName">PT. Pandu Jaya'  => 'id="topbarCompName">' . htmlspecialchars($activeBrandName, ENT_QUOTES, 'UTF-8'),
+    'id="topbarCompType">Perusahaan'      => 'id="topbarCompType">' . htmlspecialchars($activeProfession, ENT_QUOTES, 'UTF-8'),
     // Profile page & Popover
     'Pandu Isdiyanto, S.T., M.M.'         => htmlspecialchars($ownerName, ENT_QUOTES, 'UTF-8'),
     'ppandfoee@gmail.com'                 => htmlspecialchars($user['email'] ?? 'ppandfoee@gmail.com', ENT_QUOTES, 'UTF-8'),
     '3402153112760034'                    => htmlspecialchars($profile['nik'] ?? ($seekerProfile['nik'] ?? '3402153112760034'), ENT_QUOTES, 'UTF-8'),
-    'PT. Pandu Jaya'                      => htmlspecialchars($ownerName, ENT_QUOTES, 'UTF-8'),
+    'PT. Pandu Jaya'                      => htmlspecialchars($activeBrandName, ENT_QUOTES, 'UTF-8'),
     'Kota Bekasi'                         => htmlspecialchars($city, ENT_QUOTES, 'UTF-8'),
     '<strong>Sisa 87 hari</strong>'       => '<strong>Sisa ' . (int)max(0, $daysRemaining ?? 0) . ' hari</strong>',
 ];
@@ -3074,8 +3286,8 @@ if (!str_contains($html, 'window.testCloseJob')) {
 JS, $html);
 }
 
-$employerJobs = db()->prepare('SELECT * FROM job_posts WHERE user_id = ? ORDER BY created_at DESC');
-$employerJobs->execute([$user['id']]);
+$employerJobs = db()->prepare('SELECT * FROM job_posts WHERE user_id = ? AND (employer_profile_id = ? OR (employer_profile_id IS NULL AND ? = ?)) ORDER BY created_at DESC');
+$employerJobs->execute([$user['id'], $activeBusinessId, $activeBusinessId, $firstBusinessId]);
 $employerJobs = $employerJobs->fetchAll();
 
 $jobCounts = [
@@ -3165,7 +3377,7 @@ if (!$employerJobs) {
     }
 }
 
-$applicants = employer_applicants((int) $user['id']);
+$applicants = employer_applicants((int) $user['id'], $activeBusinessId);
 $stageCounts = [
     'Lamaran Masuk' => 0,
     'Sedang Dipelajari' => 0,

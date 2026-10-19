@@ -48,6 +48,7 @@ function ensure_platform_schema(): void
         'unfulfilled_reason' => 'TEXT NULL',
         'admin_notes' => 'TEXT NULL',
         'revision_opened_at' => 'DATETIME NULL',
+        'employer_profile_id' => 'INT NULL',
     ];
     foreach ($jobAdds as $name => $definition) {
         if (!in_array($name, $jobColumns, true)) {
@@ -837,17 +838,30 @@ function application_status_meta(string $status): array
     };
 }
 
-function employer_applicants(int $employerId): array
+function employer_applicants(int $employerId, ?int $businessId = null): array
 {
-    $statement = db()->prepare('SELECT a.*, j.title AS job_title, u.name AS seeker_name, u.email AS seeker_email,
-            sp.nik, sp.phone, sp.gender, sp.marital_status, sp.birth_place, sp.birth_date, sp.ktp_address, sp.domicile_address
-        FROM job_applications a
-        JOIN job_posts j ON j.id = a.job_id
-        JOIN users u ON u.id = a.seeker_id
-        LEFT JOIN seeker_profiles sp ON sp.user_id = a.seeker_id
-        WHERE j.user_id = ?
-        ORDER BY a.created_at DESC');
-    $statement->execute([$employerId]);
+    if ($businessId && $businessId > 0) {
+        $firstBizId = (int)(db()->query("SELECT id FROM employer_profiles WHERE user_id = {$employerId} ORDER BY id ASC LIMIT 1")->fetchColumn() ?: 0);
+        $statement = db()->prepare('SELECT a.*, j.title AS job_title, u.name AS seeker_name, u.email AS seeker_email,
+                sp.nik, sp.phone, sp.gender, sp.marital_status, sp.birth_place, sp.birth_date, sp.ktp_address, sp.domicile_address
+            FROM job_applications a
+            JOIN job_posts j ON j.id = a.job_id
+            JOIN users u ON u.id = a.seeker_id
+            LEFT JOIN seeker_profiles sp ON sp.user_id = a.seeker_id
+            WHERE j.user_id = ? AND (j.employer_profile_id = ? OR (j.employer_profile_id IS NULL AND ? = ?))
+            ORDER BY a.created_at DESC');
+        $statement->execute([$employerId, $businessId, $businessId, $firstBizId]);
+    } else {
+        $statement = db()->prepare('SELECT a.*, j.title AS job_title, u.name AS seeker_name, u.email AS seeker_email,
+                sp.nik, sp.phone, sp.gender, sp.marital_status, sp.birth_place, sp.birth_date, sp.ktp_address, sp.domicile_address
+            FROM job_applications a
+            JOIN job_posts j ON j.id = a.job_id
+            JOIN users u ON u.id = a.seeker_id
+            LEFT JOIN seeker_profiles sp ON sp.user_id = a.seeker_id
+            WHERE j.user_id = ?
+            ORDER BY a.created_at DESC');
+        $statement->execute([$employerId]);
+    }
     $rows = $statement->fetchAll() ?: [];
     foreach ($rows as &$row) {
         $row['status'] = normalize_application_status($row['status'] ?? '');
