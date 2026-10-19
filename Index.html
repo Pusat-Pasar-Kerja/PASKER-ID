@@ -4883,25 +4883,26 @@
 
     <!-- ─── MODAL DRAFT PROFIL USAHA BARU (TAMBAH USAHA BARU) ─────────────── -->
     <div class="modal-backdrop <?php echo !empty($_GET['open_add_business']) ? 'open' : ''; ?>" data-modal="modal-add-business" <?php echo !empty($_GET['open_add_business']) ? 'style="display:flex;"' : ''; ?>>
-        <div class="modal-panel" style="width: min(720px, 95vw); max-height: 92vh; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; background: #ffffff; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
-            <div class="modal-header" style="background:#ffffff; border-bottom:1px solid #f1f5f9; padding:20px 24px 16px; flex-shrink:0;">
-                <div style="display:flex; align-items:center; justify-content:space-between;">
-                    <div>
-                        <div class="modal-title" style="font-size:18px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:10px;">
-                            <i class="fa-solid fa-building-circle-check" style="color:#0284c7;"></i> Draft Profil Usaha Baru
-                        </div>
-                        <div class="modal-subtitle" style="font-size:13px; color:#64748b; margin-top:3px;">
-                            Lengkapi profil usaha baru Anda melalui 4 langkah terstruktur.
-                        </div>
+        <div class="modal-panel" style="width:min(680px, 95vw); max-height:calc(100vh - 40px); max-height:calc(100dvh - 40px); border-radius:16px; display:flex; flex-direction:column; overflow:hidden; background:#ffffff; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
+            <div class="modal-header" style="background:#ffffff; border-bottom:1px solid #f1f5f9; padding:18px 24px 14px; display:flex; align-items:flex-start; justify-content:space-between; flex-shrink:0;">
+                <div>
+                    <div class="modal-title" style="font-size:15px; font-weight:800; color:#0f172a; letter-spacing:-0.2px; line-height:1.3; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-building-circle-check" style="color:#0284c7;"></i>
+                        <span>Draft Profil Usaha Baru</span>
                     </div>
-                    <button type="button" class="ghost-btn" data-close-modal="modal-add-business" style="font-size:20px; padding:2px 8px; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer;">×</button>
+                    <div class="modal-subtitle" style="font-size:12px; color:#64748b; margin-top:3px; line-height:1.4;">
+                        Lengkapi profil dan legalitas usaha baru Anda melalui 4 langkah terstruktur.
+                    </div>
                 </div>
+                <button type="button" class="ghost-btn" data-close-modal="modal-add-business" aria-label="Tutup modal" style="width:34px; height:34px; border-radius:50%; background:#f8fafc; border:1px solid #e2e8f0; color:#64748b; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; padding:0; flex-shrink:0; margin-left:12px; transition:all 0.15s ease;" onmouseover="this.style.background='#f1f5f9'; this.style.color='#0f172a';" onmouseout="this.style.background='#f8fafc'; this.style.color='#64748b';">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
 
             <form method="post" action="dashboard.php" enctype="multipart/form-data" id="formAddBusiness" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; margin:0;" onsubmit="return handleNewBizFormSubmit(event)">
                 <input type="hidden" name="action_create_business" value="1">
 
-                <div class="modal-body" id="newBizModalBody" style="padding:22px 24px; flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; background:#ffffff;">
+                <div class="modal-body" id="newBizModalBody" style="padding:20px 24px; flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; background:#ffffff;">
 
                     <!-- CALLOUT BANNER: INSTANSI ANDA -->
                     <div class="pki-entity-badge" style="margin-bottom:14px;">
@@ -4929,7 +4930,7 @@
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <!-- LANGKAH 1: IDENTITAS PERORANGAN                                 -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div class="pki-step-pane new-biz-pane" data-step="1" data-step-title="Identitas Perorangan" style="display:block;">
+                    <div class="pki-step-pane new-biz-pane active" data-step="1" data-step-title="Identitas Perorangan" style="display:block; min-height:480px; padding-bottom:80px; position:relative;">
                         
                         <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:10px 14px; margin-bottom:18px; font-size:12.5px; color:#0369a1; display:flex; align-items:center; gap:8px;">
                             <i class="fa-solid fa-shield-halved" style="font-size:15px; flex-shrink:0; color:#0284c7;"></i>
@@ -4967,11 +4968,15 @@
                             <div class="pki-field" style="position:relative;">
                                 <label class="pki-field-label" id="label_new_biz_profession" for="new_biz_profession_trigger">
                                     Jenis Usaha Individu <span class="req">*</span>
+                                    <span class="pki-tooltip tooltip-right" tabindex="0" role="tooltip">
+                                        <svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+                                        <span class="tooltip-popover">Pilih kategori sektor usaha perorangan yang Anda jalankan.</span>
+                                    </span>
                                 </label>
 
                                 <input type="hidden" name="profession" id="new_biz_profession" value="">
 
-                                <div class="pki-custom-select-trigger" id="new_biz_profession_trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox" onclick="newBizToggleProfessionDropdown()">
+                                <div class="pki-custom-select-trigger" id="new_biz_profession_trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox" onclick="newBizToggleProfessionDropdown(event)">
                                     <span class="pki-custom-select-text is-placeholder" id="new_biz_profession_display">
                                         Pilih Jenis Usaha Individu
                                     </span>
@@ -4983,13 +4988,65 @@
                                     </span>
                                 </div>
 
-                                <div class="pki-custom-select-dropdown" id="new_biz_profession_dropdown" style="display:none;" role="listbox">
-                                    <div class="pki-custom-select-search-wrap">
+                                <div class="pki-custom-select-dropdown" id="new_biz_profession_dropdown" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:9999; background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 16px 36px rgba(15,23,42,0.18), 0 4px 12px rgba(15,23,42,0.08); padding:8px; box-sizing:border-box;" role="listbox">
+                                    <div class="pki-custom-select-search-wrap" style="margin-bottom:6px; position:relative;">
                                         <input type="text" class="pki-custom-select-search" id="new_biz_profession_search" placeholder="Cari jenis usaha..." autocomplete="off" oninput="newBizFilterProfession(this.value)">
                                     </div>
                                     <div class="pki-custom-select-options" id="new_biz_profession_options" style="max-height:220px; overflow-y:auto;">
                                         <?php
                                         $allProfGroups = function_exists('individual_business_types') ? individual_business_types() : [];
+                                        if (empty($allProfGroups)) {
+                                            $allProfGroups = [
+                                                'Kesehatan & Terapi' => [
+                                                    'Praktik Dokter Umum', 'Praktik Dokter Gigi', 'Praktik Bidan', 'Praktik Keperawatan Mandiri',
+                                                    'Praktik Psikolog', 'Layanan Fisioterapi', 'Praktik Terapis Wicara', 'Layanan Akupunktur',
+                                                    'Layanan Terapi Tumbuh Kembang Anak', 'Jasa Pijat dan Refleksi', 'Layanan Terapi Okupasi',
+                                                    'Layanan Konsultasi Gizi/Nutrisionis',
+                                                ],
+                                                'Hukum, Keuangan & Jasa Profesional' => [
+                                                    'Praktik Notaris', 'Praktik PPAT', 'Praktik Advokat/Pengacara', 'Konsultan Hukum',
+                                                    'Konsultan Pajak', 'Jasa Akuntansi', 'Jasa Pembukuan', 'Konsultan Manajemen',
+                                                    'Jasa Administrasi dan Pengurusan Dokumen', 'Jasa Penerjemah', 'Konsultan SDM',
+                                                    'Jasa Sekretarial/Administrasi Perkantoran',
+                                                ],
+                                                'Teknik, Arsitektur & Desain' => [
+                                                    'Praktik Arsitek', 'Konsultan Teknik Sipil', 'Konsultan Mekanikal dan Elektrikal',
+                                                    'Jasa Desain Interior', 'Jasa Desain Lanskap', 'Jasa Drafter', 'Jasa Survei dan Pemetaan',
+                                                    'Jasa Desain Produk', 'Jasa Pembuatan Maket dan Prototipe', 'Jasa Perbaikan/Bengkel Teknik',
+                                                    'Jasa Instalasi Listrik', 'Jasa Teknisi Elektronik',
+                                                ],
+                                                'Pendidikan & Pelatihan' => [
+                                                    'Bimbingan Belajar', 'Guru Privat', 'Kursus Bahasa', 'Kursus Musik', 'Kursus Tari',
+                                                    'Kursus Seni Rupa', 'Pelatihan Public Speaking', 'Pelatihan Komputer dan Digital',
+                                                    'Pelatihan Keterampilan Vokasional', 'Pelatih Olahraga/Kebugaran', 'Pelatihan Kewirausahaan',
+                                                    'Pelatihan Kerja/Keterampilan Profesi',
+                                                ],
+                                                'Jasa Acara, Kreatif & Hewan Peliharaan' => [
+                                                    'Studio Foto dan Video', 'Jasa Fotografi/Videografi', 'Jasa Dekorasi Acara',
+                                                    'Wedding Organizer', 'Event Organizer', 'Jasa Penjahit/Atelier', 'Jasa Grooming Hewan',
+                                                    'Jasa Penitipan Hewan', 'Jasa Percetakan', 'Jasa Desain Grafis', 'Jasa Pembuatan Suvenir/Handicraft',
+                                                    'Jasa Florist/Dekorasi Bunga',
+                                                ],
+                                                'Digital, Media & Konten' => [
+                                                    'Konten Kreator/Digital Creator', 'Jasa Pengelolaan Media Sosial', 'Jasa Pembuatan Konten Digital',
+                                                    'Jasa Editing Video', 'Jasa Copywriting/Content Writing', 'Jasa Desain Konten Media Sosial',
+                                                    'Jasa Live Streaming', 'Studio Podcast', 'Jasa Produksi Audio/Video', 'Jasa Digital Marketing',
+                                                ],
+                                                'Kuliner & Industri Pangan Rumah Tangga' => [
+                                                    'Usaha Makanan Rumahan', 'Jasa Katering', 'Bakery dan Pastry Rumahan', 'Usaha Kue dan Makanan Ringan',
+                                                    'Produksi Minuman Rumahan', 'Produksi Makanan Olahan', 'Produksi Makanan Beku/Frozen Food',
+                                                    'Produksi Sambal/Bumbu Olahan', 'Produksi Camilan/Keripik', 'Usaha Jajanan/Pangan Siap Saji',
+                                                ],
+                                                'Kecantikan & Perawatan Pribadi' => [
+                                                    'Salon Kecantikan', 'Barbershop/Pangkas Rambut', 'Makeup Artist', 'Jasa Tata Rambut',
+                                                    'Nail Art', 'Jasa Perawatan Kecantikan Nonmedis', 'Jasa Perawatan Pengantin',
+                                                ],
+                                                'Jasa Rumah Tangga, Pemeliharaan & Perbaikan' => [
+                                                    'Jasa Kebersihan Rumah', 'Jasa Laundry', 'Jasa Servis AC', 'Jasa Perbaikan Peralatan Rumah Tangga',
+                                                    'Jasa Instalasi/Perbaikan Plumbing', 'Jasa Perawatan Taman', 'Jasa Pengecatan', 'Jasa Pertukangan',
+                                                ],
+                                            ];
+                                        }
                                         foreach ($allProfGroups as $groupName => $items):
                                         ?>
                                             <div class="pki-select-group" data-group="<?php echo e($groupName); ?>">
@@ -5006,7 +5063,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="pki-field-helper" id="helper_new_biz_profession">Pilih jenis usaha perorangan yang Anda jalankan.</div>
+                                <div class="pki-field-helper" id="helper_new_biz_profession">Pilih kategori sektor usaha perorangan yang dijalankan.</div>
                             </div>
                         </div>
 
@@ -5045,18 +5102,26 @@
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <!-- LANGKAH 2: PROFIL USAHA / KEGIATAN PEMBERI KERJA                -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div class="pki-step-pane new-biz-pane" data-step="2" data-step-title="PROFIL USAHA / KEGIATAN PEMBERI KERJA" style="display:none;">
+                    <div class="pki-step-pane new-biz-pane" data-step="2" data-step-title="PROFIL USAHA / KEGIATAN PEMBERI KERJA" style="display:none; min-height:520px; padding-bottom:80px; position:relative;">
                         <div class="pki-grid-2">
                             <div class="pki-field">
                                 <label class="pki-field-label" id="label_new_biz_brand_name" for="new_biz_brand_name">
                                     Nama Brand Usaha <span class="req">*</span>
+                                    <span class="pki-tooltip" tabindex="0" role="tooltip">
+                                        <svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+                                        <span class="tooltip-popover">Nama merek dagang, brand, atau nama komersial tempat usaha/kegiatan Anda.</span>
+                                    </span>
                                 </label>
-                                <input type="text" name="brand_name" id="new_biz_brand_name" value="" placeholder="Masukkan nama brand usaha (contoh: Kedai Kopi Danendra)" oninput="newBizClearError('brand_name')">
+                                <input type="text" name="brand_name" id="new_biz_brand_name" value="" placeholder="Contoh: Kedai Kopi Danendra, Klinik Medika Mandiri" oninput="newBizClearError('brand_name')">
                                 <div class="pki-field-helper" id="helper_new_biz_brand_name">Nama brand atau merek usaha/kegiatan yang akan tampil di lowongan dan dashboard.</div>
                             </div>
                             <div class="pki-field">
                                 <label class="pki-field-label" id="label_new_biz_business_logo">
                                     Logo Usaha <span class="req">*</span>
+                                    <span class="pki-tooltip" tabindex="0" role="tooltip">
+                                        <svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+                                        <span class="tooltip-popover">Unggah logo resmi atau foto identitas visual usaha/kegiatan Anda.</span>
+                                    </span>
                                 </label>
                                 <div class="pki-upload-box" id="new_biz_box_business_logo" onclick="newBizTriggerUpload('business_logo')">
                                     <span class="pki-upload-text" id="new_biz_text_business_logo">
@@ -5078,15 +5143,19 @@
                         <div class="pki-field">
                             <label class="pki-field-label" id="label_new_biz_description" for="new_biz_description">
                                 Deskripsi Singkat Usaha / Rekrutmen <span class="req">*</span>
+                                <span class="pki-tooltip" tabindex="0" role="tooltip">
+                                    <svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+                                    <span class="tooltip-popover">Jelaskan bidang usaha, kegiatan operasional, produk/layanan, dan kebutuhan tenaga kerja.</span>
+                                </span>
                             </label>
-                            <textarea name="description" id="new_biz_description" placeholder="Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen..." style="min-height:85px;" oninput="newBizClearError('description')"></textarea>
+                            <textarea name="description" id="new_biz_description" placeholder="Jelaskan bidang usaha, kegiatan operasional, produk/layanan, dan kebutuhan tenaga kerja..." style="min-height:85px;" oninput="newBizClearError('description')"></textarea>
                             <div class="pki-field-helper" id="helper_new_biz_description">Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen.</div>
                         </div>
 
                         <div style="margin-bottom:14px;">
                             <label style="font-size:12.5px; font-weight:600; color:#334155; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
                                 <input type="checkbox" name="same_location_siapkerja" id="new_biz_cbSameLocation" value="1" style="accent-color:#0284c7; cursor:pointer;" onchange="newBizToggleSameDomicile(this)">
-                                <span>Gunakan alamat domisili pemilik akun (autofill)</span>
+                                <span>Gunakan alamat domisili di SIAPKerja sebagai lokasi tempat usaha/kegiatan</span>
                             </label>
                         </div>
 
@@ -5103,12 +5172,16 @@
                         <div class="pki-field" style="position:relative;">
                             <label class="pki-field-label" id="label_new_biz_location" for="new_biz_hierarchicalLocationInput">
                                 Lokasi Tempat Usaha / Kegiatan <span class="req">*</span>
+                                <span class="pki-tooltip" tabindex="0" role="tooltip">
+                                    <svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+                                    <span class="tooltip-popover">Lokasi tempat Anda menjalankan usaha atau kegiatan sebagai Pemberi Kerja Individu.</span>
+                                </span>
                             </label>
-                            <div id="new_biz_hierarchicalLocationInput" class="hierarchical-loc-field" tabindex="0" onclick="newBizToggleLocDropdown()">
+                            <div id="new_biz_hierarchicalLocationInput" class="hierarchical-loc-field" tabindex="0" onclick="newBizToggleLocDropdown(event)">
                                 <span id="new_biz_locDisplayValue" class="placeholder">Pilih lokasi tempat usaha / kegiatan</span>
                                 <i id="new_biz_locCaret" class="fa-solid fa-chevron-down" style="color:#64748b; font-size:12px;"></i>
                             </div>
-                            <div id="new_biz_hierarchicalLocDropdown" class="loc-dropdown-popup" style="display:none;">
+                            <div id="new_biz_hierarchicalLocDropdown" class="loc-dropdown-popup" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:9999; background:#fff; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 12px 28px rgba(15,23,42,0.14);">
                                 <div id="new_biz_locBreadcrumbs" class="loc-breadcrumbs">
                                     <span class="crumb-btn active" id="new_biz_crumb_1" onclick="newBizSwitchLocLevel(1)">Pilih Provinsi</span>
                                 </div>
@@ -5131,7 +5204,7 @@
                             <label class="pki-field-label" id="label_new_biz_postal_code" for="new_biz_selectPostalCode">
                                 Kode Pos <span class="req">*</span>
                             </label>
-                            <select name="postal_code" id="new_biz_selectPostalCode" onchange="newBizClearError('postal_code')">
+                            <select name="postal_code" id="new_biz_selectPostalCode" onchange="newBizClearError('postal_code'); newBizUpdateMap();">
                                 <option value="">Pilih kode pos</option>
                             </select>
                             <div class="pki-field-helper" id="helper_new_biz_postal_code">Pilihan kode pos mengikuti lokasi yang dipilih.</div>
@@ -5141,32 +5214,44 @@
                         <div class="pki-field">
                             <label class="pki-field-label" id="label_new_biz_address_detail" for="new_biz_inputAddressDetail">
                                 Detail Alamat / Patokan (Opsional)
+                                <span class="pki-tooltip" tabindex="0" role="tooltip">
+                                    <svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+                                    <span class="tooltip-popover">Tambahkan informasi yang membantu mengenali lokasi, seperti nomor bangunan, blok, lantai, atau patokan terdekat.</span>
+                                </span>
                             </label>
-                            <input type="text" name="address_detail" id="new_biz_inputAddressDetail" value="" placeholder="Contoh: Ruko 2 lantai, sebelah kantor pos">
+                            <input type="text" name="address_detail" id="new_biz_inputAddressDetail" value="" placeholder="Contoh: Ruko 2 lantai, sebelah kantor pos" oninput="newBizUpdateMap();">
                             <div class="pki-field-helper" id="helper_new_biz_address_detail">Opsional. Tambahkan informasi yang membantu mengenali lokasi.</div>
                         </div>
 
                         <!-- Peta Lokasi (Google Maps) -->
                         <div class="pki-field">
-                            <label class="pki-field-label" style="margin-bottom:6px;">Peta Lokasi</label>
-                            <div id="new_biz_mapContainer" class="pki-map-container" style="height:170px; border-radius:10px; overflow:hidden; border:1px solid #e2e8f0; background:#f8fafc; position:relative;">
-                                <div id="new_biz_mapPlaceholder" class="pki-map-placeholder" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:12px;">
-                                    <div style="font-size:24px; margin-bottom:4px;">🗺</div>
-                                    <div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:2px;">Pratinjau peta belum tersedia</div>
-                                    <div style="font-size:11.5px; color:#64748b; max-width:320px; line-height:1.4;">Lengkapi lokasi dan alamat tempat usaha terlebih dahulu.</div>
-                                </div>
-                                <div id="new_biz_googleMapWrapper" class="pki-map-wrapper" style="display:none; width:100%; height:100%;">
-                                    <iframe id="new_biz_gmapIframe" width="100%" height="100%" style="border:0;" loading="lazy" src="about:blank"></iframe>
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                                <label class="pki-field-label" style="margin-bottom:0;">Peta Lokasi</label>
+                                <div id="new_biz_mapOpenLinkWrapper" style="display:none;">
+                                    <a id="new_biz_btnOpenMap" href="#" target="_blank" rel="noopener noreferrer" style="font-size:12px; font-weight:600; color:#0284c7; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                        <span>Buka di Maps</span>
+                                        <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i>
+                                    </a>
                                 </div>
                             </div>
-                            <div class="pki-field-helper" id="helper_new_biz_map" style="margin-top:6px;">Peta muncul otomatis setelah lokasi dan alamat lengkap tersedia.</div>
+                            <div id="new_biz_mapContainer" class="pki-map-container" style="height:220px; width:100%; border-radius:10px; overflow:hidden; border:1px solid #cbd5e1; background:#f8fafc; position:relative; box-sizing:border-box;">
+                                <div id="new_biz_mapPlaceholder" class="pki-map-placeholder" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; width:100%; text-align:center; padding:16px; background:#f8fafc; position:absolute; top:0; left:0; z-index:2; box-sizing:border-box;">
+                                    <div style="font-size:26px; margin-bottom:4px;">🗺</div>
+                                    <div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:2px;">Pratinjau peta belum tersedia</div>
+                                    <div style="font-size:11.5px; color:#64748b; max-width:340px; line-height:1.4;">Lengkapi lokasi atau alamat tempat usaha terlebih dahulu.</div>
+                                </div>
+                                <div id="new_biz_googleMapWrapper" class="pki-map-wrapper" style="display:none; width:100%; height:100%; position:absolute; top:0; left:0; z-index:3;">
+                                    <iframe id="new_biz_gmapIframe" width="100%" height="100%" style="width:100%; height:100%; border:0; display:block;" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" src="about:blank"></iframe>
+                                </div>
+                            </div>
+                            <div class="pki-field-helper" id="helper_new_biz_map" style="margin-top:6px;">Peta muncul otomatis setelah lokasi atau alamat lengkap tersedia.</div>
                         </div>
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <!-- LANGKAH 3: DOKUMEN & BUKTI TEMPAT USAHA & MEDIA SOSIAL           -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div class="pki-step-pane new-biz-pane" data-step="3" data-step-title="Dokumen & Bukti Tempat Usaha & Media Sosial" style="display:none;">
+                    <div class="pki-step-pane new-biz-pane" data-step="3" data-step-title="Dokumen & Bukti Tempat Usaha & Media Sosial" style="display:none; min-height:480px; padding-bottom:80px; position:relative;">
                         <div class="section-title" style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:12px;">3. DOKUMEN & BUKTI TEMPAT USAHA</div>
 
                         <div class="pki-grid-2">
@@ -5174,6 +5259,10 @@
                             <div class="pki-field">
                                 <label class="pki-field-label" id="label_new_biz_permit_document">
                                     Dokumen Perizinan Usaha (NIB / SKU / Ket. Usaha) <span class="req">*</span>
+                                    <span class="pki-tooltip" tabindex="0" role="tooltip">
+                                        <svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+                                        <span class="tooltip-popover">Unggah file legalitas usaha, NIB, atau Surat Keterangan Usaha dari Kelurahan/Desa.</span>
+                                    </span>
                                 </label>
                                 <div class="pki-upload-box" id="new_biz_box_permit_document" onclick="newBizTriggerUpload('permit_document')">
                                     <span class="pki-upload-text" id="new_biz_text_permit_document">
@@ -5187,7 +5276,7 @@
                                     </div>
                                 </div>
                                 <input type="file" name="permit_document" id="new_biz_input_permit_document" accept=".pdf,.docx" style="display:none;" onchange="newBizHandleFileChange(this, 'permit_document')">
-                                <div class="pki-field-helper" id="helper_new_biz_permit_document">NIB, Izin Usaha, atau Surat Keterangan Usaha (PDF/Docx Maks 2MB)</div>
+                                <div class="pki-field-helper" id="helper_new_biz_permit_document">Ukuran maksimum 2 MB • Format PDF, Docx</div>
                                 <div class="pki-field-helper" id="helper_new_biz_permit_document_size" style="display:none; color:#059669; font-weight:600;"></div>
                             </div>
 
@@ -5195,6 +5284,10 @@
                             <div class="pki-field">
                                 <label class="pki-field-label" id="label_new_biz_workplace_photo">
                                     Foto Bukti Tempat Usaha / Lokasi <span class="req">*</span>
+                                    <span class="pki-tooltip" tabindex="0" role="tooltip">
+                                        <svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+                                        <span class="tooltip-popover">Unggah foto bagian depan tempat usaha atau lokasi operasional yang jelas.</span>
+                                    </span>
                                 </label>
                                 <div class="pki-upload-box" id="new_biz_box_workplace_photo" onclick="newBizTriggerUpload('workplace_photo')">
                                     <span class="pki-upload-text" id="new_biz_text_workplace_photo">
@@ -5208,7 +5301,7 @@
                                     </div>
                                 </div>
                                 <input type="file" name="workplace_photo" id="new_biz_input_workplace_photo" accept=".png,.jpg,.jpeg" style="display:none;" onchange="newBizHandleFileChange(this, 'workplace_photo')">
-                                <div class="pki-field-helper" id="helper_new_biz_workplace_photo">Foto tempat operasional usaha (PNG/JPG Maks 2MB)</div>
+                                <div class="pki-field-helper" id="helper_new_biz_workplace_photo">Ukuran maksimum 2 MB • Format PNG, JPG</div>
                                 <div class="pki-field-helper" id="helper_new_biz_workplace_photo_size" style="display:none; color:#059669; font-weight:600;"></div>
                             </div>
                         </div>
@@ -5258,7 +5351,7 @@
                     <!-- ═══════════════════════════════════════════════════════════════ -->
                     <!-- LANGKAH 4: PERNYATAAN                                           -->
                     <!-- ═══════════════════════════════════════════════════════════════ -->
-                    <div class="pki-step-pane new-biz-pane" data-step="4" data-step-title="PERNYATAAN" style="display:none;">
+                    <div class="pki-step-pane new-biz-pane" data-step="4" data-step-title="PERNYATAAN" style="display:none; min-height:480px; padding-bottom:80px; position:relative;">
                         <div class="section-title" style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:12px;">5. PERNYATAAN <span class="req" style="color:#ef4444 !important; font-weight:700;">*</span></div>
                         
                         <div class="pki-consent-box" id="new_biz_consent_statement_box" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 16px; font-size:12.5px; color:#334155; line-height:1.65; margin-bottom:14px;">
@@ -5568,26 +5661,57 @@
         return true;
     };
 
-    // ─── PROFESSION SELECTOR FOR NEW BUSINESS ───
-    window.newBizToggleProfessionDropdown = function() {
+    // ─── PROFESSION SELECTOR FOR NEW BUSINESS (PREVENTS CLIPPING) ───
+    window.newBizToggleProfessionDropdown = function(e) {
+        if (e) e.stopPropagation();
         const dd = document.getElementById('new_biz_profession_dropdown');
         const trigger = document.getElementById('new_biz_profession_trigger');
+        const pane1 = document.querySelector('.new-biz-pane[data-step="1"]');
         if (!dd) return;
         const isOpen = dd.style.display === 'block';
         if (isOpen) {
             dd.style.display = 'none';
             trigger?.classList.remove('is-open');
+            if (pane1) pane1.style.paddingBottom = '80px';
         } else {
             dd.style.display = 'block';
             trigger?.classList.add('is-open');
+            if (pane1) pane1.style.paddingBottom = '260px';
             const search = document.getElementById('new_biz_profession_search');
             if (search) {
                 search.value = '';
                 newBizFilterProfession('');
-                setTimeout(() => search.focus(), 30);
+                setTimeout(() => {
+                    search.focus();
+                    dd.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 35);
             }
         }
     };
+
+    // Close dropdown on outside click
+    document.addEventListener('click', function(e) {
+        const dd = document.getElementById('new_biz_profession_dropdown');
+        const trigger = document.getElementById('new_biz_profession_trigger');
+        const pane1 = document.querySelector('.new-biz-pane[data-step="1"]');
+        if (dd && dd.style.display === 'block') {
+            if (!trigger.contains(e.target) && !dd.contains(e.target)) {
+                dd.style.display = 'none';
+                trigger?.classList.remove('is-open');
+                if (pane1) pane1.style.paddingBottom = '80px';
+            }
+        }
+
+        const locDd = document.getElementById('new_biz_hierarchicalLocDropdown');
+        const locInp = document.getElementById('new_biz_hierarchicalLocationInput');
+        const pane2 = document.querySelector('.new-biz-pane[data-step="2"]');
+        if (locDd && locDd.style.display === 'block') {
+            if (!locInp.contains(e.target) && !locDd.contains(e.target)) {
+                locDd.style.display = 'none';
+                if (pane2) pane2.style.paddingBottom = '80px';
+            }
+        }
+    });
 
     window.newBizFilterProfession = function(q) {
         const term = (q || '').toLowerCase().trim();
@@ -5612,6 +5736,7 @@
         const disp = document.getElementById('new_biz_profession_display');
         const dd = document.getElementById('new_biz_profession_dropdown');
         const trigger = document.getElementById('new_biz_profession_trigger');
+        const pane1 = document.querySelector('.new-biz-pane[data-step="1"]');
         if (hidden) hidden.value = val;
         if (disp) {
             disp.textContent = val;
@@ -5619,6 +5744,7 @@
         }
         if (dd) dd.style.display = 'none';
         if (trigger) trigger.classList.remove('is-open');
+        if (pane1) pane1.style.paddingBottom = '80px';
 
         document.querySelectorAll('#new_biz_profession_options .pki-select-option').forEach(opt => {
             if (opt.getAttribute('data-value') === val) {
@@ -5646,14 +5772,21 @@
     let newBizSelDist = '';
     let newBizSelVill = '';
 
-    window.newBizToggleLocDropdown = function() {
+    window.newBizToggleLocDropdown = function(e) {
+        if (e) e.stopPropagation();
         const dd = document.getElementById('new_biz_hierarchicalLocDropdown');
+        const pane2 = document.querySelector('.new-biz-pane[data-step="2"]');
         if (!dd) return;
         if (dd.style.display === 'block') {
             dd.style.display = 'none';
+            if (pane2) pane2.style.paddingBottom = '80px';
         } else {
             dd.style.display = 'block';
+            if (pane2) pane2.style.paddingBottom = '260px';
             newBizRenderLocOptions();
+            setTimeout(() => {
+                dd.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 35);
         }
     };
 
@@ -5738,7 +5871,9 @@
     window.newBizSelectVill = function(vill, postal) {
         newBizSelVill = vill;
         const dd = document.getElementById('new_biz_hierarchicalLocDropdown');
+        const pane2 = document.querySelector('.new-biz-pane[data-step="2"]');
         if (dd) dd.style.display = 'none';
+        if (pane2) pane2.style.paddingBottom = '80px';
 
         const disp = document.getElementById('new_biz_locDisplayValue');
         if (disp) {
@@ -5957,30 +6092,68 @@
         });
     }
 
-    // ─── LIVE GOOGLE MAPS PREVIEW FOR NEW BUSINESS ───
+    // ─── LIVE FULLY RESPONSIVE GOOGLE MAPS PREVIEW FOR NEW BUSINESS ───
     window.newBizUpdateMap = function() {
-        const vill = document.getElementById('new_biz_hiddenVillage')?.value?.trim();
-        const dist = document.getElementById('new_biz_hiddenDistrict')?.value?.trim();
-        const city = document.getElementById('new_biz_hiddenCity')?.value?.trim();
-        const prov = document.getElementById('new_biz_hiddenProvince')?.value?.trim();
-        const addr = document.getElementById('new_biz_inputAddress')?.value?.trim();
+        const vill = document.getElementById('new_biz_hiddenVillage')?.value?.trim() || '';
+        const dist = document.getElementById('new_biz_hiddenDistrict')?.value?.trim() || '';
+        const city = document.getElementById('new_biz_hiddenCity')?.value?.trim() || '';
+        const prov = document.getElementById('new_biz_hiddenProvince')?.value?.trim() || '';
+        const addr = document.getElementById('new_biz_inputAddress')?.value?.trim() || '';
+        const addrDetail = document.getElementById('new_biz_inputAddressDetail')?.value?.trim() || '';
 
         const placeholder = document.getElementById('new_biz_mapPlaceholder');
         const wrapper = document.getElementById('new_biz_googleMapWrapper');
+        const linkWrapper = document.getElementById('new_biz_mapOpenLinkWrapper');
+        const openBtn = document.getElementById('new_biz_btnOpenMap');
         const iframe = document.getElementById('new_biz_gmapIframe');
 
         if (!placeholder || !wrapper || !iframe) return;
 
-        if (vill && addr) {
+        const hasLocation = Boolean(vill || dist || city || prov);
+        const hasAddress = Boolean(addr.length > 0);
+
+        if (hasLocation || hasAddress) {
             placeholder.style.display = 'none';
+            placeholder.classList.add('is-hidden');
             wrapper.style.display = 'block';
-            const q = [addr, vill, dist, city, prov, 'Indonesia'].filter(Boolean).join(', ');
-            iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&output=embed`;
+            wrapper.classList.add('is-visible');
+
+            const queryParts = [addr, addrDetail, vill, dist, city, prov, 'Indonesia'].filter(Boolean);
+            const fullQuery = queryParts.join(', ');
+
+            if (linkWrapper && openBtn) {
+                linkWrapper.style.display = 'block';
+                openBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullQuery)}`;
+            }
+
+            const apiKey = window.PKI_CONFIG?.googleMapsApiKey || "";
+            let embedUrl = '';
+            if (apiKey) {
+                embedUrl = `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(apiKey)}&q=${encodeURIComponent(fullQuery)}`;
+            } else {
+                embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(fullQuery)}&output=embed`;
+            }
+
+            if (iframe.getAttribute('data-last-query') !== fullQuery) {
+                iframe.setAttribute('data-last-query', fullQuery);
+                iframe.src = embedUrl;
+            }
         } else {
             placeholder.style.display = 'flex';
+            placeholder.classList.remove('is-hidden');
             wrapper.style.display = 'none';
+            wrapper.classList.remove('is-visible');
+            if (linkWrapper) linkWrapper.style.display = 'none';
+            iframe.src = 'about:blank';
+            iframe.removeAttribute('data-last-query');
         }
     };
+
+    window.addEventListener('resize', function() {
+        if (newBizCurrentStep === 2) {
+            newBizUpdateMap();
+        }
+    });
 
     // Feature-specific handler: Tutup Lowongan
     window.testCloseJob = function(jobId, sisaKuota, quota, acceptedCount) {
