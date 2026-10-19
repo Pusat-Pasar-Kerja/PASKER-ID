@@ -4894,45 +4894,30 @@
                     Pilih Alasan:
                 </div>
                 <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
-                    <div class="reason-option-group" style="display:flex; flex-direction:column; gap:6px;">
-                        <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; cursor:pointer; line-height:1.4;">
-                            <input type="checkbox" name="reasons[]" value="Belum menemukan kandidat yang sesuai dengan kebutuhan" onchange="toggleReasonNote(this)" style="margin-top:2.5px; accent-color:#0284c7; width:15px; height:15px; cursor:pointer;">
-                            <span>Belum menemukan kandidat yang sesuai dengan kebutuhan</span>
-                        </label>
-                        <textarea name="reason_notes[Belum menemukan kandidat yang sesuai dengan kebutuhan]" class="reason-note-input" placeholder="Masukkan catatan..." rows="2" style="display:none; width:calc(100% - 25px); margin-left:25px; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:12.5px; font-family:inherit; outline:none; box-sizing:border-box; resize:vertical;"></textarea>
-                    </div>
+                    <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; cursor:pointer; line-height:1.4;">
+                        <input type="checkbox" name="reasons[]" value="Belum menemukan kandidat yang sesuai dengan kebutuhan" style="margin-top:2.5px; accent-color:#0284c7; width:15px; height:15px; cursor:pointer;">
+                        <span>Belum menemukan kandidat yang sesuai dengan kebutuhan</span>
+                    </label>
 
-                    <div class="reason-option-group" style="display:flex; flex-direction:column; gap:6px;">
-                        <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; cursor:pointer; line-height:1.4;">
-                            <input type="checkbox" name="reasons[]" value="Jumlah pelamar yang memenuhi kualifikasi masih terbatas" onchange="toggleReasonNote(this)" style="margin-top:2.5px; accent-color:#0284c7; width:15px; height:15px; cursor:pointer;">
-                            <span>Jumlah pelamar yang memenuhi kualifikasi masih terbatas</span>
-                        </label>
-                        <textarea name="reason_notes[Jumlah pelamar yang memenuhi kualifikasi masih terbatas]" class="reason-note-input" placeholder="Masukkan catatan..." rows="2" style="display:none; width:calc(100% - 25px); margin-left:25px; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:12.5px; font-family:inherit; outline:none; box-sizing:border-box; resize:vertical;"></textarea>
-                    </div>
+                    <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; cursor:pointer; line-height:1.4;">
+                        <input type="checkbox" name="reasons[]" value="Jumlah pelamar yang memenuhi kualifikasi masih terbatas" style="margin-top:2.5px; accent-color:#0284c7; width:15px; height:15px; cursor:pointer;">
+                        <span>Jumlah pelamar yang memenuhi kualifikasi masih terbatas</span>
+                    </label>
 
-                    <div class="reason-option-group" style="display:flex; flex-direction:column; gap:6px;">
-                        <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; cursor:pointer; line-height:1.4;">
-                            <input type="checkbox" name="reasons[]" value="Kandidat yang sesuai mengundurkan diri atau membatalkan proses" onchange="toggleReasonNote(this)" style="margin-top:2.5px; accent-color:#0284c7; width:15px; height:15px; cursor:pointer;">
-                            <span>Kandidat yang sesuai mengundurkan diri atau membatalkan proses</span>
-                        </label>
-                        <textarea name="reason_notes[Kandidat yang sesuai mengundurkan diri atau membatalkan proses]" class="reason-note-input" placeholder="Masukkan catatan..." rows="2" style="display:none; width:calc(100% - 25px); margin-left:25px; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:12.5px; font-family:inherit; outline:none; box-sizing:border-box; resize:vertical;"></textarea>
-                    </div>
+                    <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; cursor:pointer; line-height:1.4;">
+                        <input type="checkbox" name="reasons[]" value="Kandidat yang sesuai mengundurkan diri atau membatalkan proses" style="margin-top:2.5px; accent-color:#0284c7; width:15px; height:15px; cursor:pointer;">
+                        <span>Kandidat yang sesuai mengundurkan diri atau membatalkan proses</span>
+                    </label>
 
-                    <div class="reason-option-group" style="display:flex; flex-direction:column; gap:6px;">
-                        <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; cursor:pointer; line-height:1.4;">
-                            <input type="checkbox" name="reasons[]" value="Kebutuhan tenaga kerja berubah atau berkurang" onchange="toggleReasonNote(this)" style="margin-top:2.5px; accent-color:#0284c7; width:15px; height:15px; cursor:pointer;">
-                            <span>Kebutuhan tenaga kerja berubah atau berkurang</span>
-                        </label>
-                        <textarea name="reason_notes[Kebutuhan tenaga kerja berubah atau berkurang]" class="reason-note-input" placeholder="Masukkan catatan..." rows="2" style="display:none; width:calc(100% - 25px); margin-left:25px; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:12.5px; font-family:inherit; outline:none; box-sizing:border-box; resize:vertical;"></textarea>
-                    </div>
+                    <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; cursor:pointer; line-height:1.4;">
+                        <input type="checkbox" name="reasons[]" value="Kebutuhan tenaga kerja berubah atau berkurang" style="margin-top:2.5px; accent-color:#0284c7; width:15px; height:15px; cursor:pointer;">
+                        <span>Kebutuhan tenaga kerja berubah atau berkurang</span>
+                    </label>
 
-                    <div class="reason-option-group" style="display:flex; flex-direction:column; gap:6px;">
-                        <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; cursor:pointer; line-height:1.4;">
-                            <input type="checkbox" name="reasons[]" value="Proses seleksi dan rekrutmen masih berlangsung" onchange="toggleReasonNote(this)" style="margin-top:2.5px; accent-color:#0284c7; width:15px; height:15px; cursor:pointer;">
-                            <span>Proses seleksi dan rekrutmen masih berlangsung</span>
-                        </label>
-                        <textarea name="reason_notes[Proses seleksi dan rekrutmen masih berlangsung]" class="reason-note-input" placeholder="Masukkan catatan..." rows="2" style="display:none; width:calc(100% - 25px); margin-left:25px; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:12.5px; font-family:inherit; outline:none; box-sizing:border-box; resize:vertical;"></textarea>
-                    </div>
+                    <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; cursor:pointer; line-height:1.4;">
+                        <input type="checkbox" name="reasons[]" value="Proses seleksi dan rekrutmen masih berlangsung" style="margin-top:2.5px; accent-color:#0284c7; width:15px; height:15px; cursor:pointer;">
+                        <span>Proses seleksi dan rekrutmen masih berlangsung</span>
+                    </label>
 
                     <div class="reason-option-group" style="display:flex; flex-direction:column; gap:6px;">
                         <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; cursor:pointer; line-height:1.4;">

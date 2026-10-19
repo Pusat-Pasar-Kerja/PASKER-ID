@@ -4006,6 +4006,7 @@ window.closeUnfulfilledQuotaModal = closeUnfulfilledQuotaModal;
 
 function toggleReasonNote(cb) {
     if (!cb) return;
+    if (cb.value !== 'Lainnya') return;
     const parent = cb.closest('.reason-option-group');
     if (!parent) return;
     const textarea = parent.querySelector('.reason-note-input');
