@@ -897,9 +897,9 @@ if ($view === 'directory_individual') {
     if ($tab === 'verified') {
         $query .= ' AND (ep.verification_status IN ("APPROVED", "ACTIVE_VERIFIED") OR ep.verified = 1)';
     } elseif ($tab === 'process') {
-        $query .= ' AND (ep.verification_status IN ("PENDING", "NOT_SUBMITTED", "SUBMITTED", "IN_PROCESS") OR ep.verification_status IS NULL OR ep.verified = 0) AND (ep.verification_status NOT IN ("APPROVED", "ACTIVE_VERIFIED", "REJECTED"))';
+        $query .= ' AND (ep.verification_status IN ("PENDING", "NOT_SUBMITTED", "SUBMITTED", "IN_PROCESS", "NEEDS_REVISION") OR ep.verification_status IS NULL OR ep.verified = 0) AND (ep.verification_status NOT IN ("APPROVED", "ACTIVE_VERIFIED", "REJECTED", "FULL_DISABLED"))';
     } elseif ($tab === 'rejected') {
-        $query .= ' AND (ep.verification_status IN ("REJECTED", "NEEDS_REVISION", "FULL_DISABLED"))';
+        $query .= ' AND (ep.verification_status IN ("REJECTED", "FULL_DISABLED"))';
     }
 
     // Scope Admin Dinas Filter
