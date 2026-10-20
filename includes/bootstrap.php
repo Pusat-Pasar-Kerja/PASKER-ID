@@ -113,15 +113,10 @@ function ensure_sqlite_extra_tables(PDO $pdo): void
             }
         } catch (Throwable $ignored) {}
 
-        // Seed Admin Dinas Kota Bandung in SQLite if missing (Demo/Dev environment only)
-        if (is_demo_env()) {
-            try {
-                $stmtAdminCheck = $pdo->query("SELECT id FROM users WHERE email = 'admin.bandung@paskerid.test' LIMIT 1");
-                if (!$stmtAdminCheck || !$stmtAdminCheck->fetch()) {
-                    $pdo->exec("INSERT INTO users (name, email, password_hash, role, domicile_city_id, city, profile_complete) VALUES ('Admin Dinas Kota Bandung', 'admin.bandung@paskerid.test', '\$2y\$10\$4Ub96pSJd1xdfdkRHCaWw.WbK19BOoTxiBqxEy7by6Gwub1dJBydm', 'admin_dinas', 'Kota Bandung', 'Kota Bandung', 1)");
-                }
-            } catch (Throwable $ignored) {}
-        }
+        // Ensure Admin Dinas Kota Bandung is removed if exists (SQLite)
+        try {
+            $pdo->exec("DELETE FROM users WHERE email = 'admin.bandung@paskerid.test' OR email = 'admin.bandung@pasker-id.test' OR name = 'Admin Dinas Kota Bandung'");
+        } catch (Throwable $ignored) {}
 
         try {
             $cols = array_column($pdo->query('PRAGMA table_info(employer_profiles)')->fetchAll(), 'name');
@@ -522,35 +517,23 @@ function ensure_database_schema(PDO $pdo): void
                 $pdo->exec("ALTER TABLE users ADD COLUMN city VARCHAR(120) NULL AFTER domicile_city_id");
             }
 
+            // Ensure Admin Dinas Kota Bandung is removed if exists in MySQL
+            try {
+                $pdo->exec("DELETE FROM users WHERE email = 'admin.bandung@paskerid.test' OR email = 'admin.bandung@pasker-id.test' OR name = 'Admin Dinas Kota Bandung'");
+            } catch (Throwable $ignored) {}
+
             // Seed/Fix Demo Accounts in MySQL (Demo/Dev environment only)
             if (is_demo_env()) {
                 $hash = '$2y$10$4Ub96pSJd1xdfdkRHCaWw.WbK19BOoTxiBqxEy7by6Gwub1dJBydm'; // Pusatpasarkerj4
-                $stmtAdminCheck = $pdo->query("SELECT id, role, email FROM users WHERE email = 'admin.bandung@paskerid.test' LIMIT 1");
-                $existingAdmin = $stmtAdminCheck ? $stmtAdminCheck->fetch() : null;
-                if (!$existingAdmin) {
-                    $stmtInsertAdmin = $pdo->prepare("INSERT INTO users (name, email, password_hash, role, domicile_city_id, city, profile_complete, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, NOW())");
-                    $stmtInsertAdmin->execute([
-                        'Admin Dinas Kota Bandung',
-                        'admin.bandung@paskerid.test',
-                        $hash,
-                        'admin_dinas',
-                        'Kota Bandung',
-                        'Kota Bandung'
-                    ]);
-                } else {
-                    $pdo->prepare("UPDATE users SET email = 'admin.bandung@paskerid.test', role = 'admin_dinas', domicile_city_id = 'Kota Bandung', city = 'Kota Bandung', password_hash = ? WHERE id = ?")
-                        ->execute([$hash, (int)$existingAdmin['id']]);
-                }
 
                 // Update old @pasker-id.test emails to @paskerid.test in MySQL
                 $pdo->exec("UPDATE users SET email = 'admin@paskerid.test' WHERE email = 'admin@pasker-id.test'");
                 $pdo->exec("UPDATE users SET email = 'perorangan@paskerid.test' WHERE email = 'perorangan@pasker-id.test'");
                 $pdo->exec("UPDATE users SET email = 'seeker@paskerid.test' WHERE email = 'seeker@pasker-id.test'");
-                $pdo->exec("UPDATE users SET email = 'admin.bandung@paskerid.test' WHERE email = 'admin.bandung@pasker-id.test'");
                 $pdo->exec("UPDATE users SET name = 'Pandu Isdiyanto, S.T., M.M' WHERE email = 'admin@paskerid.test' OR name = 'Admin Pusat'");
 
                 // Ensure all demo users in MySQL have the Pusatpasarkerj4 password hash
-                $pdo->prepare("UPDATE users SET password_hash = ? WHERE email IN ('admin@paskerid.test', 'admin.bandung@paskerid.test', 'perorangan@paskerid.test', 'seeker@paskerid.test')")
+                $pdo->prepare("UPDATE users SET password_hash = ? WHERE email IN ('admin@paskerid.test', 'perorangan@paskerid.test', 'seeker@paskerid.test')")
                     ->execute([$hash]);
             }
 

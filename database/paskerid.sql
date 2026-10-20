@@ -171,7 +171,6 @@ CREATE TABLE job_posts (
 
 INSERT INTO users (name, email, password_hash, role, domicile_city_id, city, profile_complete) VALUES
 ('Pandu Isdiyanto, S.T., M.M', 'admin@paskerid.test', '$2y$10$4Ub96pSJd1xdfdkRHCaWw.WbK19BOoTxiBqxEy7by6Gwub1dJBydm', 'admin', NULL, NULL, 1),
-('Admin Dinas Kota Bandung', 'admin.bandung@paskerid.test', '$2y$10$4Ub96pSJd1xdfdkRHCaWw.WbK19BOoTxiBqxEy7by6Gwub1dJBydm', 'admin_dinas', 'Kota Bandung', 'Kota Bandung', 1),
 ('Perorangan Demo', 'perorangan@paskerid.test', '$2y$10$4Ub96pSJd1xdfdkRHCaWw.WbK19BOoTxiBqxEy7by6Gwub1dJBydm', 'employer', NULL, NULL, 1),
 ('Pencari Kerja Demo', 'seeker@paskerid.test', '$2y$10$4Ub96pSJd1xdfdkRHCaWw.WbK19BOoTxiBqxEy7by6Gwub1dJBydm', 'seeker', NULL, NULL, 1);
 

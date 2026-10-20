@@ -35,8 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $user = find_user_by_email('andi@paskerid.test');
             } elseif (str_starts_with($email, 'perorangan@')) {
                 $user = find_user_by_email('perorangan@paskerid.test');
-            } elseif (str_starts_with($email, 'admin.bandung@')) {
-                $user = find_user_by_email('admin.bandung@paskerid.test');
             } elseif (str_starts_with($email, 'admin@')) {
                 $user = find_user_by_email('admin@paskerid.test');
             }
