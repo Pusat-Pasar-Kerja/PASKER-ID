@@ -1950,7 +1950,7 @@
                                             PENGAJUAN PROFIL DITOLAK
                                         </div>
                                         <div class="banner-desc">
-                                            Pengajuan Profil Pemberi Kerja Individu Anda telah ditolak oleh Verifikator. Silakan periksa catatan verifikator di bawah ini dan perbarui data profil Anda untuk mengajukan kembali verifikasi.
+                                            Pengajuan Profil Pemberi Kerja Individu Anda telah ditolak oleh Verifikator. Silakan periksa alasan penolakan yang disampaikan oleh Verifikator.
                                         </div>
                                         <div class="banner-subbox" style="background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:12px 14px; margin-top:10px;">
                                             <strong style="color:#9f1239; display:block; margin-bottom:4px;">
@@ -1960,11 +1960,6 @@
                                                 <?php echo e($profile['verifier_notes'] ?: 'Pengajuan verifikasi profil Anda belum dapat disetujui.'); ?>
                                             </span>
                                         </div>
-                                    </div>
-                                    <div>
-                                        <button type="button" class="primary-btn" style="background:#dc2626; height:38px; padding:0 18px; display:inline-flex; align-items:center; gap:8px;" data-open-modal="modal-employer-profile">
-                                            <i class="fa-solid fa-pen-to-square"></i> Perbarui Profil
-                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -4010,7 +4005,7 @@
                             $iconClass = 'fa-solid fa-circle-xmark';
                             $iconColor = '#dc2626';
                             $statusTitle = ($verificationStatus === 'FULL_DISABLED') ? 'Hak Akses Nonaktif / Kadaluarsa' : 'Pengajuan Ditolak';
-                            $vNotes = !empty($profile['verifier_notes']) ? e($profile['verifier_notes']) : 'Pengajuan verifikasi profil Anda belum dapat disetujui. Silakan perbarui data profil Anda.';
+                            $vNotes = !empty($profile['verifier_notes']) ? e($profile['verifier_notes']) : 'Pengajuan verifikasi profil Anda belum dapat disetujui.';
                             $statusText = ($verificationStatus === 'REJECTED') ? 'Catatan Verifikator: ' . $vNotes : $vNotes;
                         } elseif ($verificationStatus === 'NOT_SUBMITTED') {
                             $bannerBg = '#f8fafc';
