@@ -404,10 +404,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <span>Admin Pusat</span>
                     <code>admin@paskerid.test</code>
                 </div>
-                <div class="demo-item" onclick="fillCredential('admin.bandung@paskerid.test', 'Pusatpasarkerj4')">
-                    <span>Admin Dinas (Bandung)</span>
-                    <code>admin.bandung@paskerid.test</code>
-                </div>
             </div>
             <?php endif; ?>
         </div>
