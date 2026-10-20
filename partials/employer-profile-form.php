@@ -132,9 +132,9 @@ if (file_exists($pkiCssPath)) {
 </div>
 <?php endif; ?>
 
-<!-- CALLOUT BANNER: INSTANSI ANDA -->
+<!-- CALLOUT BANNER: JENIS PEMBERI KERJA -->
 <div class="pki-entity-badge">
-    <div class="pki-entity-badge-label">Instansi Anda</div>
+    <div class="pki-entity-badge-label">Jenis Pemberi Kerja</div>
     <div class="pki-entity-badge-val">
         <i class="fa-solid fa-user" style="color:#0284c7; font-size:15px;"></i>
         <span>Pemberi Kerja Individu</span>
