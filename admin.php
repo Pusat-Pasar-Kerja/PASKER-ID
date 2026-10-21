@@ -7215,42 +7215,40 @@ document.addEventListener('click', function(e) {
                         <!-- INFORMASI PEMBERI KERJA SUBSECTION -->
                         <h4 style="font-size:15px; font-weight:800; color:#0f172a; margin:0 0 16px 0;">Informasi Pemberi Kerja</h4>
 
-                        <div style="display:flex; flex-direction:column; gap:10px; font-size:13px;">
+                        <div style="display:grid; grid-template-columns:max-content 12px 1fr; row-gap:10px; column-gap:6px; font-size:13px; align-items:start; line-height:1.5;">
                             <?php if ($isJobIndividual && $empBrandName !== ''): ?>
-                            <div style="display:grid; grid-template-columns:150px 1fr; gap:10px;">
-                                <div style="color:#64748b; font-weight:500;">Nama Brand Usaha</div>
-                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empBrandName); ?></div>
-                            </div>
-                            <div style="display:grid; grid-template-columns:150px 1fr; gap:10px;">
-                                <div style="color:#64748b; font-weight:500;">Nama Pemilik (Owner)</div>
-                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empOwnerName); ?></div>
-                            </div>
+                            <div style="color:#64748b; font-weight:500; white-space:nowrap;">Nama Brand Usaha</div>
+                            <div style="color:#0f172a; font-weight:600; text-align:center;">:</div>
+                            <div style="color:#0f172a; font-weight:600;"><?php echo e($empBrandName); ?></div>
+
+                            <div style="color:#64748b; font-weight:500; white-space:nowrap;">Nama Pemilik (Owner)</div>
+                            <div style="color:#0f172a; font-weight:600; text-align:center;">:</div>
+                            <div style="color:#0f172a; font-weight:600;"><?php echo e($empOwnerName); ?></div>
                             <?php else: ?>
-                            <div style="display:grid; grid-template-columns:150px 1fr; gap:10px;">
-                                <div style="color:#64748b; font-weight:500;">Nama</div>
-                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empOwnerName); ?></div>
-                            </div>
+                            <div style="color:#64748b; font-weight:500; white-space:nowrap;">Nama</div>
+                            <div style="color:#0f172a; font-weight:600; text-align:center;">:</div>
+                            <div style="color:#0f172a; font-weight:600;"><?php echo e($empOwnerName); ?></div>
                             <?php endif; ?>
-                            <div style="display:grid; grid-template-columns:120px 1fr; gap:10px;">
-                                <div style="color:#64748b; font-weight:500;">Email</div>
-                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empEmail); ?></div>
-                            </div>
-                            <div style="display:grid; grid-template-columns:120px 1fr; gap:10px;">
-                                <div style="color:#64748b; font-weight:500;">Telepon</div>
-                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empPhone); ?></div>
-                            </div>
-                            <div style="display:grid; grid-template-columns:120px 1fr; gap:10px;">
-                                <div style="color:#64748b; font-weight:500;">WhatsApp</div>
-                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empWhatsapp); ?></div>
-                            </div>
-                            <div style="display:grid; grid-template-columns:120px 1fr; gap:10px;">
-                                <div style="color:#64748b; font-weight:500;">Sosial Media</div>
-                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empSocialMedia); ?></div>
-                            </div>
-                            <div style="display:grid; grid-template-columns:120px 1fr; gap:10px;">
-                                <div style="color:#64748b; font-weight:500;">Alamat</div>
-                                <div style="color:#0f172a; font-weight:600;">: <?php echo e($empAddress); ?></div>
-                            </div>
+
+                            <div style="color:#64748b; font-weight:500; white-space:nowrap;">Email</div>
+                            <div style="color:#0f172a; font-weight:600; text-align:center;">:</div>
+                            <div style="color:#0f172a; font-weight:600;"><?php echo e($empEmail); ?></div>
+
+                            <div style="color:#64748b; font-weight:500; white-space:nowrap;">Telepon</div>
+                            <div style="color:#0f172a; font-weight:600; text-align:center;">:</div>
+                            <div style="color:#0f172a; font-weight:600;"><?php echo e($empPhone); ?></div>
+
+                            <div style="color:#64748b; font-weight:500; white-space:nowrap;">WhatsApp</div>
+                            <div style="color:#0f172a; font-weight:600; text-align:center;">:</div>
+                            <div style="color:#0f172a; font-weight:600;"><?php echo e($empWhatsapp); ?></div>
+
+                            <div style="color:#64748b; font-weight:500; white-space:nowrap;">Sosial Media</div>
+                            <div style="color:#0f172a; font-weight:600; text-align:center;">:</div>
+                            <div style="color:#0f172a; font-weight:600;"><?php echo e($empSocialMedia); ?></div>
+
+                            <div style="color:#64748b; font-weight:500; white-space:nowrap;">Alamat</div>
+                            <div style="color:#0f172a; font-weight:600; text-align:center;">:</div>
+                            <div style="color:#0f172a; font-weight:600;"><?php echo e($empAddress); ?></div>
                         </div>
                     </div>
 
