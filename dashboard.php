@@ -254,24 +254,26 @@ $activeUntilFormatted = format_indo_date($activeUntil, 'short');
 $activeUntilShort = format_indo_date($activeUntil, 'day_month');
 $transEndFormatted = format_indo_date($transEndDate, 'long');
 $extStat = $profile['extension_status'] ?? 'NONE';
+$isReverificationPending = ($extStat === 'REQUESTED' || ($profile['verification_status'] ?? '') === 'REVERIFICATION_PENDING');
 
-// Reactivation eligibility: must have at least 1 candidate accepted in previous cycle (not whole history)
-$isEligibleForReactivation = false;
-if ($isFullDisable && !empty($profile['active_until'])) {
-    $cycleStart = !empty($profile['last_activated_at'])
-        ? $profile['last_activated_at']
-        : date('Y-m-d H:i:s', strtotime($profile['active_until'] . ' -6 months'));
-    $cycleEnd = date('Y-m-d H:i:s', strtotime($profile['active_until'] . ' +7 days'));
+// Verifikasi Ulang Profil eligibility: must have at least 1 candidate accepted in current/previous cycle
+$isEligibleForReverification = false;
+$cycleStart = !empty($profile['last_activated_at'])
+    ? $profile['last_activated_at']
+    : (!empty($profile['active_until']) ? date('Y-m-d H:i:s', strtotime($profile['active_until'] . ' -6 months')) : date('Y-m-d 00:00:00', strtotime('-6 months')));
+$cycleEnd = !empty($profile['active_until'])
+    ? date('Y-m-d H:i:s', strtotime($profile['active_until'] . ' +7 days'))
+    : date('Y-m-d 23:59:59');
 
-    $accCandidateStmt = db()->prepare('
-        SELECT COUNT(*) FROM job_applications a
-        JOIN job_posts j ON j.id = a.job_id
-        WHERE j.user_id = ? AND a.status = "Diterima"
-          AND a.accepted_at BETWEEN ? AND ?
-    ');
-    $accCandidateStmt->execute([$user['id'], $cycleStart, $cycleEnd]);
-    $isEligibleForReactivation = ((int)$accCandidateStmt->fetchColumn() > 0);
-}
+$accCandidateStmt = db()->prepare('
+    SELECT COUNT(*) FROM job_applications a
+    JOIN job_posts j ON j.id = a.job_id
+    WHERE j.user_id = ? AND a.status = "Diterima"
+      AND COALESCE(a.accepted_at, a.updated_at, a.created_at) BETWEEN ? AND ?
+');
+$accCandidateStmt->execute([$user['id'], $cycleStart, $cycleEnd]);
+$isEligibleForReverification = ((int)$accCandidateStmt->fetchColumn() > 0);
+$isEligibleForReactivation = $isEligibleForReverification;
 
 // Reactivated employer detection (for active cycle dashboard banner)
 $isReactivatedEmployer = false;
@@ -684,9 +686,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             exit;
         }
 
-        // Check if user is in FULL_DISABLED state: must be eligible to submit reactivation online
-        if ($isFullDisable && !$isEligibleForReactivation) {
-            flash('error', 'Pengajuan reaktivasi online tidak tersedia karena tidak memenuhi syarat (minimal 1 pelamar diterima pada siklus sebelumnya). Silakan ikuti proses melalui Dinas Tenaga Kerja setempat.');
+        // Check if user is in Verifikasi Ulang state: must be eligible to submit reverification online
+        $isReverification = ($isFullDisable || $isTransitionPeriod || $isH7 || ($profile['verification_status'] ?? '') === 'FULL_DISABLED' || ($profile['verification_status'] ?? '') === 'INACTIVE_REVERIFICATION_REQUIRED' || !empty($profile['last_activated_at']));
+        if ($isReverification && !$isEligibleForReverification) {
+            flash('error', 'Verifikasi Ulang Profil secara online tidak tersedia karena tidak ada kandidat yang berstatus Diterima pada siklus ini. Silakan ikuti proses verifikasi melalui Dinas Tenaga Kerja setempat.');
             redirect('dashboard.php');
             exit;
         }
@@ -761,8 +764,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             exit;
         }
 
-        $isReactivation = ($isFullDisable || ($profile['verification_status'] ?? '') === 'FULL_DISABLED' || ($profile['verification_status'] ?? '') === 'INACTIVE_REVERIFICATION_REQUIRED' || !empty($profile['last_activated_at']));
-        $newVerStatus = $isReactivation ? 'REVERIFICATION_PENDING' : 'PENDING';
+        // If user is currently active (e.g. H-7 before expiration), preserve verified = 1 and existing active_until
+        $keepActive = (!empty($profile['verified']) && (int)$profile['verified'] === 1 && $activeUntil && $now <= $activeUntil);
+        $newVerified = $keepActive ? 1 : 0;
+        $newActiveUntil = $keepActive ? ($profile['active_until'] ?? null) : null;
+        $newVerStatus = $keepActive ? ($profile['verification_status'] ?? 'APPROVED') : 'PENDING';
+        $newExtRequested = $isReverification ? 1 : 0;
+        $newExtStatus = $isReverification ? 'REQUESTED' : 'NONE';
 
         if ($profile) {
             $stmt = db()->prepare('UPDATE employer_profiles SET
@@ -774,8 +782,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 latitude = ?, longitude = ?, permit_document = ?, doc_permission = ?,
                 workplace_photo = ?, doc_location_photo = ?,
                 description = ?, user_consent = ?, consent_accepted = ?,
-                entity_type = "Individu", verification_status = ?, verified = 0, active_until = NULL,
-                extension_requested = 0, extension_status = "NONE",
+                entity_type = "Individu", verification_status = ?, verified = ?, active_until = ?,
+                extension_requested = ?, extension_status = ?,
                 assigned_to = NULL, assigned_at = NULL, verifier_notes = NULL, verification_checklist = NULL,
                 manual_review_status = NULL, consent_data_hash = NULL, consent_agreed = 1,
                 updated_at = CURRENT_TIMESTAMP
@@ -789,12 +797,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $latitude, $longitude, $permitDoc, $permitDoc,
                 $workplacePhoto, $workplacePhoto,
                 $description, $consent, $consent,
-                $newVerStatus,
+                $newVerStatus, $newVerified, $newActiveUntil,
+                $newExtRequested, $newExtStatus,
                 $activeBusinessId,
                 $user['id']
             ]);
 
-            if ($isReactivation) {
+            if ($isReverification) {
                 record_audit_log('employer', $user['id'], 'REVERIFICATION_SUBMITTED', "Pengajuan Verifikasi Ulang Profil dikirim oleh pengguna.", $user['name'] ?? $ownerName, 'employer', true);
             } else {
                 record_audit_log('employer', $user['id'], 'INITIAL_VERIFICATION_SUBMITTED', "Pengajuan Verifikasi Profil Pertama dikirim oleh pengguna.", $user['name'] ?? $ownerName, 'employer', true);
@@ -835,9 +844,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
         db()->prepare('UPDATE users SET name = ?, domicile_city_id = ?, city = ?, profile_complete = 1 WHERE id = ?')->execute([$ownerName, $city, $city, $user['id']]);
 
-        if ($isReactivation) {
-            record_audit_log('employer', $user['id'], 'REACTIVATION_REQUESTED', 'Mengajukan permohonan reaktivasi Hak Akses Pemberi Kerja Individu secara online.', $user['name'], 'employer');
-            flash('pending_popup', 'Permohonan reaktivasi Hak Akses Pemberi Kerja Individu berhasil diajukan dan sedang menunggu verifikasi.');
+        if ($isReverification) {
+            flash('pending_popup', 'Pengajuan Verifikasi Ulang Profil berhasil dikirim dan sedang menunggu verifikasi oleh Admin.');
         } else {
             flash('pending_popup', 'Profil Anda berhasil diajukan! Status Profil: Menunggu Verifikasi.');
         }

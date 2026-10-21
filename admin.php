@@ -202,17 +202,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
                 $stmt->execute([$notes, $checklist, $verifMethod, $savedLocationResult, $profileIdToUpdate]);
                 $pdo->prepare('UPDATE users SET profile_complete = 1 WHERE id = ?')->execute([$targetUserId]);
 
-                $isReactivationApproval = !empty($targetEmp['last_activated_at']);
-                $auditAction = $isReactivationApproval ? 'REACTIVATION_APPROVED' : 'APPROVED';
+                $isReactivationApproval = !empty($targetEmp['last_activated_at']) || ($targetEmp['extension_status'] ?? '') === 'REQUESTED' || ($targetEmp['extension_requested'] ?? 0) == 1;
+                $auditAction = $isReactivationApproval ? 'REVERIFICATION_APPROVED' : 'APPROVED';
                 $notesStr = !empty($notes) ? " Catatan: {$notes}" : "";
                 $auditText = $isReactivationApproval
-                    ? "Permohonan reaktivasi Hak Akses online disetujui ({$methodLog}). Masa aktif baru berlaku 6 bulan.{$notesStr}"
+                    ? "Verifikasi Ulang Profil disetujui ({$methodLog}). Hak Akses aktif kembali selama 6 bulan.{$notesStr}"
                     : "Profil disetujui ({$methodLog}). Masa aktif berlaku 6 bulan.{$notesStr}";
 
                 record_audit_log('employer', $targetUserId, $auditAction, $auditText, $user['name'], $user['role'] ?? 'admin', true);
-                notify_user($targetUserId, 'Profil Disetujui', 'Selamat! Hak Akses Pemberi Kerja Individu Anda telah disetujui dan aktif selama 6 bulan.', 'success');
+                if ($isReactivationApproval) {
+                    notify_user($targetUserId, 'Verifikasi Ulang Profil Disetujui', 'Selamat! Verifikasi Ulang Profil Anda telah disetujui Admin dan Hak Akses aktif kembali selama 6 bulan.', 'success');
+                } else {
+                    notify_user($targetUserId, 'Profil Disetujui', 'Selamat! Hak Akses Pemberi Kerja Individu Anda telah disetujui dan aktif selama 6 bulan.', 'success');
+                }
                 $pdo->commit();
-                flash('success', 'Hak Akses Pemberi Kerja Individu berhasil Disetujui (Masa Aktif 6 Bulan).');
+                flash('success', $isReactivationApproval ? 'Verifikasi Ulang Profil berhasil Disetujui. Hak Akses aktif kembali selama 6 Bulan.' : 'Hak Akses Pemberi Kerja Individu berhasil Disetujui (Masa Aktif 6 Bulan).');
             } elseif ($decision === 'revision') {
                 $currentRev = (int)($targetEmp['revision_count'] ?? ($targetEmp['rejection_count'] ?? 0));
                 $newRevisionCount = min(3, $currentRev + 1);
@@ -903,9 +907,9 @@ if ($view === 'directory_individual') {
     }
 
     if ($tab === 'verified') {
-        $query .= ' AND (ep.verification_status IN ("APPROVED", "ACTIVE_VERIFIED") OR ep.verified = 1)';
+        $query .= ' AND ((ep.verification_status IN ("APPROVED", "ACTIVE_VERIFIED") OR ep.verified = 1) AND COALESCE(ep.extension_status, "") != "REQUESTED")';
     } elseif ($tab === 'process') {
-        $query .= ' AND (ep.verification_status IN ("PENDING", "NOT_SUBMITTED", "SUBMITTED", "IN_PROCESS", "NEEDS_REVISION") OR ep.verification_status IS NULL OR ep.verified = 0) AND (ep.verification_status NOT IN ("APPROVED", "ACTIVE_VERIFIED", "REJECTED", "FULL_DISABLED"))';
+        $query .= ' AND (ep.extension_status = "REQUESTED" OR ep.extension_requested = 1 OR ep.verification_status = "REVERIFICATION_PENDING" OR (((ep.verification_status IN ("PENDING", "NOT_SUBMITTED", "SUBMITTED", "IN_PROCESS", "NEEDS_REVISION") OR ep.verification_status IS NULL OR ep.verified = 0)) AND ep.verification_status NOT IN ("APPROVED", "ACTIVE_VERIFIED", "REJECTED", "FULL_DISABLED")))';
     } elseif ($tab === 'rejected') {
         $query .= ' AND (ep.verification_status IN ("REJECTED", "FULL_DISABLED"))';
     }
@@ -1020,9 +1024,9 @@ if ($view === 'verifikasi_employer') {
     $tabFilter = '';
     $tabParams = [];
     if ($tab === 'process') {
-        $tabFilter = ' AND (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status IS NULL OR (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") > 0)';
+        $tabFilter = ' AND (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status = "REVERIFICATION_PENDING" OR ep.extension_status = "REQUESTED" OR ep.extension_requested = 1 OR ep.verification_status IS NULL OR (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") > 0)';
     } elseif ($tab === 'approved') {
-        $tabFilter = ' AND (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED") AND (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") = 0';
+        $tabFilter = ' AND (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED") AND COALESCE(ep.extension_status, "") != "REQUESTED" AND (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") = 0';
     } elseif ($tab === 'revision') {
         $tabFilter = ' AND ep.verification_status = "NEEDS_REVISION"';
     } elseif ($tab === 'rejected') {
@@ -1059,9 +1063,9 @@ if ($view === 'verifikasi_employer') {
     $statusCountSql = <<<SQL
         SELECT
             COUNT(*) AS all_count,
-            SUM(CASE WHEN (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status IS NULL OR (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') > 0) THEN 1 ELSE 0 END) AS process_count,
+            SUM(CASE WHEN (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status = "REVERIFICATION_PENDING" OR ep.extension_status = "REQUESTED" OR ep.extension_requested = 1 OR ep.verification_status IS NULL OR (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') > 0) THEN 1 ELSE 0 END) AS process_count,
             SUM(CASE WHEN ep.verification_status = "NEEDS_REVISION" THEN 1 ELSE 0 END) AS revision_count,
-            SUM(CASE WHEN (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED") AND (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') = 0 THEN 1 ELSE 0 END) AS approved_count,
+            SUM(CASE WHEN (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED") AND COALESCE(ep.extension_status, "") != "REQUESTED" AND (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') = 0 THEN 1 ELSE 0 END) AS approved_count,
             SUM(CASE WHEN (ep.verification_status = "REJECTED" OR ep.verification_status = "FULL_DISABLED") THEN 1 ELSE 0 END) AS rejected_count
         {$baseFilter}
         {$entityFilter}
@@ -1955,7 +1959,7 @@ window.CITY_MASTER = [
                             </a>
                             <?php if ($canReactivateSelected): ?>
                                 <button type="button" class="btn-lihat-detail" style="color:#0284c7; border-color:#93c5fd; background:#eff6ff; font-weight:700; padding:9px 18px;" data-open-modal="modal-reactivate-<?php echo $selectedEmployer['user_id']; ?>">
-                                    <i class="fa-solid fa-arrows-rotate"></i> Reaktivasi Hak Akses
+                                    <i class="fa-solid fa-arrows-rotate"></i> Verifikasi Ulang (Disnaker)
                                 </button>
                             <?php endif; ?>
                             <?php if ($selectedEmpStatus['is_active']): ?>
@@ -2473,52 +2477,51 @@ window.CITY_MASTER = [
                         <div class="modal-backdrop" data-modal="modal-reactivate-<?php echo $selectedEmployer['user_id']; ?>">
                             <div class="modal-panel" style="width:min(540px, 92vw);">
                                 <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
-                                    <div>
-                                        <div class="modal-title" style="color:#0284c7; font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px;">
-                                            <i class="fa-solid fa-arrows-rotate"></i> KONFIRMASI REAKTIVASI HAK AKSES
+                                                             <div class="modal-title" style="color:#0284c7; font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px;">
+                                            <i class="fa-solid fa-arrows-rotate"></i> PERSETUJUAN VERIFIKASI ULANG PROFIL (DISNAKER)
                                         </div>
                                     </div>
                                     <button type="button" class="close-btn" data-close-modal="modal-reactivate-<?php echo $selectedEmployer['user_id']; ?>" style="background:none; border:none; font-size:18px; color:#94a3b8; cursor:pointer;">&times;</button>
-                                </div>
-                                <form method="post" action="admin.php?view=directory_individual&detail_id=<?php echo $selectedEmployer['user_id']; ?>">
-                                    <input type="hidden" name="admin_action" value="reactivate_employer_access">
-                                    <input type="hidden" name="user_id" value="<?php echo $selectedEmployer['user_id']; ?>">
-                                    <div class="modal-body" style="padding:16px 20px;">
-                                        <p style="margin:0 0 14px 0; color:#475569; font-size:13px; line-height:1.5;">
-                                            Anda akan mengaktifkan kembali <strong>Hak Akses Pemberi Kerja Individu</strong> berikut:
-                                        </p>
+                                 </div>
+                                 <form method="post" action="admin.php?view=directory_individual&detail_id=<?php echo $selectedEmployer['user_id']; ?>">
+                                     <input type="hidden" name="admin_action" value="reactivate_employer_access">
+                                     <input type="hidden" name="user_id" value="<?php echo $selectedEmployer['user_id']; ?>">
+                                     <div class="modal-body" style="padding:16px 20px;">
+                                         <p style="margin:0 0 14px 0; color:#475569; font-size:13px; line-height:1.5;">
+                                             Anda akan menyetujui Verifikasi Ulang Profil offline dan mengaktifkan kembali <strong>Hak Akses Pemberi Kerja Individu</strong> berikut:
+                                         </p>
 
-                                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; margin-bottom:14px; font-size:13px; display:grid; grid-template-columns:130px 1fr; row-gap:8px;">
-                                            <span style="color:#64748b;">Nama</span>
-                                            <strong style="color:#0f172a;"><?php echo e($displayName); ?></strong>
+                                         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; margin-bottom:14px; font-size:13px; display:grid; grid-template-columns:130px 1fr; row-gap:8px;">
+                                             <span style="color:#64748b;">Nama</span>
+                                             <strong style="color:#0f172a;"><?php echo e($displayName); ?></strong>
 
-                                            <span style="color:#64748b;">NIK</span>
-                                            <code style="color:#0f172a; font-weight:600;"><?php echo e($maskedNik); ?></code>
+                                             <span style="color:#64748b;">NIK</span>
+                                             <code style="color:#0f172a; font-weight:600;"><?php echo e($maskedNik); ?></code>
 
-                                            <span style="color:#64748b;">Lokasi Domisili</span>
-                                            <span style="color:#0f172a;"><?php echo e($headerLocation); ?></span>
+                                             <span style="color:#64748b;">Lokasi Domisili</span>
+                                             <span style="color:#0f172a;"><?php echo e($headerLocation); ?></span>
 
-                                            <span style="color:#64748b;">Status Saat Ini</span>
-                                            <span style="color:#dc2626; font-weight:600;">Tidak Aktif</span>
-                                        </div>
+                                             <span style="color:#64748b;">Status Saat Ini</span>
+                                             <span style="color:#dc2626; font-weight:600;">Tidak Aktif</span>
+                                         </div>
 
-                                        <div style="background:#f1f5f9; border-left:4px solid #0284c7; padding:10px 14px; border-radius:0 6px 6px 0; margin-bottom:14px;">
-                                            <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:#64748b; margin-bottom:2px;">Siklus Terakhir</div>
-                                            <div style="font-size:13px; font-weight:600; color:#0f172a;"><?php echo e($selectedSiklusTerakhir); ?></div>
-                                        </div>
+                                         <div style="background:#f1f5f9; border-left:4px solid #0284c7; padding:10px 14px; border-radius:0 6px 6px 0; margin-bottom:14px;">
+                                             <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:#64748b; margin-bottom:2px;">Siklus Terakhir</div>
+                                             <div style="font-size:13px; font-weight:600; color:#0f172a;"><?php echo e($selectedSiklusTerakhir); ?></div>
+                                         </div>
 
-                                        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 14px; font-size:12.5px; color:#1e40af; line-height:1.5;">
-                                            <i class="fa-solid fa-circle-info" style="margin-right:4px;"></i>
-                                            Hak Akses akan langsung aktif kembali selama <strong>6 bulan</strong> sejak tanggal reaktivasi ini.<br>
-                                            Reaktivasi melalui Admin Dinas tidak memerlukan proses verifikasi lanjutan.
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
-                                        <button type="button" class="ghost-btn" data-close-modal="modal-reactivate-<?php echo $selectedEmployer['user_id']; ?>">Batal</button>
-                                        <button type="submit" class="primary-btn" style="background:#0284c7; display:inline-flex; align-items:center; gap:6px;">
-                                            <i class="fa-solid fa-arrows-rotate"></i> Reaktivasi Hak Akses
-                                        </button>
-                                    </div>
+                                         <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 14px; font-size:12.5px; color:#1e40af; line-height:1.5;">
+                                             <i class="fa-solid fa-circle-info" style="margin-right:4px;"></i>
+                                             Setelah Verifikasi Ulang Profil disetujui, Hak Akses akan langsung aktif kembali selama <strong>6 bulan</strong>.<br>
+                                             Verifikasi langsung melalui Admin Dinas Tenaga Kerja telah final dan tidak memerlukan verifikasi lanjutan.
+                                         </div>
+                                     </div>
+                                     <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+                                         <button type="button" class="ghost-btn" data-close-modal="modal-reactivate-<?php echo $selectedEmployer['user_id']; ?>">Batal</button>
+                                         <button type="submit" class="primary-btn" style="background:#0284c7; display:inline-flex; align-items:center; gap:6px;">
+                                             <i class="fa-solid fa-check"></i> Setujui & Aktifkan Kembali
+                                         </button>
+                                     </div>
                                 </form>
                             </div>
                         </div>
@@ -3126,8 +3129,8 @@ document.addEventListener('click', function(e) {
                                 <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
                                     <div>
                                         <div class="modal-title" style="color:#0284c7; font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px;">
-                                            <i class="fa-solid fa-arrows-rotate"></i> KONFIRMASI REAKTIVASI HAK AKSES
-                </div>
+                                            <i class="fa-solid fa-arrows-rotate"></i> PERSETUJUAN VERIFIKASI ULANG PROFIL (DISNAKER)
+                                        </div>
                                     </div>
                                     <button type="button" class="close-btn" data-close-modal="modal-reactivate-<?php echo $emp['user_id']; ?>" style="background:none; border:none; font-size:18px; color:#94a3b8; cursor:pointer;">&times;</button>
                                 </div>
@@ -3136,7 +3139,7 @@ document.addEventListener('click', function(e) {
                                     <input type="hidden" name="user_id" value="<?php echo $emp['user_id']; ?>">
                                     <div class="modal-body" style="padding:16px 20px;">
                                         <p style="margin:0 0 14px 0; color:#475569; font-size:13px; line-height:1.5;">
-                                            Anda akan mengaktifkan kembali <strong>Hak Akses Pemberi Kerja Individu</strong> berikut:
+                                            Anda akan menyetujui Verifikasi Ulang Profil offline dan mengaktifkan kembali <strong>Hak Akses Pemberi Kerja Individu</strong> berikut:
                                         </p>
 
                                         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; margin-bottom:14px; font-size:13px; display:grid; grid-template-columns:130px 1fr; row-gap:8px;">
@@ -3160,14 +3163,14 @@ document.addEventListener('click', function(e) {
 
                                         <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 14px; font-size:12.5px; color:#1e40af; line-height:1.5;">
                                             <i class="fa-solid fa-circle-info" style="margin-right:4px;"></i>
-                                            Hak Akses akan langsung aktif kembali selama <strong>6 bulan</strong> sejak tanggal reaktivasi ini.<br>
-                                            Reaktivasi melalui Admin Dinas tidak memerlukan proses verifikasi lanjutan.
+                                            Setelah Verifikasi Ulang Profil disetujui, Hak Akses akan langsung aktif kembali selama <strong>6 bulan</strong>.<br>
+                                            Verifikasi langsung melalui Admin Dinas Tenaga Kerja telah final dan tidak memerlukan verifikasi lanjutan.
                                         </div>
                                     </div>
                                     <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
                                         <button type="button" class="ghost-btn" data-close-modal="modal-reactivate-<?php echo $emp['user_id']; ?>">Batal</button>
                                         <button type="submit" class="primary-btn" style="background:#0284c7; display:inline-flex; align-items:center; gap:6px;">
-                                            <i class="fa-solid fa-arrows-rotate"></i> Reaktivasi Hak Akses
+                                            <i class="fa-solid fa-check"></i> Setujui & Aktifkan Kembali
                                         </button>
                                     </div>
                                 </form>

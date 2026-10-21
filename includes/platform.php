@@ -1042,7 +1042,10 @@ function format_audit_log_item(array $log): array
         'EXTENSION_REQUESTED' => 'Pengajuan Perpanjangan',
         'EXTENSION_APPROVED' => 'Perpanjangan Disetujui',
         'EXTENSION_REJECTED' => 'Perpanjangan Ditolak',
-        'REACTIVATION_APPROVED' => 'Reaktivasi Hak Akses Disetujui',
+        'REACTIVATION_APPROVED' => 'Verifikasi Ulang Profil Disetujui',
+        'REVERIFICATION_SUBMITTED' => 'Verifikasi Ulang Profil Diajukan',
+        'REVERIFICATION_APPROVED' => 'Verifikasi Ulang Profil Disetujui',
+        'REVERIFICATION_OFFLINE_APPROVED' => 'Verifikasi Ulang Profil (Disnaker) Disetujui',
         'ADDITIONAL_DOC_SUBMITTED' => 'Dokumen Tambahan Dikirim',
         'ADDITIONAL_DOC_APPROVED' => 'Dokumen Tambahan Disetujui',
         'ADDITIONAL_DOC_REJECTED' => 'Dokumen Tambahan Ditolak',
@@ -1056,7 +1059,7 @@ function format_audit_log_item(array $log): array
     // Dot style & accent color
     $dotColor = '#0284c7'; // default blue
     $dotShadow = '#bae6fd';
-    if (in_array($rawAction, ['APPROVED', 'APPROVED_MANUAL_DINAS', 'PROFILE_CHANGE_APPROVED', 'EXTENSION_APPROVED', 'REACTIVATION_APPROVED', 'ADDITIONAL_DOC_APPROVED'], true)) {
+    if (in_array($rawAction, ['APPROVED', 'APPROVED_MANUAL_DINAS', 'PROFILE_CHANGE_APPROVED', 'EXTENSION_APPROVED', 'REACTIVATION_APPROVED', 'REVERIFICATION_APPROVED', 'REVERIFICATION_OFFLINE_APPROVED', 'ADDITIONAL_DOC_APPROVED'], true)) {
         $dotColor = '#10b981'; // Green
         $dotShadow = '#a7f3d0';
     } elseif (in_array($rawAction, ['REJECTED', 'PROFILE_CHANGE_REJECTED', 'EXTENSION_REJECTED', 'ADDITIONAL_DOC_REJECTED', 'ADDITIONAL_DOC_REJECTED_LAYER3'], true)) {
@@ -1608,55 +1611,50 @@ function reactivate_employer_access_by_admin_dinas(PDO $pdo, int $targetUserId, 
         $statusInfo = get_employer_access_status($targetEmp, $refTime);
         $currentStatus = $statusInfo['status'];
 
-        // Collision Protection: If online reactivation is PENDING
-        if ($statusInfo['is_pending']) {
+        // Collision Protection: If online reverification is PENDING
+        if ($statusInfo['is_pending'] || ($targetEmp['extension_status'] ?? '') === 'REQUESTED' || ($targetEmp['verification_status'] ?? '') === 'REVERIFICATION_PENDING') {
             if (!$inTx && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             return [
                 'success' => false,
-                'error' => 'Reaktivasi Hak Akses ditolak: Permohonan reaktivasi online sedang dalam proses verifikasi.'
+                'error' => 'Verifikasi Ulang Profil ditolak: Permohonan verifikasi ulang secara online sedang dalam proses verifikasi Admin.'
             ];
         }
 
-        // Concurrency / State Protection: If already ACTIVE
-        if ($statusInfo['is_active']) {
-            if (!$inTx && $pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            return [
-                'success' => false,
-                'error' => 'Reaktivasi Hak Akses gagal: Hak Akses Pemberi Kerja Individu sudah dalam status Aktif.'
-            ];
-        }
-
-        // Suspended or Transition Protection
+        // Suspended Protection
         if ($statusInfo['status'] === 'SUSPENDED') {
             if (!$inTx && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             return [
                 'success' => false,
-                'error' => 'Reaktivasi Hak Akses gagal: Hak Akses Pemberi Kerja Individu sedang dalam status Ditangguhkan (SUSPENDED).'
-            ];
-        }
-        if ($statusInfo['is_transition']) {
-            if (!$inTx && $pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            return [
-                'success' => false,
-                'error' => 'Reaktivasi Hak Akses gagal: Hak Akses Pemberi Kerja Individu masih berada dalam Masa Transisi.'
+                'error' => 'Verifikasi Ulang Profil gagal: Hak Akses Pemberi Kerja Individu sedang dalam status Ditangguhkan (SUSPENDED).'
             ];
         }
 
-        if ($statusInfo['status'] !== 'FULL_DISABLED') {
+        // Check active expiration window:
+        // Verification via Disnaker is permitted if:
+        // 1. FULL_DISABLED (sudah nonaktif)
+        // 2. is_transition (dalam masa transisi 7 hari)
+        // 3. active but in H-7 window (<= 7 days remaining before active_until)
+        $nowDt = $refTime ? new DateTime($refTime) : new DateTime();
+        $isExpiringSoon = false;
+        if (!empty($targetEmp['active_until'])) {
+            $actUntilDt = new DateTime($targetEmp['active_until']);
+            $diffDays = ($actUntilDt->getTimestamp() - $nowDt->getTimestamp()) / 86400;
+            if ($diffDays <= 7) {
+                $isExpiringSoon = true;
+            }
+        }
+
+        if ($statusInfo['is_active'] && !$isExpiringSoon) {
             if (!$inTx && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             return [
                 'success' => false,
-                'error' => 'Reaktivasi Hak Akses hanya dapat dilakukan untuk Hak Akses yang telah berakhir (FULL_DISABLED).'
+                'error' => 'Verifikasi Ulang Profil belum dapat dilakukan karena masa aktif masih berlaku lebih dari 7 hari.'
             ];
         }
 
@@ -1674,10 +1672,10 @@ function reactivate_employer_access_by_admin_dinas(PDO $pdo, int $targetUserId, 
         $newActiveUntilFormatted = format_indo_date(date('Y-m-d', strtotime('+6 months')));
         $prevActiveUntil = $targetEmp['active_until'] ? date('d M Y', strtotime($targetEmp['active_until'])) : '-';
 
-        $auditDetails = "Hak Akses Pemberi Kerja Individu direaktivasi langsung oleh Admin Dinas. Previous Status: {$currentStatus}, New Status: ACTIVE, Previous Active Until: {$prevActiveUntil}, New Activated At: " . date('Y-m-d H:i:s') . ", New Active Until: " . date('Y-m-d H:i:s', strtotime('+6 months')) . " | Source: ADMIN_DINAS";
-        record_audit_log('employer', $targetUserId, 'REACTIVATE_EMPLOYER_ACCESS', $auditDetails, $actorUser['name'] ?? 'Admin Dinas', $actorUser['role'] ?? 'admin_dinas', true);
+        $auditDetails = "Verifikasi Ulang Profil (Jalur Offline Dinas Tenaga Kerja) disetujui oleh Admin Dinas. Previous Status: {$currentStatus}, New Status: ACTIVE, Previous Active Until: {$prevActiveUntil}, New Activated At: " . date('Y-m-d H:i:s') . ", New Active Until: " . date('Y-m-d H:i:s', strtotime('+6 months')) . " | Source: ADMIN_DINAS";
+        record_audit_log('employer', $targetUserId, 'REVERIFICATION_OFFLINE_APPROVED', $auditDetails, $actorUser['name'] ?? 'Admin Dinas', $actorUser['role'] ?? 'admin_dinas', true);
 
-        notify_user($targetUserId, 'Hak Akses Diaktifkan Kembali', 'Hak Akses Pemberi Kerja Individu Anda telah diaktifkan kembali oleh Dinas Tenaga Kerja selama 6 bulan.', 'success');
+        notify_user($targetUserId, 'Verifikasi Ulang Profil Disetujui', 'Selamat! Verifikasi Ulang Profil Anda telah disetujui oleh Dinas Tenaga Kerja dan Hak Akses aktif kembali selama 6 bulan.', 'success');
 
         if (!$inTx && $pdo->inTransaction()) {
             $pdo->commit();
@@ -1688,13 +1686,13 @@ function reactivate_employer_access_by_admin_dinas(PDO $pdo, int $targetUserId, 
             'activated_at' => $nowFormatted,
             'active_until' => $newActiveUntilFormatted,
             'employer_name' => $targetEmp['owner_name'] ?: 'Pemberi Kerja',
-            'message' => 'Hak Akses berhasil direaktivasi. Hak Akses Pemberi Kerja Individu telah langsung aktif kembali.'
+            'message' => 'Verifikasi Ulang Profil berhasil disetujui. Hak Akses Pemberi Kerja Individu telah aktif kembali selama 6 bulan.'
         ];
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        return ['success' => false, 'error' => 'Gagal mereaktivasi Hak Akses: ' . $e->getMessage()];
+        return ['success' => false, 'error' => 'Gagal memproses Verifikasi Ulang Profil: ' . $e->getMessage()];
     }
 }
 
