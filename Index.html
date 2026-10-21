@@ -5361,21 +5361,22 @@
                 </p>
 
                 <!-- Informasi Dinas -->
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px 16px; margin:0 0 16px 0; font-size:13px; line-height:1.65; color:#334155;">
-                    <div style="margin-bottom:6px;">
-                        <span style="color:#64748b; font-weight:600; display:inline-block; min-width:140px;">Dinas Tenaga Kerja:</span>
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px 18px; margin:0 0 16px 0; font-size:13px; line-height:1.6; color:#334155;">
+                    <div style="display:grid; grid-template-columns:135px 12px 1fr; row-gap:8px; align-items:start;">
+                        <span style="color:#64748b; font-weight:600;">Dinas Tenaga Kerja</span>
+                        <span style="color:#64748b; font-weight:600; text-align:center;">:</span>
                         <strong style="color:#0f172a;">Dinas Tenaga Kerja <?php echo htmlspecialchars($city ?: 'Kota Bandung', ENT_QUOTES, 'UTF-8'); ?></strong>
-                    </div>
-                    <div style="margin-bottom:6px;">
-                        <span style="color:#64748b; font-weight:600; display:inline-block; min-width:140px;">Alamat:</span>
+
+                        <span style="color:#64748b; font-weight:600;">Alamat</span>
+                        <span style="color:#64748b; font-weight:600; text-align:center;">:</span>
                         <span style="color:#0f172a;"><?php echo htmlspecialchars($profile['domicile_address'] ?? ($profile['address'] ?? 'Jl. Ir. H. Juanda No. 120, RT 03/RW 01'), ENT_QUOTES, 'UTF-8'); ?></span>
-                    </div>
-                    <div style="margin-bottom:6px;">
-                        <span style="color:#64748b; font-weight:600; display:inline-block; min-width:140px;">Informasi Layanan:</span>
+
+                        <span style="color:#64748b; font-weight:600;">Informasi Layanan</span>
+                        <span style="color:#64748b; font-weight:600; text-align:center;">:</span>
                         <span style="color:#0f172a;">Seksi Penempatan Tenaga Kerja dan Verifikasi Pemberi Kerja Individu</span>
-                    </div>
-                    <div>
-                        <span style="color:#64748b; font-weight:600; display:inline-block; min-width:140px;">Kontak:</span>
+
+                        <span style="color:#64748b; font-weight:600;">Kontak</span>
+                        <span style="color:#64748b; font-weight:600; text-align:center;">:</span>
                         <span style="color:#0f172a;"><?php echo !empty($profile['disnaker_contact']) ? htmlspecialchars($profile['disnaker_contact'], ENT_QUOTES, 'UTF-8') : '022-xxxxxxx'; ?></span>
                     </div>
                 </div>
