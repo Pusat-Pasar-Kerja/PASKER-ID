@@ -3035,9 +3035,9 @@
                                             <span style="font-size:13px; font-weight:500; color:#0f172a;">Tayang hari ini?</span>
                                         </div>
                                     </div>
-                                    <div id="reopenPublishDateBox" onclick="handlePublishDateBoxClick(event)" style="position:relative; width:100%; height:42px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; display:flex; align-items:center; padding:0 14px; gap:10px; cursor:pointer; user-select:none; box-sizing:border-box; transition:all 0.15s;">
+                                    <div id="reopenPublishDateBox" onclick="handlePublishDateBoxClick(event)" style="position:relative; width:100%; height:42px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; display:flex; align-items:center; padding:0 14px; gap:10px; box-sizing:border-box; transition:all 0.15s; cursor:pointer;">
                                         <i class="fa-regular fa-calendar" id="reopenPublishCalIcon" style="color:#94a3b8; font-size:15px; flex-shrink:0;"></i>
-                                        <span id="reopenPublishDateText" style="flex:1; font-size:13.5px; color:#94a3b8; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Pilih tanggal</span>
+                                        <span id="reopenPublishDateText" style="flex:1; font-size:13.5px; color:#94a3b8; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
                                         <button type="button" id="reopenClearPublishDateBtn" onclick="clearReopenPublishDate(event)" style="display:none; background:none; border:none; padding:0; cursor:pointer; color:#cbd5e1; font-size:15px; flex-shrink:0; align-items:center; justify-content:center; z-index:10;" onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#cbd5e1'" title="Hapus tanggal">
                                             <i class="fa-regular fa-circle-xmark"></i>
                                         </button>
@@ -3308,11 +3308,10 @@
                     let reopenExpirySelectedType = ''; // '1_month', '2_month', '3_month', 'custom'
                     let reopenCustomExpiryDate = ''; // 'YYYY-MM-DD'
 
-                    let calPubViewingYear = new Date().getFullYear();
-                    let calPubViewingMonth = new Date().getMonth();
-
-                    let calViewingYear = new Date().getFullYear();
-                    let calViewingMonth = new Date().getMonth();
+                    let calViewingYear = 2026;
+                    let calViewingMonth = 9; // 0-indexed (9 = Okt)
+                    let calPubViewingYear = 2026;
+                    let calPubViewingMonth = 9;
 
                     function formatReopenIndoDate(dateObj, isShort = false) {
                         const day = dateObj.getDate();
@@ -3379,13 +3378,14 @@
                             pubBox.style.borderColor = '#cbd5e1';
                         }
                         if (pubText) {
-                            pubText.innerText = 'Pilih tanggal';
+                            pubText.innerText = '';
                             pubText.style.color = '#94a3b8';
                         }
                         if (clearPubBtn) clearPubBtn.style.display = 'none';
                         if (pubHidden) pubHidden.value = '';
 
                         closeCalPubPopups();
+                        closeCalPopups();
 
                         // Update Lama Expired UI (disabled)
                         const expHidden = document.getElementById('reopenExpiryDaysHidden');
@@ -3402,8 +3402,8 @@
                     function closeReopenJobModal() {
                         const modal = document.getElementById('modalReopenJob');
                         if (modal) modal.style.display = 'none';
-                        closeCalPopups();
                         closeCalPubPopups();
+                        closeCalPopups();
                     }
 
                     function resetReopenExpiryToDisabled() {
@@ -3484,7 +3484,6 @@
                         `;
                     }
 
-                    // --- TANGGAL TAYANG LOKER (CALENDAR & TOGGLE) ---
                     function toggleReopenTayangHariIni() {
                         if (reopenIsToday) {
                             // If currently checked, clicking unchecks and clears
@@ -3498,6 +3497,7 @@
                         const todayYmd = formatLocalDateYmd(today);
                         reopenPublishDate = todayYmd;
 
+                        // Close publish calendar if open
                         closeCalPubPopups();
 
                         // Update Toggle UI (checked cyan badge)
@@ -3537,6 +3537,7 @@
                         reopenIsToday = false;
                         reopenPublishDate = '';
 
+                        // Close publish calendar if open
                         closeCalPubPopups();
 
                         // Reset toggle icon
@@ -3558,7 +3559,7 @@
                             pubBox.style.borderColor = '#cbd5e1';
                         }
                         if (pubText) {
-                            pubText.innerText = 'Pilih tanggal';
+                            pubText.innerText = '';
                             pubText.style.color = '#94a3b8';
                         }
                         if (clearPubBtn) clearPubBtn.style.display = 'none';
@@ -3576,28 +3577,30 @@
                             // User must click 'x' to clear/unlock.
                             return;
                         }
-                        // Close expiry calendar if open
-                        closeCalPopups();
+                        toggleCalPubCalendar(event);
+                    }
 
-                        const calPopup = document.getElementById('reopenPublishCalendarPopup');
-                        if (!calPopup) return;
-                        if (calPopup.style.display === 'block') {
-                            calPopup.style.display = 'none';
+                    function toggleCalPubCalendar(event) {
+                        if (event) event.stopPropagation();
+                        const popup = document.getElementById('reopenPublishCalendarPopup');
+                        if (!popup) return;
+                        if (popup.style.display === 'block') {
+                            popup.style.display = 'none';
                         } else {
-                            openReopenPublishCalendar();
+                            openCalPubCalendar();
                         }
                     }
 
-                    function openReopenPublishCalendar() {
-                        const calPopup = document.getElementById('reopenPublishCalendarPopup');
-                        if (!calPopup) return;
+                    function openCalPubCalendar() {
+                        const popup = document.getElementById('reopenPublishCalendarPopup');
+                        if (!popup) return;
 
-                        const curSelected = parseLocalDate(reopenPublishDate) || new Date();
-                        calPubViewingYear = curSelected.getFullYear();
-                        calPubViewingMonth = curSelected.getMonth();
+                        const pubDateObj = parseLocalDate(reopenPublishDate) || new Date();
+                        calPubViewingYear = pubDateObj.getFullYear();
+                        calPubViewingMonth = pubDateObj.getMonth();
 
-                        renderReopenPublishCalendar();
-                        calPopup.style.display = 'block';
+                        renderCalPubCalendar();
+                        popup.style.display = 'block';
                     }
 
                     function calPubNavigateMonth(step) {
@@ -3609,7 +3612,7 @@
                             calPubViewingMonth = 11;
                             calPubViewingYear -= 1;
                         }
-                        renderReopenPublishCalendar();
+                        renderCalPubCalendar();
                     }
 
                     function toggleCalPubMonthList(event) {
@@ -3633,7 +3636,7 @@
                         calPubViewingMonth = mIdx;
                         const d = document.getElementById('calPubMonthDropdown');
                         if (d) d.style.display = 'none';
-                        renderReopenPublishCalendar();
+                        renderCalPubCalendar();
                     }
 
                     function toggleCalPubYearList(event) {
@@ -3662,10 +3665,10 @@
                         calPubViewingYear = y;
                         const d = document.getElementById('calPubYearDropdown');
                         if (d) d.style.display = 'none';
-                        renderReopenPublishCalendar();
+                        renderCalPubCalendar();
                     }
 
-                    function renderReopenPublishCalendar() {
+                    function renderCalPubCalendar() {
                         const monthLabel = document.getElementById('calPubCurrentMonthLabel');
                         const yearLabel = document.getElementById('calPubCurrentYearLabel');
                         const daysGrid = document.getElementById('calPubDaysGrid');
@@ -3674,14 +3677,13 @@
                         if (yearLabel) yearLabel.innerText = calPubViewingYear;
                         if (!daysGrid) return;
 
-                        const today = new Date();
-                        const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                        const todayYmd = formatLocalDateYmd(today);
-
                         const firstDayOfMonth = new Date(calPubViewingYear, calPubViewingMonth, 1);
-                        const startCol = (firstDayOfMonth.getDay() + 6) % 7; // Monday is 0, Sunday is 6
+                        const startCol = (firstDayOfMonth.getDay() + 6) % 7;
                         const prevMonthLastDate = new Date(calPubViewingYear, calPubViewingMonth, 0).getDate();
                         const currentMonthLastDate = new Date(calPubViewingYear, calPubViewingMonth + 1, 0).getDate();
+
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
 
                         let html = '';
 
@@ -3693,24 +3695,21 @@
 
                         // 2. Days of current month
                         for (let d = 1; d <= currentMonthLastDate; d++) {
-                            const thisDate = new Date(calPubViewingYear, calPubViewingMonth, d);
-                            const thisYmd = formatLocalDateYmd(thisDate);
+                            const cellDate = new Date(calPubViewingYear, calPubViewingMonth, d);
+                            cellDate.setHours(0, 0, 0, 0);
+                            const cellYmd = formatLocalDateYmd(cellDate);
 
-                            const isPast = thisDate.getTime() < todayMidnight.getTime();
-                            const isSelected = (reopenPublishDate === thisYmd);
-                            const isToday = (todayYmd === thisYmd);
+                            const isPast = cellDate.getTime() < today.getTime();
+                            const isToday = cellDate.getTime() === today.getTime();
+                            const isSelected = (reopenPublishDate === cellYmd);
 
                             if (isPast) {
-                                // Before today: disabled
                                 html += `<div style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#cbd5e1; cursor:default;">${d}</div>`;
                             } else if (isSelected) {
-                                // Selected date
                                 html += `<div onclick="calPubSelectDate(${calPubViewingYear}, ${calPubViewingMonth}, ${d})" style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#ffffff; background:#00a8e8; border-radius:50%; cursor:pointer;">${d}</div>`;
                             } else if (isToday) {
-                                // Today (not selected): subtle circle indicator
-                                html += `<div onclick="calPubSelectDate(${calPubViewingYear}, ${calPubViewingMonth}, ${d})" style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#0f172a; background:#f1f5f9; border-radius:50%; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">${d}</div>`;
+                                html += `<div onclick="calPubSelectDate(${calPubViewingYear}, ${calPubViewingMonth}, ${d})" style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#0f172a; background:#f0f4f8; border-radius:50%; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f0f4f8'">${d}</div>`;
                             } else {
-                                // Future date: normal clickable
                                 html += `<div onclick="calPubSelectDate(${calPubViewingYear}, ${calPubViewingMonth}, ${d})" style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:500; color:#0f172a; border-radius:50%; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">${d}</div>`;
                             }
                         }
@@ -3730,7 +3729,6 @@
                         const chosenYmd = formatLocalDateYmd(chosenDate);
                         reopenPublishDate = chosenYmd;
 
-                        // Uncheck "Tayang hari ini?"
                         reopenIsToday = false;
                         const checkIcon = document.getElementById('reopenTodayCheckIcon');
                         if (checkIcon) {
@@ -3739,7 +3737,6 @@
                             checkIcon.style.borderColor = '#cbd5e1';
                         }
 
-                        // Update Box UI
                         const pubBox = document.getElementById('reopenPublishDateBox');
                         const pubText = document.getElementById('reopenPublishDateText');
                         const clearPubBtn = document.getElementById('reopenClearPublishDateBtn');
@@ -3751,17 +3748,13 @@
                         }
                         if (pubText) {
                             pubText.innerText = formatReopenIndoDate(chosenDate);
-                            pubText.style.color = '#0f172a'; // normal dark color
+                            pubText.style.color = '#0f172a';
                         }
-                        if (clearPubBtn) clearPubBtn.style.display = 'none'; // can click box again anytime to open calendar
+                        if (clearPubBtn) clearPubBtn.style.display = 'none';
                         if (pubHidden) pubHidden.value = chosenYmd;
 
-                        closeCalPubPopups();
-
-                        // Enable Expiry & recalculate options
                         enableReopenExpiryTrigger();
 
-                        // If user previously selected 1, 2, or 3 months, recalculate days
                         if (reopenExpirySelectedType && reopenExpirySelectedType !== 'custom') {
                             const months = reopenExpirySelectedType === '1_month' ? 1 : (reopenExpirySelectedType === '2_month' ? 2 : 3);
                             const targetDate = addMonthsToDate(chosenDate, months);
@@ -3769,24 +3762,22 @@
                             const days = Math.round((targetDate - chosenDate) / (1000 * 60 * 60 * 24));
                             selectReopenExpiryOption(reopenExpirySelectedType, days, `${months} Bulan (${str})`);
                         }
+
+                        closeCalPubPopups();
                     }
 
                     function closeCalPubPopups() {
-                        const calPopup = document.getElementById('reopenPublishCalendarPopup');
+                        const popup = document.getElementById('reopenPublishCalendarPopup');
                         const md = document.getElementById('calPubMonthDropdown');
                         const yd = document.getElementById('calPubYearDropdown');
-                        if (calPopup) calPopup.style.display = 'none';
+                        if (popup) popup.style.display = 'none';
                         if (md) md.style.display = 'none';
                         if (yd) yd.style.display = 'none';
                     }
 
-                    // --- LAMA EXPIRED LOKER (DROPDOWN & CUSTOM CALENDAR) ---
                     function toggleReopenExpiryDropdown(event) {
                         if (!reopenPublishDate) return; // disabled if no date
                         if (reopenExpirySelectedType === 'custom') return; // if custom is active, click on 'x' resets it
-
-                        // Close publish calendar if open
-                        closeCalPubPopups();
 
                         const dropdown = document.getElementById('reopenExpiryDropdownMenu');
                         const chev = document.getElementById('reopenExpiryChevron');
@@ -3873,7 +3864,6 @@
 
                     function toggleReopenExpiryCalendar(event) {
                         if (event) event.stopPropagation();
-                        closeCalPubPopups();
                         const calPopup = document.getElementById('reopenExpiryCalendarPopup');
                         if (!calPopup) return;
                         if (calPopup.style.display === 'block') {
