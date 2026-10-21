@@ -3025,7 +3025,7 @@
                                 <input type="hidden" name="expiry_days" id="reopenExpiryDaysHidden" value="">
 
                                 <!-- Field 1: Tanggal tayang loker -->
-                                <div style="margin-bottom:18px;">
+                                <div style="margin-bottom:18px; position:relative;">
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                                         <label style="font-size:13.5px; font-weight:700; color:#0f172a;">
                                             Tanggal tayang loker <span style="color:#ef4444;">*</span>
@@ -3035,13 +3035,62 @@
                                             <span style="font-size:13px; font-weight:500; color:#0f172a;">Tayang hari ini?</span>
                                         </div>
                                     </div>
-                                    <div id="reopenPublishDateBox" onclick="handlePublishDateBoxClick(event)" style="position:relative; width:100%; height:42px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; display:flex; align-items:center; padding:0 14px; gap:10px; box-sizing:border-box; transition:all 0.15s;">
+                                    <div id="reopenPublishDateBox" onclick="handlePublishDateBoxClick(event)" style="position:relative; width:100%; height:42px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; display:flex; align-items:center; padding:0 14px; gap:10px; cursor:pointer; user-select:none; box-sizing:border-box; transition:all 0.15s;">
                                         <i class="fa-regular fa-calendar" id="reopenPublishCalIcon" style="color:#94a3b8; font-size:15px; flex-shrink:0;"></i>
-                                        <span id="reopenPublishDateText" style="flex:1; font-size:13.5px; color:#94a3b8; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
+                                        <span id="reopenPublishDateText" style="flex:1; font-size:13.5px; color:#94a3b8; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Pilih tanggal</span>
                                         <button type="button" id="reopenClearPublishDateBtn" onclick="clearReopenPublishDate(event)" style="display:none; background:none; border:none; padding:0; cursor:pointer; color:#cbd5e1; font-size:15px; flex-shrink:0; align-items:center; justify-content:center; z-index:10;" onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#cbd5e1'" title="Hapus tanggal">
                                             <i class="fa-regular fa-circle-xmark"></i>
                                         </button>
-                                        <input type="date" id="reopenPublishDateNative" min="<?php echo date('Y-m-d'); ?>" onchange="handlePublishDateNativeChange(this.value)" style="position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; z-index:5;">
+                                    </div>
+
+                                    <!-- Custom Calendar Popup for Tanggal Tayang Loker -->
+                                    <div id="reopenPublishCalendarPopup" style="display:none; position:absolute; top:calc(100% + 6px); left:0; background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; box-shadow:0 15px 30px -5px rgba(0,0,0,0.15), 0 10px 10px -5px rgba(0,0,0,0.08); z-index:150; padding:16px; width:285px; box-sizing:border-box;" onclick="event.stopPropagation()">
+                                        <!-- Top Nav: < [Okt ⌵] [2026 ⌵] > -->
+                                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                                            <button type="button" onclick="calPubNavigateMonth(-1)" style="background:none; border:none; cursor:pointer; color:#0f172a; padding:6px 8px; font-size:11px; border-radius:6px; transition:background 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-chevron-left"></i></button>
+                                            
+                                            <div style="display:flex; align-items:center; gap:6px;">
+                                                <!-- Month Selector Pill -->
+                                                <div style="position:relative; display:inline-block;">
+                                                    <button type="button" onclick="toggleCalPubMonthList(event)" id="calPubMonthBtn" style="border:1px solid #cbd5e1; border-radius:8px; background:#fff; padding:4px 10px; font-size:13px; font-weight:600; color:#0f172a; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                                        <span id="calPubCurrentMonthLabel">Okt</span>
+                                                        <i class="fa-solid fa-chevron-down" style="font-size:10px; color:#64748b;"></i>
+                                                    </button>
+                                                    <div id="calPubMonthDropdown" style="display:none; position:absolute; top:calc(100% + 4px); left:0; background:#fff; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 8px 16px rgba(0,0,0,0.12); z-index:160; width:90px; max-height:180px; overflow-y:auto; padding:4px 0;">
+                                                        <!-- Months injected here -->
+                                                    </div>
+                                                </div>
+
+                                                <!-- Year Selector Pill -->
+                                                <div style="position:relative; display:inline-block;">
+                                                    <button type="button" onclick="toggleCalPubYearList(event)" id="calPubYearBtn" style="border:1px solid #cbd5e1; border-radius:8px; background:#fff; padding:4px 10px; font-size:13px; font-weight:600; color:#0f172a; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                                        <span id="calPubCurrentYearLabel">2026</span>
+                                                        <i class="fa-solid fa-chevron-down" style="font-size:10px; color:#64748b;"></i>
+                                                    </button>
+                                                    <div id="calPubYearDropdown" style="display:none; position:absolute; top:calc(100% + 4px); left:0; background:#fff; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 8px 16px rgba(0,0,0,0.12); z-index:160; width:80px; max-height:180px; overflow-y:auto; padding:4px 0;">
+                                                        <!-- Years injected here -->
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <button type="button" onclick="calPubNavigateMonth(1)" style="background:none; border:none; cursor:pointer; color:#0f172a; padding:6px 8px; font-size:11px; border-radius:6px; transition:background 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-chevron-right"></i></button>
+                                        </div>
+
+                                        <!-- Day Names Header: Sen Sel Rab Kam Jum Sab Min -->
+                                        <div style="display:grid; grid-template-columns:repeat(7, 1fr); text-align:center; font-size:12px; font-weight:500; color:#64748b; margin-bottom:8px;">
+                                            <div>Sen</div>
+                                            <div>Sel</div>
+                                            <div>Rab</div>
+                                            <div>Kam</div>
+                                            <div>Jum</div>
+                                            <div>Sab</div>
+                                            <div>Min</div>
+                                        </div>
+
+                                        <!-- Day Cells Grid -->
+                                        <div id="calPubDaysGrid" style="display:grid; grid-template-columns:repeat(7, 1fr); row-gap:6px; column-gap:2px; text-align:center;">
+                                            <!-- Injected dynamically -->
+                                        </div>
                                     </div>
                                 </div>
 
@@ -3259,8 +3308,11 @@
                     let reopenExpirySelectedType = ''; // '1_month', '2_month', '3_month', 'custom'
                     let reopenCustomExpiryDate = ''; // 'YYYY-MM-DD'
 
-                    let calViewingYear = 2026;
-                    let calViewingMonth = 9; // 0-indexed (9 = Okt)
+                    let calPubViewingYear = new Date().getFullYear();
+                    let calPubViewingMonth = new Date().getMonth();
+
+                    let calViewingYear = new Date().getFullYear();
+                    let calViewingMonth = new Date().getMonth();
 
                     function formatReopenIndoDate(dateObj, isShort = false) {
                         const day = dateObj.getDate();
@@ -3320,7 +3372,6 @@
                         const pubBox = document.getElementById('reopenPublishDateBox');
                         const pubText = document.getElementById('reopenPublishDateText');
                         const clearPubBtn = document.getElementById('reopenClearPublishDateBtn');
-                        const nativePubInput = document.getElementById('reopenPublishDateNative');
                         const pubHidden = document.getElementById('reopenPublishDateHidden');
 
                         if (pubBox) {
@@ -3328,15 +3379,13 @@
                             pubBox.style.borderColor = '#cbd5e1';
                         }
                         if (pubText) {
-                            pubText.innerText = '';
+                            pubText.innerText = 'Pilih tanggal';
                             pubText.style.color = '#94a3b8';
                         }
                         if (clearPubBtn) clearPubBtn.style.display = 'none';
-                        if (nativePubInput) {
-                            nativePubInput.value = '';
-                            nativePubInput.style.pointerEvents = 'auto';
-                        }
                         if (pubHidden) pubHidden.value = '';
+
+                        closeCalPubPopups();
 
                         // Update Lama Expired UI (disabled)
                         const expHidden = document.getElementById('reopenExpiryDaysHidden');
@@ -3354,6 +3403,7 @@
                         const modal = document.getElementById('modalReopenJob');
                         if (modal) modal.style.display = 'none';
                         closeCalPopups();
+                        closeCalPubPopups();
                     }
 
                     function resetReopenExpiryToDisabled() {
@@ -3434,6 +3484,7 @@
                         `;
                     }
 
+                    // --- TANGGAL TAYANG LOKER (CALENDAR & TOGGLE) ---
                     function toggleReopenTayangHariIni() {
                         if (reopenIsToday) {
                             // If currently checked, clicking unchecks and clears
@@ -3446,6 +3497,8 @@
                         const today = new Date();
                         const todayYmd = formatLocalDateYmd(today);
                         reopenPublishDate = todayYmd;
+
+                        closeCalPubPopups();
 
                         // Update Toggle UI (checked cyan badge)
                         const checkIcon = document.getElementById('reopenTodayCheckIcon');
@@ -3461,7 +3514,6 @@
                         const pubBox = document.getElementById('reopenPublishDateBox');
                         const pubText = document.getElementById('reopenPublishDateText');
                         const clearPubBtn = document.getElementById('reopenClearPublishDateBtn');
-                        const nativePubInput = document.getElementById('reopenPublishDateNative');
                         const pubHidden = document.getElementById('reopenPublishDateHidden');
 
                         if (pubBox) {
@@ -3473,10 +3525,6 @@
                             pubText.style.color = '#94a3b8'; // muted grey as Image 2
                         }
                         if (clearPubBtn) clearPubBtn.style.display = 'inline-flex';
-                        if (nativePubInput) {
-                            nativePubInput.value = todayYmd;
-                            nativePubInput.style.pointerEvents = 'none'; // Locked: cannot click box directly
-                        }
                         if (pubHidden) pubHidden.value = todayYmd;
 
                         // Enable Expiry
@@ -3488,6 +3536,8 @@
 
                         reopenIsToday = false;
                         reopenPublishDate = '';
+
+                        closeCalPubPopups();
 
                         // Reset toggle icon
                         const checkIcon = document.getElementById('reopenTodayCheckIcon');
@@ -3501,7 +3551,6 @@
                         const pubBox = document.getElementById('reopenPublishDateBox');
                         const pubText = document.getElementById('reopenPublishDateText');
                         const clearPubBtn = document.getElementById('reopenClearPublishDateBtn');
-                        const nativePubInput = document.getElementById('reopenPublishDateNative');
                         const pubHidden = document.getElementById('reopenPublishDateHidden');
 
                         if (pubBox) {
@@ -3509,14 +3558,10 @@
                             pubBox.style.borderColor = '#cbd5e1';
                         }
                         if (pubText) {
-                            pubText.innerText = '';
+                            pubText.innerText = 'Pilih tanggal';
                             pubText.style.color = '#94a3b8';
                         }
                         if (clearPubBtn) clearPubBtn.style.display = 'none';
-                        if (nativePubInput) {
-                            nativePubInput.value = '';
-                            nativePubInput.style.pointerEvents = 'auto'; // Unlocked
-                        }
                         if (pubHidden) pubHidden.value = '';
 
                         // Reset & Disable Expiry
@@ -3531,25 +3576,161 @@
                             // User must click 'x' to clear/unlock.
                             return;
                         }
-                        // When NOT "Tayang hari ini?", clicking box opens date picker directly
-                        const nativePubInput = document.getElementById('reopenPublishDateNative');
-                        if (nativePubInput && typeof nativePubInput.showPicker === 'function') {
-                            try {
-                                nativePubInput.showPicker();
-                            } catch (e) {
-                                // fallback if showPicker fails
-                            }
+                        // Close expiry calendar if open
+                        closeCalPopups();
+
+                        const calPopup = document.getElementById('reopenPublishCalendarPopup');
+                        if (!calPopup) return;
+                        if (calPopup.style.display === 'block') {
+                            calPopup.style.display = 'none';
+                        } else {
+                            openReopenPublishCalendar();
                         }
                     }
 
-                    function handlePublishDateNativeChange(val) {
-                        if (!val) return;
-                        reopenPublishDate = val;
+                    function openReopenPublishCalendar() {
+                        const calPopup = document.getElementById('reopenPublishCalendarPopup');
+                        if (!calPopup) return;
 
-                        const dateObj = parseLocalDate(val);
-                        if (!dateObj) return;
+                        const curSelected = parseLocalDate(reopenPublishDate) || new Date();
+                        calPubViewingYear = curSelected.getFullYear();
+                        calPubViewingMonth = curSelected.getMonth();
 
-                        // "Tayang hari ini?" remains unchecked
+                        renderReopenPublishCalendar();
+                        calPopup.style.display = 'block';
+                    }
+
+                    function calPubNavigateMonth(step) {
+                        calPubViewingMonth += step;
+                        if (calPubViewingMonth > 11) {
+                            calPubViewingMonth = 0;
+                            calPubViewingYear += 1;
+                        } else if (calPubViewingMonth < 0) {
+                            calPubViewingMonth = 11;
+                            calPubViewingYear -= 1;
+                        }
+                        renderReopenPublishCalendar();
+                    }
+
+                    function toggleCalPubMonthList(event) {
+                        if (event) event.stopPropagation();
+                        const d = document.getElementById('calPubMonthDropdown');
+                        const yd = document.getElementById('calPubYearDropdown');
+                        if (yd) yd.style.display = 'none';
+                        if (!d) return;
+
+                        if (d.style.display === 'block') {
+                            d.style.display = 'none';
+                        } else {
+                            d.innerHTML = REOPEN_INDO_MONTHS_SHORT.map((m, idx) => `
+                                <div onclick="selectCalPubMonth(${idx})" style="padding:6px 12px; font-size:12.5px; cursor:pointer; color:${idx === calPubViewingMonth ? '#00a8e8' : '#0f172a'}; font-weight:${idx === calPubViewingMonth ? '700' : '500'}; transition:background 0.12s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">${m}</div>
+                            `).join('');
+                            d.style.display = 'block';
+                        }
+                    }
+
+                    function selectCalPubMonth(mIdx) {
+                        calPubViewingMonth = mIdx;
+                        const d = document.getElementById('calPubMonthDropdown');
+                        if (d) d.style.display = 'none';
+                        renderReopenPublishCalendar();
+                    }
+
+                    function toggleCalPubYearList(event) {
+                        if (event) event.stopPropagation();
+                        const d = document.getElementById('calPubYearDropdown');
+                        const md = document.getElementById('calPubMonthDropdown');
+                        if (md) md.style.display = 'none';
+                        if (!d) return;
+
+                        if (d.style.display === 'block') {
+                            d.style.display = 'none';
+                        } else {
+                            const curYear = new Date().getFullYear();
+                            const years = [];
+                            for (let y = curYear; y <= curYear + 6; y++) {
+                                years.push(y);
+                            }
+                            d.innerHTML = years.map(y => `
+                                <div onclick="selectCalPubYear(${y})" style="padding:6px 12px; font-size:12.5px; cursor:pointer; color:${y === calPubViewingYear ? '#00a8e8' : '#0f172a'}; font-weight:${y === calPubViewingYear ? '700' : '500'}; transition:background 0.12s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">${y}</div>
+                            `).join('');
+                            d.style.display = 'block';
+                        }
+                    }
+
+                    function selectCalPubYear(y) {
+                        calPubViewingYear = y;
+                        const d = document.getElementById('calPubYearDropdown');
+                        if (d) d.style.display = 'none';
+                        renderReopenPublishCalendar();
+                    }
+
+                    function renderReopenPublishCalendar() {
+                        const monthLabel = document.getElementById('calPubCurrentMonthLabel');
+                        const yearLabel = document.getElementById('calPubCurrentYearLabel');
+                        const daysGrid = document.getElementById('calPubDaysGrid');
+
+                        if (monthLabel) monthLabel.innerText = REOPEN_INDO_MONTHS_SHORT[calPubViewingMonth];
+                        if (yearLabel) yearLabel.innerText = calPubViewingYear;
+                        if (!daysGrid) return;
+
+                        const today = new Date();
+                        const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                        const todayYmd = formatLocalDateYmd(today);
+
+                        const firstDayOfMonth = new Date(calPubViewingYear, calPubViewingMonth, 1);
+                        const startCol = (firstDayOfMonth.getDay() + 6) % 7; // Monday is 0, Sunday is 6
+                        const prevMonthLastDate = new Date(calPubViewingYear, calPubViewingMonth, 0).getDate();
+                        const currentMonthLastDate = new Date(calPubViewingYear, calPubViewingMonth + 1, 0).getDate();
+
+                        let html = '';
+
+                        // 1. Trailing days from previous month
+                        for (let i = startCol - 1; i >= 0; i--) {
+                            const dNum = prevMonthLastDate - i;
+                            html += `<div style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#cbd5e1; cursor:default;">${dNum}</div>`;
+                        }
+
+                        // 2. Days of current month
+                        for (let d = 1; d <= currentMonthLastDate; d++) {
+                            const thisDate = new Date(calPubViewingYear, calPubViewingMonth, d);
+                            const thisYmd = formatLocalDateYmd(thisDate);
+
+                            const isPast = thisDate.getTime() < todayMidnight.getTime();
+                            const isSelected = (reopenPublishDate === thisYmd);
+                            const isToday = (todayYmd === thisYmd);
+
+                            if (isPast) {
+                                // Before today: disabled
+                                html += `<div style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#cbd5e1; cursor:default;">${d}</div>`;
+                            } else if (isSelected) {
+                                // Selected date
+                                html += `<div onclick="calPubSelectDate(${calPubViewingYear}, ${calPubViewingMonth}, ${d})" style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#ffffff; background:#00a8e8; border-radius:50%; cursor:pointer;">${d}</div>`;
+                            } else if (isToday) {
+                                // Today (not selected): subtle circle indicator
+                                html += `<div onclick="calPubSelectDate(${calPubViewingYear}, ${calPubViewingMonth}, ${d})" style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#0f172a; background:#f1f5f9; border-radius:50%; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">${d}</div>`;
+                            } else {
+                                // Future date: normal clickable
+                                html += `<div onclick="calPubSelectDate(${calPubViewingYear}, ${calPubViewingMonth}, ${d})" style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:500; color:#0f172a; border-radius:50%; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">${d}</div>`;
+                            }
+                        }
+
+                        // 3. Leading days of next month
+                        const totalCells = startCol + currentMonthLastDate;
+                        const remainder = (7 - (totalCells % 7)) % 7;
+                        for (let n = 1; n <= remainder; n++) {
+                            html += `<div style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#cbd5e1; cursor:default;">${n}</div>`;
+                        }
+
+                        daysGrid.innerHTML = html;
+                    }
+
+                    function calPubSelectDate(year, month, day) {
+                        const chosenDate = new Date(year, month, day);
+                        const chosenYmd = formatLocalDateYmd(chosenDate);
+                        reopenPublishDate = chosenYmd;
+
+                        // Uncheck "Tayang hari ini?"
                         reopenIsToday = false;
                         const checkIcon = document.getElementById('reopenTodayCheckIcon');
                         if (checkIcon) {
@@ -3562,7 +3743,6 @@
                         const pubBox = document.getElementById('reopenPublishDateBox');
                         const pubText = document.getElementById('reopenPublishDateText');
                         const clearPubBtn = document.getElementById('reopenClearPublishDateBtn');
-                        const nativePubInput = document.getElementById('reopenPublishDateNative');
                         const pubHidden = document.getElementById('reopenPublishDateHidden');
 
                         if (pubBox) {
@@ -3570,12 +3750,13 @@
                             pubBox.style.borderColor = '#cbd5e1';
                         }
                         if (pubText) {
-                            pubText.innerText = formatReopenIndoDate(dateObj);
+                            pubText.innerText = formatReopenIndoDate(chosenDate);
                             pubText.style.color = '#0f172a'; // normal dark color
                         }
-                        if (clearPubBtn) clearPubBtn.style.display = 'none'; // normal mode: no x needed, can click directly
-                        if (nativePubInput) nativePubInput.style.pointerEvents = 'auto';
-                        if (pubHidden) pubHidden.value = val;
+                        if (clearPubBtn) clearPubBtn.style.display = 'none'; // can click box again anytime to open calendar
+                        if (pubHidden) pubHidden.value = chosenYmd;
+
+                        closeCalPubPopups();
 
                         // Enable Expiry & recalculate options
                         enableReopenExpiryTrigger();
@@ -3583,16 +3764,29 @@
                         // If user previously selected 1, 2, or 3 months, recalculate days
                         if (reopenExpirySelectedType && reopenExpirySelectedType !== 'custom') {
                             const months = reopenExpirySelectedType === '1_month' ? 1 : (reopenExpirySelectedType === '2_month' ? 2 : 3);
-                            const targetDate = addMonthsToDate(dateObj, months);
+                            const targetDate = addMonthsToDate(chosenDate, months);
                             const str = formatReopenIndoDate(targetDate, true);
-                            const days = Math.round((targetDate - dateObj) / (1000 * 60 * 60 * 24));
+                            const days = Math.round((targetDate - chosenDate) / (1000 * 60 * 60 * 24));
                             selectReopenExpiryOption(reopenExpirySelectedType, days, `${months} Bulan (${str})`);
                         }
                     }
 
+                    function closeCalPubPopups() {
+                        const calPopup = document.getElementById('reopenPublishCalendarPopup');
+                        const md = document.getElementById('calPubMonthDropdown');
+                        const yd = document.getElementById('calPubYearDropdown');
+                        if (calPopup) calPopup.style.display = 'none';
+                        if (md) md.style.display = 'none';
+                        if (yd) yd.style.display = 'none';
+                    }
+
+                    // --- LAMA EXPIRED LOKER (DROPDOWN & CUSTOM CALENDAR) ---
                     function toggleReopenExpiryDropdown(event) {
                         if (!reopenPublishDate) return; // disabled if no date
                         if (reopenExpirySelectedType === 'custom') return; // if custom is active, click on 'x' resets it
+
+                        // Close publish calendar if open
+                        closeCalPubPopups();
 
                         const dropdown = document.getElementById('reopenExpiryDropdownMenu');
                         const chev = document.getElementById('reopenExpiryChevron');
@@ -3679,6 +3873,7 @@
 
                     function toggleReopenExpiryCalendar(event) {
                         if (event) event.stopPropagation();
+                        closeCalPubPopups();
                         const calPopup = document.getElementById('reopenExpiryCalendarPopup');
                         if (!calPopup) return;
                         if (calPopup.style.display === 'block') {
@@ -3899,6 +4094,12 @@
                         const customBox = document.getElementById('reopenCustomExpiryBox');
                         if (calPopup && customBox && !customBox.contains(e.target) && !calPopup.contains(e.target)) {
                             calPopup.style.display = 'none';
+                        }
+
+                        const pubCalPopup = document.getElementById('reopenPublishCalendarPopup');
+                        const pubBox = document.getElementById('reopenPublishDateBox');
+                        if (pubCalPopup && pubBox && !pubBox.contains(e.target) && !pubCalPopup.contains(e.target)) {
+                            pubCalPopup.style.display = 'none';
                         }
                     });
 
