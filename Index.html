@@ -3037,7 +3037,7 @@
                                     </div>
                                     <div id="reopenPublishDateBox" onclick="handlePublishDateBoxClick(event)" style="position:relative; width:100%; height:42px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; display:flex; align-items:center; padding:0 14px; gap:10px; box-sizing:border-box; transition:all 0.15s; cursor:pointer;">
                                         <i class="fa-regular fa-calendar" id="reopenPublishCalIcon" style="color:#94a3b8; font-size:15px; flex-shrink:0;"></i>
-                                        <span id="reopenPublishDateText" style="flex:1; font-size:13.5px; color:#94a3b8; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
+                                        <span id="reopenPublishDateText" style="flex:1; font-size:13.5px; color:#94a3b8; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Pilih tanggal</span>
                                         <button type="button" id="reopenClearPublishDateBtn" onclick="clearReopenPublishDate(event)" style="display:none; background:none; border:none; padding:0; cursor:pointer; color:#cbd5e1; font-size:15px; flex-shrink:0; align-items:center; justify-content:center; z-index:10;" onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#cbd5e1'" title="Hapus tanggal">
                                             <i class="fa-regular fa-circle-xmark"></i>
                                         </button>
@@ -3378,7 +3378,7 @@
                             pubBox.style.borderColor = '#cbd5e1';
                         }
                         if (pubText) {
-                            pubText.innerText = '';
+                            pubText.innerText = 'Pilih tanggal';
                             pubText.style.color = '#94a3b8';
                         }
                         if (clearPubBtn) clearPubBtn.style.display = 'none';
@@ -3559,7 +3559,7 @@
                             pubBox.style.borderColor = '#cbd5e1';
                         }
                         if (pubText) {
-                            pubText.innerText = '';
+                            pubText.innerText = 'Pilih tanggal';
                             pubText.style.color = '#94a3b8';
                         }
                         if (clearPubBtn) clearPubBtn.style.display = 'none';
