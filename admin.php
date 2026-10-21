@@ -601,8 +601,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
                     $publishedSameKbjiCount = (int)$cntStmt->fetchColumn();
 
                     if ($publishedSameKbjiCount === 3) {
-                        $msgNotice = 'Anda telah mempublikasikan 3 lowongan dengan jabatan/KBJI yang sama pada bulan ini. Pengajuan berikutnya dengan jabatan yang sama akan memerlukan Dokumen/Keterangan Tambahan untuk ditinjau oleh Admin.';
-                        notify_user($empUserId, 'Informasi Batas Publikasi Lowongan (KBJI ' . $kbjiCode . ')', $msgNotice, 'info', $jobId);
+                        $kbjiMap = kbji_name_map();
+                        $kbjiName = $kbjiMap[$kbjiCode] ?? '';
+                        $notifTitle = $kbjiName !== ''
+                            ? 'Informasi Publikasi Jabatan: ' . $kbjiName . ' (KBJI: ' . $kbjiCode . ')'
+                            : 'Informasi Publikasi Jabatan (KBJI: ' . $kbjiCode . ')';
+                        $msgNotice = 'Anda telah mempublikasikan 3 lowongan dengan kode KBJI yang sama pada bulan ini. Mulai pengajuan keempat dan seterusnya dengan kode KBJI yang sama, Anda wajib melengkapi Alasan/Keterangan Pengulangan Jabatan dan Dokumen Pendukung Kebutuhan Tenaga Kerja untuk diperiksa oleh Admin.';
+                        notify_user($empUserId, $notifTitle, $msgNotice, 'info', $jobId);
                     }
                 }
             } catch (Throwable $ignored) {}

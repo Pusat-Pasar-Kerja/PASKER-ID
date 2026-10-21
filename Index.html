@@ -4203,11 +4203,25 @@
                 </div>
 
                 <?php if (!empty($kbjiReached3)): ?>
+                    <?php
+                    $kbjiMap = function_exists('kbji_name_map') ? kbji_name_map() : [];
+                    $kbjiTitleParts = [];
+                    foreach ($kbjiReached3 as $kCode) {
+                        $kCode = (string)$kCode;
+                        $kName = $kbjiMap[$kCode] ?? '';
+                        if ($kName !== '') {
+                            $kbjiTitleParts[] = $kName . ' (KBJI: ' . $kCode . ')';
+                        } else {
+                            $kbjiTitleParts[] = '(KBJI: ' . $kCode . ')';
+                        }
+                    }
+                    $kbjiTitleText = implode(', ', array_map('e', $kbjiTitleParts));
+                    ?>
                     <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:14px 18px; margin-bottom:16px; display:flex; align-items:flex-start; gap:12px; color:#1e40af; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
                         <i class="fa-solid fa-circle-info" style="font-size:18px; color:#3b82f6; margin-top:2px; flex-shrink:0;"></i>
                         <div style="font-size:13px; line-height:1.5;">
-                            <strong>Informasi Publikasi Jabatan (KBJI: <?php echo implode(', ', array_map('e', $kbjiReached3)); ?>)</strong><br>
-                            Anda telah mempublikasikan 3 lowongan dengan jabatan/KBJI yang sama pada bulan ini. Pengajuan berikutnya dengan jabatan yang sama akan memerlukan Dokumen/Keterangan Tambahan untuk ditinjau oleh Admin.
+                            <strong>Informasi Publikasi Jabatan: <?php echo $kbjiTitleText; ?></strong><br>
+                            Anda telah mempublikasikan 3 lowongan dengan kode KBJI yang sama pada bulan ini. Mulai pengajuan keempat dan seterusnya dengan kode KBJI yang sama, Anda wajib melengkapi Alasan/Keterangan Pengulangan Jabatan dan Dokumen Pendukung Kebutuhan Tenaga Kerja untuk diperiksa oleh Admin.
                         </div>
                     </div>
                 <?php endif; ?>
