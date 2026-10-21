@@ -3006,62 +3006,131 @@
                         </div>
                     </div>
 
-                    <!-- MODAL POPUP: BUKA KEMBALI LOWONGAN (Image 2 Design) -->
-                    <div class="modal-backdrop" id="modalReopenJob" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); backdrop-filter:blur(3px); z-index:100001; align-items:center; justify-content:center;" onclick="if(event.target===this) closeReopenJobModal()">
-                        <div style="background:#fff; border-radius:16px; width:min(520px, 94vw); max-height:90vh; overflow-y:auto; box-shadow:0 25px 35px -5px rgba(0,0,0,0.18); padding:26px 28px; position:relative;" onclick="event.stopPropagation()">
+                    <!-- MODAL POPUP: BUKA KEMBALI LOWONGAN (Updated to match screenshots) -->
+                    <div class="modal-backdrop" id="modalReopenJob" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); backdrop-filter:blur(3px); z-index:100001; align-items:center; justify-content:center; overflow-y:auto; padding:30px 16px;" onclick="if(event.target===this) closeReopenJobModal()">
+                        <div style="background:#fff; border-radius:18px; width:min(480px, 94vw); box-shadow:0 25px 45px -10px rgba(0,0,0,0.2); padding:26px 28px; position:relative; overflow:visible;" onclick="event.stopPropagation()">
                             <!-- Header -->
                             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                                <h3 style="font-size:18px; font-weight:800; color:#0f172a; margin:0;">Buka Kembali Lowongan</h3>
-                                <button type="button" onclick="closeReopenJobModal()" style="background:none; border:none; color:#94a3b8; font-size:20px; cursor:pointer; padding:4px; line-height:1; transition:color 0.15s;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#94a3b8'"><i class="fa-solid fa-xmark"></i></button>
+                                <h3 style="font-size:18px; font-weight:700; color:#0f172a; margin:0; letter-spacing:-0.2px;">Buka Kembali Lowongan</h3>
+                                <button type="button" onclick="closeReopenJobModal()" style="background:none; border:none; color:#64748b; font-size:18px; cursor:pointer; padding:2px; line-height:1; transition:color 0.15s;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#64748b'"><i class="fa-solid fa-xmark"></i></button>
                             </div>
                             <p style="font-size:13px; color:#64748b; line-height:1.5; margin:0 0 20px 0;">
                                 Tentukan tanggal tayang dan batas waktu tayang yang baru. Lowongan akan berstatus Terjadwal Tayang sampai tanggal tayang tiba.
                             </p>
 
-                            <form method="post" action="dashboard.php#lowongan">
+                            <form method="post" action="dashboard.php#lowongan" id="reopenJobForm" onsubmit="return validateReopenJobForm(event)">
                                 <input type="hidden" name="reopen_job" value="1">
-                                <input type="hidden" name="job_id" value="<?php echo (int)($detailJob['id'] ?? 0); ?>">
+                                <input type="hidden" name="job_id" id="reopenJobIdHidden" value="<?php echo (int)($detailJob['id'] ?? 0); ?>">
+                                <input type="hidden" name="publish_date" id="reopenPublishDateHidden" value="">
+                                <input type="hidden" name="expiry_days" id="reopenExpiryDaysHidden" value="">
 
                                 <!-- Field 1: Tanggal tayang loker -->
                                 <div style="margin-bottom:18px;">
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                                        <label style="font-size:13px; font-weight:700; color:#0f172a;">
+                                        <label style="font-size:13.5px; font-weight:700; color:#0f172a;">
                                             Tanggal tayang loker <span style="color:#ef4444;">*</span>
                                         </label>
-                                        <label style="font-size:12.5px; color:#0284c7; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-weight:500;" onclick="setReopenDateToday()">
-                                            <input type="radio" name="tayang_hari_ini" id="radioTayangHariIni" onchange="setReopenDateToday()" style="cursor:pointer; accent-color:#0284c7;">
-                                            Tayang hari ini?
-                                        </label>
+                                        <div id="reopenTodayToggle" onclick="toggleReopenTayangHariIni()" style="display:inline-flex; align-items:center; gap:7px; cursor:pointer; user-select:none;">
+                                            <span id="reopenTodayCheckIcon" style="width:16px; height:16px; border-radius:50%; border:1.8px solid #cbd5e1; display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; transition:all 0.15s;"></span>
+                                            <span style="font-size:13px; font-weight:500; color:#0f172a;">Tayang hari ini?</span>
+                                        </div>
                                     </div>
-                                    <div style="position:relative;">
-                                        <input type="date" name="publish_date" id="reopenPublishDate" required min="<?php echo date('Y-m-d'); ?>" value="<?php echo date('Y-m-d'); ?>" style="width:100%; padding:10px 14px; border:1px solid #cbd5e1; border-radius:10px; font-size:13.5px; color:#334155; outline:none; background:#fff;">
+                                    <div id="reopenPublishDateBox" onclick="handlePublishDateBoxClick(event)" style="position:relative; width:100%; height:42px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; display:flex; align-items:center; padding:0 14px; gap:10px; box-sizing:border-box; transition:all 0.15s;">
+                                        <i class="fa-regular fa-calendar" id="reopenPublishCalIcon" style="color:#94a3b8; font-size:15px; flex-shrink:0;"></i>
+                                        <span id="reopenPublishDateText" style="flex:1; font-size:13.5px; color:#94a3b8; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
+                                        <button type="button" id="reopenClearPublishDateBtn" onclick="clearReopenPublishDate(event)" style="display:none; background:none; border:none; padding:0; cursor:pointer; color:#cbd5e1; font-size:15px; flex-shrink:0; align-items:center; justify-content:center; z-index:10;" onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#cbd5e1'" title="Hapus tanggal">
+                                            <i class="fa-regular fa-circle-xmark"></i>
+                                        </button>
+                                        <input type="date" id="reopenPublishDateNative" min="<?php echo date('Y-m-d'); ?>" onchange="handlePublishDateNativeChange(this.value)" style="position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; z-index:5;">
                                     </div>
                                 </div>
 
                                 <!-- Field 2: Lama expired loker -->
-                                <div style="margin-bottom:18px;">
-                                    <label style="font-size:13px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">
+                                <div style="margin-bottom:18px; position:relative;">
+                                    <label style="font-size:13.5px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">
                                         Lama expired loker <span style="color:#ef4444;">*</span>
                                     </label>
-                                    <select name="expiry_days" id="reopenExpiryDays" required style="width:100%; padding:10px 14px; border:1px solid #cbd5e1; border-radius:10px; font-size:13.5px; color:#334155; outline:none; background:#fff; cursor:pointer;">
-                                        <option value="" disabled>Pilih lama expired loker</option>
-                                        <option value="7">7 Hari</option>
-                                        <option value="14">14 Hari</option>
-                                        <option value="30" selected>30 Hari</option>
-                                        <option value="60">60 Hari</option>
-                                        <option value="90">90 Hari</option>
-                                    </select>
-                                    <div style="font-size:12px; color:#94a3b8; margin-top:5px;">Pilih tanggal tayang terlebih dahulu.</div>
+                                    <!-- Main Trigger Box -->
+                                    <div id="reopenExpiryTrigger" onclick="toggleReopenExpiryDropdown(event)" style="position:relative; width:100%; height:42px; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; display:flex; align-items:center; justify-content:space-between; padding:0 14px; cursor:not-allowed; opacity:0.75; user-select:none; box-sizing:border-box; transition:all 0.15s;">
+                                        <span id="reopenExpirySelectedText" style="font-size:13.5px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Pilih lama expired loker</span>
+                                        <i class="fa-solid fa-chevron-down" id="reopenExpiryChevron" style="color:#64748b; font-size:12px; transition:transform 0.2s;"></i>
+                                        <button type="button" id="reopenClearExpiryBtn" onclick="resetReopenExpirySelect(event)" style="display:none; background:none; border:none; padding:0; cursor:pointer; color:#64748b; font-size:15px; align-items:center; justify-content:center; z-index:5;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#64748b'" title="Batalkan pilihan">
+                                            <i class="fa-regular fa-circle-xmark"></i>
+                                        </button>
+                                    </div>
+
+                                    <!-- Dropdown Menu (Image 3) -->
+                                    <div id="reopenExpiryDropdownMenu" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); z-index:100; overflow:hidden; padding:6px 0;">
+                                        <!-- Dynamically injected items: 1 Bulan, 2 Bulan, 3 Bulan, Tanggal lainnya -->
+                                    </div>
+
+                                    <!-- Tanggal Lainnya Input Box (Image 4) -->
+                                    <div id="reopenCustomExpiryContainer" style="display:none; position:relative; margin-top:8px;">
+                                        <div id="reopenCustomExpiryBox" onclick="toggleReopenExpiryCalendar(event)" style="width:100%; height:42px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; display:flex; align-items:center; padding:0 14px; gap:10px; cursor:pointer; user-select:none; box-sizing:border-box;">
+                                            <i class="fa-regular fa-calendar" style="color:#94a3b8; font-size:15px; flex-shrink:0;"></i>
+                                            <span id="reopenCustomExpiryText" style="flex:1; font-size:13.5px; color:#94a3b8;">Pilih tanggal</span>
+                                        </div>
+
+                                        <!-- Custom Calendar Popup (Image 4) -->
+                                        <div id="reopenExpiryCalendarPopup" style="display:none; position:absolute; top:calc(100% + 6px); left:0; background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; box-shadow:0 15px 30px -5px rgba(0,0,0,0.15), 0 10px 10px -5px rgba(0,0,0,0.08); z-index:150; padding:16px; width:285px; box-sizing:border-box;" onclick="event.stopPropagation()">
+                                            <!-- Top Nav: < [Okt ⌵] [2026 ⌵] > -->
+                                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                                                <button type="button" onclick="calNavigateMonth(-1)" style="background:none; border:none; cursor:pointer; color:#0f172a; padding:6px 8px; font-size:11px; border-radius:6px; transition:background 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-chevron-left"></i></button>
+                                                
+                                                <div style="display:flex; align-items:center; gap:6px;">
+                                                    <!-- Month Selector Pill -->
+                                                    <div style="position:relative; display:inline-block;">
+                                                        <button type="button" onclick="toggleCalMonthList(event)" id="calMonthBtn" style="border:1px solid #cbd5e1; border-radius:8px; background:#fff; padding:4px 10px; font-size:13px; font-weight:600; color:#0f172a; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                                            <span id="calCurrentMonthLabel">Okt</span>
+                                                            <i class="fa-solid fa-chevron-down" style="font-size:10px; color:#64748b;"></i>
+                                                        </button>
+                                                        <div id="calMonthDropdown" style="display:none; position:absolute; top:calc(100% + 4px); left:0; background:#fff; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 8px 16px rgba(0,0,0,0.12); z-index:160; width:90px; max-height:180px; overflow-y:auto; padding:4px 0;">
+                                                            <!-- Months injected here -->
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Year Selector Pill -->
+                                                    <div style="position:relative; display:inline-block;">
+                                                        <button type="button" onclick="toggleCalYearList(event)" id="calYearBtn" style="border:1px solid #cbd5e1; border-radius:8px; background:#fff; padding:4px 10px; font-size:13px; font-weight:600; color:#0f172a; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                                            <span id="calCurrentYearLabel">2026</span>
+                                                            <i class="fa-solid fa-chevron-down" style="font-size:10px; color:#64748b;"></i>
+                                                        </button>
+                                                        <div id="calYearDropdown" style="display:none; position:absolute; top:calc(100% + 4px); left:0; background:#fff; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 8px 16px rgba(0,0,0,0.12); z-index:160; width:80px; max-height:180px; overflow-y:auto; padding:4px 0;">
+                                                            <!-- Years injected here -->
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <button type="button" onclick="calNavigateMonth(1)" style="background:none; border:none; cursor:pointer; color:#0f172a; padding:6px 8px; font-size:11px; border-radius:6px; transition:background 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-chevron-right"></i></button>
+                                            </div>
+
+                                            <!-- Day Names Header: Sen Sel Rab Kam Jum Sab Min -->
+                                            <div style="display:grid; grid-template-columns:repeat(7, 1fr); text-align:center; font-size:12px; font-weight:500; color:#64748b; margin-bottom:8px;">
+                                                <div>Sen</div>
+                                                <div>Sel</div>
+                                                <div>Rab</div>
+                                                <div>Kam</div>
+                                                <div>Jum</div>
+                                                <div>Sab</div>
+                                                <div>Min</div>
+                                            </div>
+
+                                            <!-- Day Cells Grid -->
+                                            <div id="calDaysGrid" style="display:grid; grid-template-columns:repeat(7, 1fr); row-gap:6px; column-gap:2px; text-align:center;">
+                                                <!-- Injected dynamically -->
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Field 3: Jumlah lowongan -->
                                 <div style="margin-bottom:24px;">
-                                    <label style="font-size:13px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">
+                                    <label style="font-size:13.5px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">
                                         Jumlah lowongan <span style="color:#ef4444;">*</span>
                                     </label>
-                                    <div style="display:flex; border:1px solid #cbd5e1; border-radius:10px; overflow:hidden; background:#fff;">
-                                        <input type="number" name="quota" id="reopenQuota" required min="1" value="<?php echo (int)($detailJob['quota'] ?? 1); ?>" style="flex:1; border:none; padding:10px 14px; font-size:13.5px; outline:none; color:#0f172a;">
-                                        <div style="background:#f8fafc; border-left:1px solid #e2e8f0; padding:10px 16px; font-size:13px; font-weight:600; color:#64748b; display:flex; align-items:center;">
+                                    <div style="display:flex; border:1px solid #cbd5e1; border-radius:10px; overflow:hidden; background:#fff; height:42px;">
+                                        <input type="number" name="quota" id="reopenQuota" required min="1" value="1" style="flex:1; border:none; padding:0 14px; font-size:13.5px; outline:none; color:#0f172a; height:100%;">
+                                        <div style="background:#fff; border-left:1px solid #e2e8f0; padding:0 16px; font-size:13.5px; font-weight:500; color:#0f172a; display:flex; align-items:center;">
                                             Orang
                                         </div>
                                     </div>
@@ -3069,7 +3138,7 @@
 
                                 <!-- Submit Button -->
                                 <div style="display:flex; justify-content:flex-end;">
-                                    <button type="submit" style="background:#00a2e9; color:#fff; border:none; padding:10px 24px; border-radius:10px; font-weight:700; font-size:13.5px; cursor:pointer; box-shadow:0 4px 10px rgba(0, 162, 233, 0.25); transition:background 0.15s;" onmouseover="this.style.background='#0284c7'" onmouseout="this.style.background='#00a2e9'">
+                                    <button type="submit" style="background:#00a8e8; color:#fff; border:none; padding:10px 24px; border-radius:10px; font-weight:700; font-size:13.5px; cursor:pointer; box-shadow:0 4px 12px rgba(0, 168, 232, 0.25); transition:background 0.15s;" onmouseover="this.style.background='#0284c7'" onmouseout="this.style.background='#00a8e8'">
                                         Buka Lowongan
                                     </button>
                                 </div>
@@ -3181,31 +3250,658 @@
                         }
                     }
 
-                    function openReopenJobModal() {
-                        const modal = document.getElementById('modalReopenJob');
-                        if (modal) {
-                            modal.style.display = 'flex';
+                    // --- BUKA KEMBALI LOWONGAN POPUP LOGIC ---
+                    const REOPEN_INDO_MONTHS_FULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                    const REOPEN_INDO_MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+                    let reopenIsToday = false;
+                    let reopenPublishDate = ''; // 'YYYY-MM-DD'
+                    let reopenExpirySelectedType = ''; // '1_month', '2_month', '3_month', 'custom'
+                    let reopenCustomExpiryDate = ''; // 'YYYY-MM-DD'
+
+                    let calViewingYear = 2026;
+                    let calViewingMonth = 9; // 0-indexed (9 = Okt)
+
+                    function formatReopenIndoDate(dateObj, isShort = false) {
+                        const day = dateObj.getDate();
+                        const month = isShort ? REOPEN_INDO_MONTHS_SHORT[dateObj.getMonth()] : REOPEN_INDO_MONTHS_FULL[dateObj.getMonth()];
+                        const year = dateObj.getFullYear();
+                        return `${day} ${month} ${year}`;
+                    }
+
+                    function parseLocalDate(dateStr) {
+                        if (!dateStr) return null;
+                        const parts = dateStr.split('-');
+                        if (parts.length !== 3) return null;
+                        return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                    }
+
+                    function formatLocalDateYmd(dateObj) {
+                        const y = dateObj.getFullYear();
+                        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        const d = String(dateObj.getDate()).padStart(2, '0');
+                        return `${y}-${m}-${d}`;
+                    }
+
+                    function addMonthsToDate(dateObj, months) {
+                        const d = new Date(dateObj.getTime());
+                        const targetMonth = d.getMonth() + months;
+                        d.setMonth(targetMonth);
+                        if (d.getMonth() !== ((targetMonth % 12) + 12) % 12) {
+                            d.setDate(0);
                         }
+                        return d;
+                    }
+
+                    function openReopenJobModal(jobId) {
+                        const modal = document.getElementById('modalReopenJob');
+                        if (!modal) return;
+
+                        if (jobId) {
+                            const jobIdInput = document.getElementById('reopenJobIdHidden');
+                            if (jobIdInput) jobIdInput.value = String(jobId);
+                        }
+
+                        // 1. Reset all fields to initial empty state
+                        reopenIsToday = false;
+                        reopenPublishDate = '';
+                        reopenExpirySelectedType = '';
+                        reopenCustomExpiryDate = '';
+
+                        // Update Toggle UI (unchecked)
+                        const checkIcon = document.getElementById('reopenTodayCheckIcon');
+                        if (checkIcon) {
+                            checkIcon.innerHTML = '';
+                            checkIcon.style.background = 'transparent';
+                            checkIcon.style.borderColor = '#cbd5e1';
+                        }
+
+                        // Update Publish Date Box UI (empty)
+                        const pubBox = document.getElementById('reopenPublishDateBox');
+                        const pubText = document.getElementById('reopenPublishDateText');
+                        const clearPubBtn = document.getElementById('reopenClearPublishDateBtn');
+                        const nativePubInput = document.getElementById('reopenPublishDateNative');
+                        const pubHidden = document.getElementById('reopenPublishDateHidden');
+
+                        if (pubBox) {
+                            pubBox.style.background = '#ffffff';
+                            pubBox.style.borderColor = '#cbd5e1';
+                        }
+                        if (pubText) {
+                            pubText.innerText = '';
+                            pubText.style.color = '#94a3b8';
+                        }
+                        if (clearPubBtn) clearPubBtn.style.display = 'none';
+                        if (nativePubInput) {
+                            nativePubInput.value = '';
+                            nativePubInput.style.pointerEvents = 'auto';
+                        }
+                        if (pubHidden) pubHidden.value = '';
+
+                        // Update Lama Expired UI (disabled)
+                        const expHidden = document.getElementById('reopenExpiryDaysHidden');
+                        if (expHidden) expHidden.value = '';
+                        resetReopenExpiryToDisabled();
+
+                        // Quota reset
+                        const quotaInput = document.getElementById('reopenQuota');
+                        if (quotaInput) quotaInput.value = '1';
+
+                        modal.style.display = 'flex';
                     }
 
                     function closeReopenJobModal() {
                         const modal = document.getElementById('modalReopenJob');
-                        if (modal) {
-                            modal.style.display = 'none';
+                        if (modal) modal.style.display = 'none';
+                        closeCalPopups();
+                    }
+
+                    function resetReopenExpiryToDisabled() {
+                        const trigger = document.getElementById('reopenExpiryTrigger');
+                        const text = document.getElementById('reopenExpirySelectedText');
+                        const chev = document.getElementById('reopenExpiryChevron');
+                        const clearBtn = document.getElementById('reopenClearExpiryBtn');
+                        const dropdown = document.getElementById('reopenExpiryDropdownMenu');
+                        const customContainer = document.getElementById('reopenCustomExpiryContainer');
+                        const calPopup = document.getElementById('reopenExpiryCalendarPopup');
+
+                        if (trigger) {
+                            trigger.style.background = '#f8fafc';
+                            trigger.style.borderColor = '#e2e8f0';
+                            trigger.style.cursor = 'not-allowed';
+                            trigger.style.opacity = '0.75';
+                        }
+                        if (text) {
+                            text.innerText = 'Pilih lama expired loker';
+                            text.style.color = '#64748b';
+                        }
+                        if (chev) {
+                            chev.style.display = 'inline-block';
+                            chev.style.transform = 'rotate(0deg)';
+                        }
+                        if (clearBtn) clearBtn.style.display = 'none';
+                        if (dropdown) dropdown.style.display = 'none';
+                        if (customContainer) customContainer.style.display = 'none';
+                        if (calPopup) calPopup.style.display = 'none';
+
+                        reopenExpirySelectedType = '';
+                        reopenCustomExpiryDate = '';
+                    }
+
+                    function enableReopenExpiryTrigger() {
+                        const trigger = document.getElementById('reopenExpiryTrigger');
+                        if (trigger) {
+                            trigger.style.background = '#ffffff';
+                            trigger.style.borderColor = '#cbd5e1';
+                            trigger.style.cursor = 'pointer';
+                            trigger.style.opacity = '1';
+                        }
+                        populateReopenExpiryDropdown();
+                    }
+
+                    function populateReopenExpiryDropdown() {
+                        const dropdown = document.getElementById('reopenExpiryDropdownMenu');
+                        if (!dropdown || !reopenPublishDate) return;
+
+                        const pubDateObj = parseLocalDate(reopenPublishDate);
+                        if (!pubDateObj) return;
+
+                        const date1 = addMonthsToDate(pubDateObj, 1);
+                        const date2 = addMonthsToDate(pubDateObj, 2);
+                        const date3 = addMonthsToDate(pubDateObj, 3);
+
+                        const str1 = formatReopenIndoDate(date1, true); // e.g. 21 Nov 2026
+                        const str2 = formatReopenIndoDate(date2, true); // e.g. 21 Des 2026
+                        const str3 = formatReopenIndoDate(date3, true); // e.g. 21 Jan 2027
+
+                        const days1 = Math.round((date1 - pubDateObj) / (1000 * 60 * 60 * 24));
+                        const days2 = Math.round((date2 - pubDateObj) / (1000 * 60 * 60 * 24));
+                        const days3 = Math.round((date3 - pubDateObj) / (1000 * 60 * 60 * 24));
+
+                        dropdown.innerHTML = `
+                            <div class="reopen-dropdown-opt" onclick="selectReopenExpiryOption('1_month', ${days1}, '1 Bulan (${str1})')" style="padding:10px 18px; font-size:13.5px; color:#1e293b; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                                1 Bulan (${str1})
+                            </div>
+                            <div class="reopen-dropdown-opt" onclick="selectReopenExpiryOption('2_month', ${days2}, '2 Bulan (${str2})')" style="padding:10px 18px; font-size:13.5px; color:#1e293b; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                                2 Bulan (${str2})
+                            </div>
+                            <div class="reopen-dropdown-opt" onclick="selectReopenExpiryOption('3_month', ${days3}, '3 Bulan (${str3})')" style="padding:10px 18px; font-size:13.5px; color:#1e293b; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                                3 Bulan (${str3})
+                            </div>
+                            <div class="reopen-dropdown-opt" onclick="selectReopenExpiryOption('custom', 0, 'Tanggal lainnya')" style="padding:10px 18px; font-size:13.5px; color:#1e293b; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                                Tanggal lainnya
+                            </div>
+                        `;
+                    }
+
+                    function toggleReopenTayangHariIni() {
+                        if (reopenIsToday) {
+                            // If currently checked, clicking unchecks and clears
+                            clearReopenPublishDate();
+                            return;
+                        }
+
+                        // Check "Tayang hari ini?"
+                        reopenIsToday = true;
+                        const today = new Date();
+                        const todayYmd = formatLocalDateYmd(today);
+                        reopenPublishDate = todayYmd;
+
+                        // Update Toggle UI (checked cyan badge)
+                        const checkIcon = document.getElementById('reopenTodayCheckIcon');
+                        if (checkIcon) {
+                            checkIcon.innerHTML = '<i class="fa-solid fa-check"></i>';
+                            checkIcon.style.background = '#00a8e8';
+                            checkIcon.style.borderColor = '#00a8e8';
+                            checkIcon.style.color = '#ffffff';
+                            checkIcon.style.fontSize = '9px';
+                        }
+
+                        // Update Publish Date Box UI (locked as Image 2)
+                        const pubBox = document.getElementById('reopenPublishDateBox');
+                        const pubText = document.getElementById('reopenPublishDateText');
+                        const clearPubBtn = document.getElementById('reopenClearPublishDateBtn');
+                        const nativePubInput = document.getElementById('reopenPublishDateNative');
+                        const pubHidden = document.getElementById('reopenPublishDateHidden');
+
+                        if (pubBox) {
+                            pubBox.style.background = '#f8fafc';
+                            pubBox.style.borderColor = '#e2e8f0';
+                        }
+                        if (pubText) {
+                            pubText.innerText = formatReopenIndoDate(today);
+                            pubText.style.color = '#94a3b8'; // muted grey as Image 2
+                        }
+                        if (clearPubBtn) clearPubBtn.style.display = 'inline-flex';
+                        if (nativePubInput) {
+                            nativePubInput.value = todayYmd;
+                            nativePubInput.style.pointerEvents = 'none'; // Locked: cannot click box directly
+                        }
+                        if (pubHidden) pubHidden.value = todayYmd;
+
+                        // Enable Expiry
+                        enableReopenExpiryTrigger();
+                    }
+
+                    function clearReopenPublishDate(event) {
+                        if (event) event.stopPropagation();
+
+                        reopenIsToday = false;
+                        reopenPublishDate = '';
+
+                        // Reset toggle icon
+                        const checkIcon = document.getElementById('reopenTodayCheckIcon');
+                        if (checkIcon) {
+                            checkIcon.innerHTML = '';
+                            checkIcon.style.background = 'transparent';
+                            checkIcon.style.borderColor = '#cbd5e1';
+                        }
+
+                        // Reset box UI
+                        const pubBox = document.getElementById('reopenPublishDateBox');
+                        const pubText = document.getElementById('reopenPublishDateText');
+                        const clearPubBtn = document.getElementById('reopenClearPublishDateBtn');
+                        const nativePubInput = document.getElementById('reopenPublishDateNative');
+                        const pubHidden = document.getElementById('reopenPublishDateHidden');
+
+                        if (pubBox) {
+                            pubBox.style.background = '#ffffff';
+                            pubBox.style.borderColor = '#cbd5e1';
+                        }
+                        if (pubText) {
+                            pubText.innerText = '';
+                            pubText.style.color = '#94a3b8';
+                        }
+                        if (clearPubBtn) clearPubBtn.style.display = 'none';
+                        if (nativePubInput) {
+                            nativePubInput.value = '';
+                            nativePubInput.style.pointerEvents = 'auto'; // Unlocked
+                        }
+                        if (pubHidden) pubHidden.value = '';
+
+                        // Reset & Disable Expiry
+                        const expHidden = document.getElementById('reopenExpiryDaysHidden');
+                        if (expHidden) expHidden.value = '';
+                        resetReopenExpiryToDisabled();
+                    }
+
+                    function handlePublishDateBoxClick(event) {
+                        if (reopenIsToday) {
+                            // When "Tayang hari ini?" is active, box is locked!
+                            // User must click 'x' to clear/unlock.
+                            return;
+                        }
+                        // When NOT "Tayang hari ini?", clicking box opens date picker directly
+                        const nativePubInput = document.getElementById('reopenPublishDateNative');
+                        if (nativePubInput && typeof nativePubInput.showPicker === 'function') {
+                            try {
+                                nativePubInput.showPicker();
+                            } catch (e) {
+                                // fallback if showPicker fails
+                            }
                         }
                     }
 
-                    function setReopenDateToday() {
-                        const input = document.getElementById('reopenPublishDate');
-                        const radio = document.getElementById('radioTayangHariIni');
-                        if (input) {
-                            const today = new Date().toISOString().split('T')[0];
-                            input.value = today;
+                    function handlePublishDateNativeChange(val) {
+                        if (!val) return;
+                        reopenPublishDate = val;
+
+                        const dateObj = parseLocalDate(val);
+                        if (!dateObj) return;
+
+                        // "Tayang hari ini?" remains unchecked
+                        reopenIsToday = false;
+                        const checkIcon = document.getElementById('reopenTodayCheckIcon');
+                        if (checkIcon) {
+                            checkIcon.innerHTML = '';
+                            checkIcon.style.background = 'transparent';
+                            checkIcon.style.borderColor = '#cbd5e1';
                         }
-                        if (radio) {
-                            radio.checked = true;
+
+                        // Update Box UI
+                        const pubBox = document.getElementById('reopenPublishDateBox');
+                        const pubText = document.getElementById('reopenPublishDateText');
+                        const clearPubBtn = document.getElementById('reopenClearPublishDateBtn');
+                        const nativePubInput = document.getElementById('reopenPublishDateNative');
+                        const pubHidden = document.getElementById('reopenPublishDateHidden');
+
+                        if (pubBox) {
+                            pubBox.style.background = '#ffffff';
+                            pubBox.style.borderColor = '#cbd5e1';
+                        }
+                        if (pubText) {
+                            pubText.innerText = formatReopenIndoDate(dateObj);
+                            pubText.style.color = '#0f172a'; // normal dark color
+                        }
+                        if (clearPubBtn) clearPubBtn.style.display = 'none'; // normal mode: no x needed, can click directly
+                        if (nativePubInput) nativePubInput.style.pointerEvents = 'auto';
+                        if (pubHidden) pubHidden.value = val;
+
+                        // Enable Expiry & recalculate options
+                        enableReopenExpiryTrigger();
+
+                        // If user previously selected 1, 2, or 3 months, recalculate days
+                        if (reopenExpirySelectedType && reopenExpirySelectedType !== 'custom') {
+                            const months = reopenExpirySelectedType === '1_month' ? 1 : (reopenExpirySelectedType === '2_month' ? 2 : 3);
+                            const targetDate = addMonthsToDate(dateObj, months);
+                            const str = formatReopenIndoDate(targetDate, true);
+                            const days = Math.round((targetDate - dateObj) / (1000 * 60 * 60 * 24));
+                            selectReopenExpiryOption(reopenExpirySelectedType, days, `${months} Bulan (${str})`);
                         }
                     }
+
+                    function toggleReopenExpiryDropdown(event) {
+                        if (!reopenPublishDate) return; // disabled if no date
+                        if (reopenExpirySelectedType === 'custom') return; // if custom is active, click on 'x' resets it
+
+                        const dropdown = document.getElementById('reopenExpiryDropdownMenu');
+                        const chev = document.getElementById('reopenExpiryChevron');
+                        if (!dropdown) return;
+
+                        const isOpen = dropdown.style.display === 'block';
+                        dropdown.style.display = isOpen ? 'none' : 'block';
+                        if (chev) {
+                            chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+                        }
+                    }
+
+                    function selectReopenExpiryOption(type, days, label) {
+                        reopenExpirySelectedType = type;
+                        const text = document.getElementById('reopenExpirySelectedText');
+                        const chev = document.getElementById('reopenExpiryChevron');
+                        const clearBtn = document.getElementById('reopenClearExpiryBtn');
+                        const dropdown = document.getElementById('reopenExpiryDropdownMenu');
+                        const customContainer = document.getElementById('reopenCustomExpiryContainer');
+                        const expHidden = document.getElementById('reopenExpiryDaysHidden');
+
+                        if (dropdown) dropdown.style.display = 'none';
+                        if (chev) chev.style.transform = 'rotate(0deg)';
+
+                        if (type === 'custom') {
+                            // User selected "Tanggal lainnya" (Image 4)
+                            if (text) {
+                                text.innerText = 'Tanggal lainnya';
+                                text.style.color = '#0f172a';
+                            }
+                            if (chev) chev.style.display = 'none';
+                            if (clearBtn) clearBtn.style.display = 'inline-flex';
+                            if (customContainer) customContainer.style.display = 'block';
+
+                            // Reset custom input text
+                            const customText = document.getElementById('reopenCustomExpiryText');
+                            if (customText) {
+                                customText.innerText = 'Pilih tanggal';
+                                customText.style.color = '#94a3b8';
+                            }
+                            if (expHidden) expHidden.value = '';
+
+                            // Open calendar popup
+                            openReopenExpiryCalendar();
+                        } else {
+                            // 1, 2, or 3 months
+                            if (text) {
+                                text.innerText = label;
+                                text.style.color = '#0f172a';
+                            }
+                            if (chev) chev.style.display = 'inline-block';
+                            if (clearBtn) clearBtn.style.display = 'none';
+                            if (customContainer) customContainer.style.display = 'none';
+                            if (expHidden) expHidden.value = String(days);
+
+                            closeCalPopups();
+                        }
+                    }
+
+                    function resetReopenExpirySelect(event) {
+                        if (event) event.stopPropagation();
+
+                        reopenExpirySelectedType = '';
+                        reopenCustomExpiryDate = '';
+                        const text = document.getElementById('reopenExpirySelectedText');
+                        const chev = document.getElementById('reopenExpiryChevron');
+                        const clearBtn = document.getElementById('reopenClearExpiryBtn');
+                        const customContainer = document.getElementById('reopenCustomExpiryContainer');
+                        const expHidden = document.getElementById('reopenExpiryDaysHidden');
+
+                        if (text) {
+                            text.innerText = 'Pilih lama expired loker';
+                            text.style.color = '#64748b';
+                        }
+                        if (chev) {
+                            chev.style.display = 'inline-block';
+                            chev.style.transform = 'rotate(0deg)';
+                        }
+                        if (clearBtn) clearBtn.style.display = 'none';
+                        if (customContainer) customContainer.style.display = 'none';
+                        if (expHidden) expHidden.value = '';
+
+                        closeCalPopups();
+                    }
+
+                    function toggleReopenExpiryCalendar(event) {
+                        if (event) event.stopPropagation();
+                        const calPopup = document.getElementById('reopenExpiryCalendarPopup');
+                        if (!calPopup) return;
+                        if (calPopup.style.display === 'block') {
+                            calPopup.style.display = 'none';
+                        } else {
+                            openReopenExpiryCalendar();
+                        }
+                    }
+
+                    function openReopenExpiryCalendar() {
+                        const calPopup = document.getElementById('reopenExpiryCalendarPopup');
+                        if (!calPopup || !reopenPublishDate) return;
+
+                        const pubDateObj = parseLocalDate(reopenPublishDate) || new Date();
+                        calViewingYear = pubDateObj.getFullYear();
+                        calViewingMonth = pubDateObj.getMonth();
+
+                        renderReopenCalendar();
+                        calPopup.style.display = 'block';
+                    }
+
+                    function calNavigateMonth(step) {
+                        calViewingMonth += step;
+                        if (calViewingMonth > 11) {
+                            calViewingMonth = 0;
+                            calViewingYear += 1;
+                        } else if (calViewingMonth < 0) {
+                            calViewingMonth = 11;
+                            calViewingYear -= 1;
+                        }
+                        renderReopenCalendar();
+                    }
+
+                    function toggleCalMonthList(event) {
+                        if (event) event.stopPropagation();
+                        const d = document.getElementById('calMonthDropdown');
+                        const yd = document.getElementById('calYearDropdown');
+                        if (yd) yd.style.display = 'none';
+                        if (!d) return;
+
+                        if (d.style.display === 'block') {
+                            d.style.display = 'none';
+                        } else {
+                            d.innerHTML = REOPEN_INDO_MONTHS_SHORT.map((m, idx) => `
+                                <div onclick="selectCalMonth(${idx})" style="padding:6px 12px; font-size:12.5px; cursor:pointer; color:${idx === calViewingMonth ? '#00a8e8' : '#0f172a'}; font-weight:${idx === calViewingMonth ? '700' : '500'}; transition:background 0.12s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">${m}</div>
+                            `).join('');
+                            d.style.display = 'block';
+                        }
+                    }
+
+                    function selectCalMonth(mIdx) {
+                        calViewingMonth = mIdx;
+                        const d = document.getElementById('calMonthDropdown');
+                        if (d) d.style.display = 'none';
+                        renderReopenCalendar();
+                    }
+
+                    function toggleCalYearList(event) {
+                        if (event) event.stopPropagation();
+                        const d = document.getElementById('calYearDropdown');
+                        const md = document.getElementById('calMonthDropdown');
+                        if (md) md.style.display = 'none';
+                        if (!d) return;
+
+                        if (d.style.display === 'block') {
+                            d.style.display = 'none';
+                        } else {
+                            const curYear = new Date().getFullYear();
+                            const years = [];
+                            for (let y = curYear; y <= curYear + 6; y++) {
+                                years.push(y);
+                            }
+                            d.innerHTML = years.map(y => `
+                                <div onclick="selectCalYear(${y})" style="padding:6px 12px; font-size:12.5px; cursor:pointer; color:${y === calViewingYear ? '#00a8e8' : '#0f172a'}; font-weight:${y === calViewingYear ? '700' : '500'}; transition:background 0.12s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">${y}</div>
+                            `).join('');
+                            d.style.display = 'block';
+                        }
+                    }
+
+                    function selectCalYear(y) {
+                        calViewingYear = y;
+                        const d = document.getElementById('calYearDropdown');
+                        if (d) d.style.display = 'none';
+                        renderReopenCalendar();
+                    }
+
+                    function renderReopenCalendar() {
+                        const monthLabel = document.getElementById('calCurrentMonthLabel');
+                        const yearLabel = document.getElementById('calCurrentYearLabel');
+                        const daysGrid = document.getElementById('calDaysGrid');
+
+                        if (monthLabel) monthLabel.innerText = REOPEN_INDO_MONTHS_SHORT[calViewingMonth];
+                        if (yearLabel) yearLabel.innerText = calViewingYear;
+                        if (!daysGrid) return;
+
+                        const pubDateObj = parseLocalDate(reopenPublishDate);
+                        const firstDayOfMonth = new Date(calViewingYear, calViewingMonth, 1);
+                        // Monday is 0, Sunday is 6
+                        const startCol = (firstDayOfMonth.getDay() + 6) % 7;
+                        const prevMonthLastDate = new Date(calViewingYear, calViewingMonth, 0).getDate();
+                        const currentMonthLastDate = new Date(calViewingYear, calViewingMonth + 1, 0).getDate();
+
+                        let html = '';
+
+                        // 1. Trailing days from previous month
+                        for (let i = startCol - 1; i >= 0; i--) {
+                            const dNum = prevMonthLastDate - i;
+                            html += `<div style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#cbd5e1; cursor:default;">${dNum}</div>`;
+                        }
+
+                        // 2. Days of current month
+                        for (let d = 1; d <= currentMonthLastDate; d++) {
+                            const thisDate = new Date(calViewingYear, calViewingMonth, d);
+                            const thisYmd = formatLocalDateYmd(thisDate);
+
+                            let isPubDate = false;
+                            let isBeforePubDate = false;
+
+                            if (pubDateObj) {
+                                if (thisYmd === reopenPublishDate) {
+                                    isPubDate = true;
+                                } else if (thisDate.getTime() < pubDateObj.getTime()) {
+                                    isBeforePubDate = true;
+                                }
+                            }
+
+                            if (isPubDate) {
+                                // Matches 21 in Image 4: circular faint background with muted text
+                                html += `<div style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#cbd5e1; background:#f8fafc; border-radius:50%; cursor:default;">${d}</div>`;
+                            } else if (isBeforePubDate) {
+                                // Days before publish date: muted text, unclickable
+                                html += `<div style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#cbd5e1; cursor:default;">${d}</div>`;
+                            } else {
+                                // Enabled selectable day
+                                const isSelected = (reopenCustomExpiryDate === thisYmd);
+                                if (isSelected) {
+                                    html += `<div onclick="calSelectDate(${calViewingYear}, ${calViewingMonth}, ${d})" style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#ffffff; background:#00a8e8; border-radius:50%; cursor:pointer;">${d}</div>`;
+                                } else {
+                                    html += `<div onclick="calSelectDate(${calViewingYear}, ${calViewingMonth}, ${d})" style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:500; color:#0f172a; border-radius:50%; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">${d}</div>`;
+                                }
+                            }
+                        }
+
+                        // 3. Leading days of next month (fill up to total grid rows)
+                        const totalCells = startCol + currentMonthLastDate;
+                        const remainder = (7 - (totalCells % 7)) % 7;
+                        for (let n = 1; n <= remainder; n++) {
+                            html += `<div style="height:32px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#cbd5e1; cursor:default;">${n}</div>`;
+                        }
+
+                        daysGrid.innerHTML = html;
+                    }
+
+                    function calSelectDate(year, month, day) {
+                        const chosenDate = new Date(year, month, day);
+                        const chosenYmd = formatLocalDateYmd(chosenDate);
+                        reopenCustomExpiryDate = chosenYmd;
+
+                        const customText = document.getElementById('reopenCustomExpiryText');
+                        if (customText) {
+                            customText.innerText = formatReopenIndoDate(chosenDate);
+                            customText.style.color = '#0f172a';
+                        }
+
+                        const pubDateObj = parseLocalDate(reopenPublishDate);
+                        if (pubDateObj) {
+                            const diffDays = Math.max(1, Math.round((chosenDate - pubDateObj) / (1000 * 60 * 60 * 24)));
+                            const expHidden = document.getElementById('reopenExpiryDaysHidden');
+                            if (expHidden) expHidden.value = String(diffDays);
+                        }
+
+                        closeCalPopups();
+                    }
+
+                    function closeCalPopups() {
+                        const calPopup = document.getElementById('reopenExpiryCalendarPopup');
+                        const md = document.getElementById('calMonthDropdown');
+                        const yd = document.getElementById('calYearDropdown');
+                        if (calPopup) calPopup.style.display = 'none';
+                        if (md) md.style.display = 'none';
+                        if (yd) yd.style.display = 'none';
+                    }
+
+                    function validateReopenJobForm(e) {
+                        const pubDate = document.getElementById('reopenPublishDateHidden').value;
+                        const expDays = document.getElementById('reopenExpiryDaysHidden').value;
+                        const quota = document.getElementById('reopenQuota').value;
+
+                        if (!pubDate) {
+                            e.preventDefault();
+                            alert('Silakan pilih Tanggal tayang loker terlebih dahulu.');
+                            return false;
+                        }
+                        if (!expDays || parseInt(expDays, 10) <= 0) {
+                            e.preventDefault();
+                            alert('Silakan pilih Lama expired loker terlebih dahulu.');
+                            return false;
+                        }
+                        if (!quota || parseInt(quota, 10) <= 0) {
+                            e.preventDefault();
+                            alert('Jumlah lowongan minimal 1 orang.');
+                            return false;
+                        }
+                        return true;
+                    }
+
+                    // Global listener for clicking outside custom dropdowns
+                    document.addEventListener('click', function(e) {
+                        const dropdown = document.getElementById('reopenExpiryDropdownMenu');
+                        const trigger = document.getElementById('reopenExpiryTrigger');
+                        if (dropdown && trigger && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
+                            dropdown.style.display = 'none';
+                            const chev = document.getElementById('reopenExpiryChevron');
+                            if (chev) chev.style.transform = 'rotate(0deg)';
+                        }
+
+                        const calPopup = document.getElementById('reopenExpiryCalendarPopup');
+                        const customBox = document.getElementById('reopenCustomExpiryBox');
+                        if (calPopup && customBox && !customBox.contains(e.target) && !calPopup.contains(e.target)) {
+                            calPopup.style.display = 'none';
+                        }
+                    });
 
                     function openLayer3WarningModal(jobId) {
                         const modal = document.getElementById('modalLayer3Warning');
