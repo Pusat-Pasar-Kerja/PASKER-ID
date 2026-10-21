@@ -394,6 +394,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <span>Pemberi Kerja Individu (Wendy Danendra)</span>
                     <code>perorangan@paskerid.test</code>
                 </div>
+                <div class="demo-item" onclick="fillCredential('axel@paskerid.test', 'Pusatpasarkerj4')">
+                    <span>Axel (Axelkupuntur | Belum Ada Kandidat Diterima → Jalur Disnaker)</span>
+                    <code>axel@paskerid.test</code>
+                </div>
+                <div class="demo-item" onclick="fillCredential('alvin@paskerid.test', 'Pusatpasarkerj4')">
+                    <span>Alvin (PedagangSuksess | Ada Kandidat Diterima → Jalur Online)</span>
+                    <code>alvin@paskerid.test</code>
+                </div>
                 <div class="demo-item" onclick="fillCredential('seeker@paskerid.test', 'Pusatpasarkerj4')">
                     <span>Pencari Kerja</span>
                     <code>seeker@paskerid.test</code>

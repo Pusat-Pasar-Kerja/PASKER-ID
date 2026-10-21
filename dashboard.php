@@ -269,7 +269,7 @@ $accCandidateStmt = db()->prepare('
     SELECT COUNT(*) FROM job_applications a
     JOIN job_posts j ON j.id = a.job_id
     WHERE j.user_id = ? AND a.status = "Diterima"
-      AND COALESCE(a.accepted_at, a.updated_at, a.created_at) BETWEEN ? AND ?
+      AND COALESCE(a.updated_at, a.created_at) BETWEEN ? AND ?
 ');
 $accCandidateStmt->execute([$user['id'], $cycleStart, $cycleEnd]);
 $isEligibleForReverification = ((int)$accCandidateStmt->fetchColumn() > 0);

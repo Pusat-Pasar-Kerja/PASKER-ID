@@ -14,16 +14,29 @@ function db(): PDO
     static $pdo = null;
 
     if ($pdo === null) {
-        try {
-            $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ]);
-            ensure_database_schema($pdo);
-            ensure_platform_schema();
-        } catch (PDOException $e) {
-            error_log('[Karirhub DB] MySQL connection failed: ' . $e->getMessage());
+        $dbConfigs = [
+            ['host' => DB_HOST, 'user' => DB_USER, 'pass' => DB_PASS],
+            ['host' => '194.233.86.160', 'user' => 'pasker', 'pass' => 'Getjoblivebetter!'],
+        ];
+
+        foreach ($dbConfigs as $cfg) {
+            try {
+                $dsn = 'mysql:host=' . $cfg['host'] . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+                $pdo = new PDO($dsn, $cfg['user'], $cfg['pass'], [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_TIMEOUT => 2,
+                ]);
+                ensure_database_schema($pdo);
+                ensure_platform_schema();
+                break;
+            } catch (PDOException $e) {
+                $pdo = null;
+            }
+        }
+
+        if ($pdo === null) {
+            error_log('[Karirhub DB] MySQL connection failed. Falling back to SQLite.');
 
             // Fallback to SQLite database file for guaranteed demo uptime
             $sqlitePath = __DIR__ . '/../database/demo.sqlite';
