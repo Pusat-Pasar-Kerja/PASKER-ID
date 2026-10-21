@@ -310,6 +310,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
         $stmtOld = db()->prepare('SELECT * FROM employer_profiles WHERE user_id = ? LIMIT 1');
         $stmtOld->execute([$targetUserId]);
         $oldProfile = $stmtOld->fetch() ?: [];
+        $brandName = trim($_POST['brand_name'] ?? ($oldProfile['brand_name'] ?? ''));
 
         $permitDoc = store_upload('permit_document', 'employer/' . $targetUserId, ['pdf', 'docx']);
         $workplacePhoto = store_upload('workplace_photo', 'employer/' . $targetUserId, ['png', 'jpg', 'jpeg']);
@@ -319,6 +320,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
         $updateSql = <<<SQL
             UPDATE employer_profiles SET
                 owner_name = ?, nik = ?, profession = ?, phone = ?, whatsapp = ?, npwp = ?,
+                brand_name = ?,
                 instagram = ?, facebook = ?, linkedin = ?,
                 province = ?, city = ?, district = ?, village = ?, postal_code = ?,
                 address = ?, address_detail = ?, description = ?,
@@ -328,6 +330,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
         SQL;
         db()->prepare($updateSql)->execute([
             $ownerName, $nik, $profession, $phone, $whatsapp, $npwp,
+            $brandName,
             $instagram, $facebook, $linkedin,
             $province, $city, $district, $village, $postalCode,
             $address, $addressDetail, $description,

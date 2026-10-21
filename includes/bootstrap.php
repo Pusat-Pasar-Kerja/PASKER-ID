@@ -447,11 +447,11 @@ function init_sqlite_schema(PDO $pdo): void
         ('Perorangan Demo', 'perorangan@paskerid.test', '\$2y\$10\$4Ub96pSJd1xdfdkRHCaWw.WbK19BOoTxiBqxEy7by6Gwub1dJBydm', 'employer', 1),
         ('Pencari Kerja Demo', 'seeker@paskerid.test', '\$2y\$10\$4Ub96pSJd1xdfdkRHCaWw.WbK19BOoTxiBqxEy7by6Gwub1dJBydm', 'seeker', 1)",
         "INSERT INTO employer_profiles (
-            user_id, owner_name, nik, profession, phone, whatsapp, npwp, linkedin, facebook, instagram,
+            user_id, owner_name, nik, profession, phone, whatsapp, npwp, brand_name, linkedin, facebook, instagram,
             province, city, district, village, postal_code, address, address_detail, latitude, longitude,
             description, user_consent, verified, verification_status, active_until
         ) VALUES (
-            2, 'Perorangan Demo', '3275012304890001', 'Kuliner & Katering', '08123456789', '08123456789', '12.345.678.9-012.000',
+            2, 'Perorangan Demo', '3275012304890001', 'Kuliner & Katering', '08123456789', '08123456789', '12.345.678.9-012.000', 'Katering Berkah Bersama',
             'https://linkedin.com/in/perorangan-demo', 'https://facebook.com/perorangan.demo', 'https://instagram.com/perorangandemo',
             'Jawa Barat', 'Kota Bekasi', 'Bekasi Selatan', 'Pekayon Jaya', '17148', 'Jl. Ahmad Yani No. 12', 'Samping Indomaret Pekayon',
             '-6.241586', '106.992416', 'Usaha katering rumahan dan jasa konsultasi menu kuliner keluarga.', 1, 1, 'APPROVED', datetime('now', '+6 months')

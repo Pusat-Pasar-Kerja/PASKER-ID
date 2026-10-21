@@ -1836,6 +1836,7 @@ $replacements = [
 ];
 
 $html = str_replace(array_keys($replacements), array_values($replacements), $html);
+$html = preg_replace('/(<h1\s+class="lifecycle-title">\s*)Halo,\s*/i', '$1Halo ', $html);
 
 $modalStyles = <<<'CSS'
         /* ═══════════════════════════════════════════════════════════════
