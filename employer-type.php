@@ -383,8 +383,7 @@ require_once __DIR__ . '/includes/bootstrap.php';
 
             <!-- Option 2: Pemberi Kerja Badan Usaha / Instansi / Lembaga -->
             <div class="option-wrapper">
-                <div class="registration-option disabled">
-                    <span class="coming-soon-badge">Akan datang</span>
+                <a class="registration-option" href="javascript:void(0)">
                     <div class="registration-option-head">
                         <div class="registration-option-left">
                             <i class="fa-solid fa-building"></i>
@@ -393,7 +392,7 @@ require_once __DIR__ . '/includes/bootstrap.php';
                         <i class="fa-solid fa-chevron-right registration-option-arrow"></i>
                     </div>
                     <p>Untuk perusahaan, instansi pemerintah, yayasan, organisasi atau lembaga yang memiliki pegawai atau membuka lowongan kerja atas nama entitas.</p>
-                </div>
+                </a>
                 <div class="option-help-link">
                     <a href="#" onclick="alert('Pemberi Kerja Badan Usaha adalah perusahaan, instansi, atau organisasi legal yang mempekerjakan tenaga kerja.'); return false;">
                         Apa itu Pemberi Kerja Badan Usaha/Instansi/Lembaga <i class="fa-regular fa-circle-question"></i>
