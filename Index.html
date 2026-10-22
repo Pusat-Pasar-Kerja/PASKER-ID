@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="./assets/app.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="./assets/app.css?v=20260930_scrollfix">
     <link rel="stylesheet" href="./assets/pki-form.css?v=<?php echo time(); ?>">
     <style>
         :root {
@@ -1816,19 +1816,25 @@
                         <div class="notif" data-open-modal="modal-notifications" style="cursor:pointer;" title="Notifikasi"><i class="fa-regular fa-bell"></i></div>
                     <?php } ?>
 
-                    <div class="company-profile-pill company-profile-split" style="padding:3px 4px; gap:0; cursor:default;">
-                        <button type="button" class="company-pill-info" data-page="profil" title="Profil Pemberi Kerja" style="display:flex; align-items:center; gap:8px; padding:2px 8px 2px 3px; background:transparent; border:none; border-radius:999px; cursor:pointer; text-align:left; font-family:inherit;">
-                            <div class="company-pill-avatar" id="topbarAvatar"><?php echo mb_strtoupper(mb_substr(!empty($profile['brand_name']) ? $profile['brand_name'] : ($profile['owner_name'] ?? $user['name']), 0, 2)); ?></div>
-                            <div class="company-pill-text">
-                                <strong id="topbarCompName"><?php echo e(!empty($profile['brand_name']) ? $profile['brand_name'] : ($profile['owner_name'] ?? $user['name'])); ?></strong>
-                                <span id="topbarCompType"><?php echo !empty($profile['profession']) ? e($profile['profession']) : 'Pemberi Kerja Individu'; ?></span>
-                            </div>
-                        </button>
-                        <div class="company-pill-divider" aria-hidden="true" style="width:1px; height:20px; background:#e2e8f0; margin:0 3px; flex-shrink:0;"></div>
-                        <button type="button" class="company-pill-btn-plus" data-open-modal="modal-user-account" title="Pilihan Usaha &amp; Akun" aria-label="Pilihan Usaha &amp; Akun" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; padding:0; margin:0 1px; background:transparent; border:none; border-radius:50%; cursor:pointer; color:#64748b;">
-                            <i class="fa-solid fa-plus company-pill-arrow" style="font-size:12px; color:inherit;"></i>
-                        </button>
+                    <div class="company-profile-pill" data-page="profil" title="Profil Pemberi Kerja" style="cursor:pointer;" onclick="if(typeof showPage==='function'){showPage('profil');}else if(typeof setActivePage==='function'){setActivePage('profil');}">
+                        <div style="display:flex; align-items:center; border-right:1px solid #e2e8f0; padding-right:8px; margin-right:2px;">
+                            <?php if (!empty($profile['business_logo'])): ?>
+                                <img src="<?php echo htmlspecialchars($profile['business_logo'], ENT_QUOTES, 'UTF-8'); ?>" alt="Logo" style="width:28px; height:28px; border-radius:6px; object-fit:cover;">
+                            <?php else: ?>
+                                <div class="company-pill-avatar" id="topbarAvatar"><?php echo mb_strtoupper(mb_substr(!empty($profile['brand_name']) ? $profile['brand_name'] : ($profile['owner_name'] ?? $user['name']), 0, 2)); ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="company-pill-text">
+                            <strong id="topbarCompName"><?php echo e(!empty($profile['brand_name']) ? $profile['brand_name'] : ($profile['owner_name'] ?? $user['name'])); ?></strong>
+                            <span id="topbarCompType"><?php echo !empty($profile['profession']) ? e($profile['profession']) : 'Pemberi Kerja Individu'; ?></span>
+                        </div>
+                        <i class="fa-solid fa-chevron-right company-pill-arrow" style="font-size:11px; margin-left:6px; color:#94a3b8;"></i>
                     </div>
+
+                    <a href="employer-type.php" class="topbar-btn-tambah" title="Pilih jenis pemberi kerja" style="display:inline-flex; align-items:center; gap:6px; height:38px; padding:0 16px; border:1px solid #e2e8f0; border-radius:999px; background:#ffffff; color:#0f172a; text-decoration:none; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s ease; box-shadow:0 1px 2px rgba(0,0,0,0.03);" onmouseover="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc';" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#ffffff';">
+                        <i class="fa-solid fa-plus" style="font-size:12px; color:#0f172a;"></i>
+                        <span>Tambah</span>
+                    </a>
                 </div>
             </header>
 

@@ -1,9 +1,5 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
-
-if (current_user()) {
-    redirect(role_home(current_user()['role'] ?? ''));
-}
 ?>
 <!DOCTYPE html>
 <html lang="id">

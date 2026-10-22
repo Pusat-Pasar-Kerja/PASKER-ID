@@ -1,9 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
 
-if (current_user() && !isset($_GET['success'])) {
-    redirect('index.php');
-}
 
 $showSuccessPopup = isset($_GET['success']) && $_GET['success'] === '1';
 
