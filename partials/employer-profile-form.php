@@ -8,6 +8,8 @@
  */
 $isRevision = $isRevision ?? false;
 $formData = $formData ?? [];
+$lockIdentity = $lockIdentity ?? false;
+$isIdentityLocked = !empty($lockIdentity) || (!empty($isRevision) && !empty($formData['owner_name']));
 
 // Helper values
 $vOwnerName = e($formData['owner_name'] ?? '');
@@ -164,15 +166,15 @@ if (file_exists($pkiCssPath)) {
             <label class="pki-field-label" id="label_owner_name" for="pki_owner_name">
                 Nama Pemberi Kerja <span class="req">*</span>
             </label>
-            <input type="text" name="owner_name" id="pki_owner_name" value="<?php echo $vOwnerName; ?>" placeholder="Masukkan nama lengkap">
-            <div class="pki-field-helper" id="helper_owner_name">Terisi otomatis dari akun SIAPKerja.</div>
+            <input type="text" name="owner_name" id="pki_owner_name" value="<?php echo $vOwnerName; ?>" placeholder="Masukkan nama lengkap" <?php if ($isIdentityLocked): ?>readonly style="background:#f8fafc; color:#475569; cursor:not-allowed;"<?php endif; ?>>
+            <div class="pki-field-helper" id="helper_owner_name">Terisi otomatis dari akun SIAPKerja<?php echo $isIdentityLocked ? ' (Terkunci)' : ''; ?>.</div>
         </div>
         <div class="pki-field">
             <label class="pki-field-label" id="label_nik" for="pki_nik">
                 NIK <span class="req">*</span>
             </label>
-            <input type="text" name="nik" id="pki_nik" value="<?php echo $vNik; ?>" maxlength="16" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="Masukkan 16 digit NIK">
-            <div class="pki-field-helper" id="helper_nik">Terisi otomatis dari akun SIAPKerja.</div>
+            <input type="text" name="nik" id="pki_nik" value="<?php echo $vNik; ?>" maxlength="16" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="Masukkan 16 digit NIK" <?php if ($isIdentityLocked): ?>readonly style="background:#f8fafc; color:#475569; cursor:not-allowed;"<?php endif; ?>>
+            <div class="pki-field-helper" id="helper_nik">Terisi otomatis dari akun SIAPKerja<?php echo $isIdentityLocked ? ' (Terkunci)' : ''; ?>.</div>
         </div>
     </div>
 
@@ -181,8 +183,8 @@ if (file_exists($pkiCssPath)) {
             <label class="pki-field-label" id="label_phone" for="pki_phone">
                 Nomor Telepon Aktif <span class="req">*</span>
             </label>
-            <input type="text" name="phone" id="pki_phone" value="<?php echo $vPhone; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx">
-            <div class="pki-field-helper" id="helper_phone">Terisi otomatis dari akun SIAPKerja.</div>
+            <input type="text" name="phone" id="pki_phone" value="<?php echo $vPhone; ?>" maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx" <?php if ($isIdentityLocked): ?>readonly style="background:#f8fafc; color:#475569; cursor:not-allowed;"<?php endif; ?>>
+            <div class="pki-field-helper" id="helper_phone">Terisi otomatis dari akun SIAPKerja<?php echo $isIdentityLocked ? ' (Terkunci)' : ''; ?>.</div>
         </div>
         <div class="pki-field" style="position:relative;">
             <label class="pki-field-label" id="label_profession" for="pki_profession_trigger">

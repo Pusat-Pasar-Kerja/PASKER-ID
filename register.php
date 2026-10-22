@@ -1,8 +1,20 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
 
+$loggedInUser = current_user();
+$existingProfile = null;
+$isAddBusiness = false;
+if ($loggedInUser) {
+    $stmtEx = db()->prepare('SELECT * FROM employer_profiles WHERE user_id = ? ORDER BY id ASC LIMIT 1');
+    $stmtEx->execute([$loggedInUser['id']]);
+    $existingProfile = $stmtEx->fetch() ?: null;
+    if ($existingProfile) {
+        $isAddBusiness = true;
+    }
+}
 
 $showSuccessPopup = isset($_GET['success']) && $_GET['success'] === '1';
+$isSuccessAdd = !empty($_GET['is_add']);
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action'] ?? '') === 'simulate_employer_session') {
     try {
@@ -80,10 +92,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
         $addressNotes = trim($_POST['address_detail'] ?? ($_POST['address_notes'] ?? ''));
         $userConsent = !empty($_POST['user_consent']) ? 1 : 0;
 
-        create_user($ownerName, $uniqueEmail, $tempPassword, 'employer');
-        $newUser = find_user_by_email($uniqueEmail);
-        if ($newUser) {
+        if ($isAddBusiness && $existingProfile) {
+            $userId = (int)$loggedInUser['id'];
+            $ownerName = !empty($existingProfile['owner_name']) ? $existingProfile['owner_name'] : ($ownerName ?: ($loggedInUser['name'] ?? ''));
+            $nik = !empty($existingProfile['nik']) ? $existingProfile['nik'] : $nik;
+            $phone = !empty($existingProfile['phone']) ? $existingProfile['phone'] : $phone;
+        } else {
+            create_user($ownerName, $uniqueEmail, $tempPassword, 'employer');
+            $newUser = find_user_by_email($uniqueEmail);
+            if (!$newUser) {
+                throw new Exception('Gagal membuat akun pengguna.');
+            }
             $userId = (int)$newUser['id'];
+        }
+
+        if ($userId > 0) {
             
             // Store uploaded documents
             if (!empty($_FILES['permit_document']['name'])) {
@@ -259,12 +282,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
                 $stmtLog->execute([$userId, $ownerName]);
             } catch (Throwable $ignored) {}
 
-            $newUser['profile_complete'] = 1;
-            $newUser['domicile_city_id'] = $domicileCityId;
-            $newUser['city'] = $city;
+            $newBizId = (int)$pdo->lastInsertId();
+            if ($newBizId > 0) {
+                $_SESSION['active_business_id'] = $newBizId;
+            }
 
-            login_user($newUser);
-            redirect('register.php?success=1');
+            if (!$isAddBusiness && isset($newUser)) {
+                $newUser['profile_complete'] = 1;
+                $newUser['domicile_city_id'] = $domicileCityId;
+                $newUser['city'] = $city;
+                login_user($newUser);
+            }
+
+            redirect('register.php?success=1' . ($isAddBusiness ? '&is_add=1' : ''));
         }
     } catch (Throwable $e) {
         error_log('[Karirhub Register Error] ' . $e->getMessage());
@@ -508,7 +538,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
     <!-- Main Container Shell -->
     <div class="registration-shell">
         <div class="registration-card">
-            <h1 class="registration-title">Daftar sebagai pemberi kerja</h1>
+            <h1 class="registration-title"><?php echo $isAddBusiness ? 'Tambah Usaha Pemberi Kerja' : 'Daftar sebagai pemberi kerja'; ?></h1>
+            <p class="registration-subtitle" style="margin:8px 0 20px; font-size:13.5px; color:#64748b; line-height:1.5;">
+                <?php if ($isAddBusiness): ?>
+                    Menambahkan profil usaha baru dengan identitas pemberi kerja yang sama.
+                <?php else: ?>
+                    Pilih jenis pemberi kerja dan lengkapi data profil untuk melanjutkan.
+                <?php endif; ?>
+            </p>
+
+            <?php if ($isAddBusiness): ?>
+                <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:12px 16px; margin-bottom:20px; display:flex; align-items:flex-start; gap:10px; color:#0369a1; font-size:13px; line-height:1.5;">
+                    <i class="fa-solid fa-circle-info" style="font-size:16px; color:#0284c7; margin-top:2px; flex-shrink:0;"></i>
+                    <div>
+                        <strong style="color:#0c4a6e;">Pemberi Kerja yang Sama:</strong> Data identitas (Nama Pemberi Kerja, NIK, dan Nomor Telepon Aktif) telah terisi otomatis dari profil usaha pertama Anda dan tidak dapat diedit untuk memastikan identitas pemilik tetap sama.
+                    </div>
+                </div>
+            <?php endif; ?>
 
             <?php $flash = get_flash(); if ($flash): ?>
                 <div style="margin:0 0 20px; padding:12px 16px; border-radius:8px; font-size:13.5px; font-weight:600; background:<?php echo $flash['type'] === 'error' ? '#fef2f2' : '#f0fdf4'; ?>; color:<?php echo $flash['type'] === 'error' ? '#991b1b' : '#166534'; ?>; border:1px solid <?php echo $flash['type'] === 'error' ? '#fecaca' : '#bbf7d0'; ?>; display:flex; align-items:center; justify-content:space-between; gap:12px;">
@@ -526,7 +572,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
                 <input type="hidden" name="register_action" value="simulate_employer_session">
                 <?php
                 $isRevision = false;
+                $lockIdentity = $isAddBusiness;
                 $formData = [];
+                if ($isAddBusiness && $existingProfile) {
+                    $formData = [
+                        'owner_name' => $existingProfile['owner_name'] ?? ($loggedInUser['name'] ?? ''),
+                        'nik'        => $existingProfile['nik'] ?? '',
+                        'phone'      => $existingProfile['phone'] ?? ($loggedInUser['phone'] ?? ''),
+                    ];
+                }
                 $cancelButtonHtml = '';
                 include __DIR__ . '/includes/employer-profile-form.php';
                 ?>
@@ -548,7 +602,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
             <div class="popup-dialog-icon success" style="width: 56px; height: 56px; font-size: 26px; margin: 0 auto 16px; background: #ecfdf5; color: #10b981;">
                 <i class="fa-solid fa-circle-check"></i>
             </div>
-            <h3 style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 16px; text-align: center;">Pendaftaran Berhasil</h3>
+            <h3 style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 16px; text-align: center;">
+                <?php echo $isSuccessAdd ? 'Tambah Usaha Berhasil' : 'Pendaftaran Berhasil'; ?>
+            </h3>
             
             <!-- Information Bar: Menunggu Verifikasi (Warna biru dengan ikon jam, tanpa button x) -->
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: center; gap: 8px; color: #1d4ed8; font-size: 13px; font-weight: 700; margin-bottom: 18px;">
@@ -559,10 +615,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['register_action
             <!-- Detail Pesan (Di bawah Menunggu Verifikasi, dipisah/tidak digabung, text-align left) -->
             <div style="text-align: left; background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 10px; padding: 14px 16px; margin-bottom: 24px;">
                 <p style="font-size: 13.5px; color: #334155; line-height: 1.55; margin-bottom: 10px; font-weight: 500;">
-                    Pengajuan Profil Pemberi Kerja Individu sedang dalam proses verifikasi.
+                    <?php echo $isSuccessAdd ? 'Pengajuan Profil Usaha Baru Anda sedang dalam proses verifikasi oleh Petugas Dinas.' : 'Pengajuan Profil Pemberi Kerja Individu sedang dalam proses verifikasi.'; ?>
                 </p>
                 <p style="font-size: 13px; color: #64748b; line-height: 1.55; margin: 0; font-weight: 400;">
-                    Hak Akses akan mulai berlaku setelah pengajuan disetujui Admin.
+                    Hak Akses operasional untuk usaha ini akan mulai berlaku setelah pengajuan disetujui Admin.
                 </p>
             </div>
 
