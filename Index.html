@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="./assets/app.css?v=20260930_scrollfix">
+    <link rel="stylesheet" href="./assets/app.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="./assets/pki-form.css?v=<?php echo time(); ?>">
     <style>
         :root {
@@ -1816,13 +1816,18 @@
                         <div class="notif" data-open-modal="modal-notifications" style="cursor:pointer;" title="Notifikasi"><i class="fa-regular fa-bell"></i></div>
                     <?php } ?>
 
-                    <div class="company-profile-pill" data-open-modal="modal-user-account" title="Pilih Usaha / Pengaturan Akun" style="cursor:pointer;">
-                        <div class="company-pill-avatar" id="topbarAvatar"><?php echo mb_strtoupper(mb_substr(!empty($profile['brand_name']) ? $profile['brand_name'] : ($profile['owner_name'] ?? $user['name']), 0, 2)); ?></div>
-                        <div class="company-pill-text">
-                            <strong id="topbarCompName"><?php echo e(!empty($profile['brand_name']) ? $profile['brand_name'] : ($profile['owner_name'] ?? $user['name'])); ?></strong>
-                            <span id="topbarCompType"><?php echo !empty($profile['profession']) ? e($profile['profession']) : 'Pemberi Kerja Individu'; ?></span>
-                        </div>
-                        <i class="fa-solid fa-plus company-pill-arrow" style="font-size:11px; margin-left:6px; color:#64748b;"></i>
+                    <div class="company-profile-pill company-profile-split" style="padding:3px 4px; gap:0; cursor:default;">
+                        <button type="button" class="company-pill-info" data-page="profil" title="Profil Pemberi Kerja" style="display:flex; align-items:center; gap:8px; padding:2px 8px 2px 3px; background:transparent; border:none; border-radius:999px; cursor:pointer; text-align:left; font-family:inherit;">
+                            <div class="company-pill-avatar" id="topbarAvatar"><?php echo mb_strtoupper(mb_substr(!empty($profile['brand_name']) ? $profile['brand_name'] : ($profile['owner_name'] ?? $user['name']), 0, 2)); ?></div>
+                            <div class="company-pill-text">
+                                <strong id="topbarCompName"><?php echo e(!empty($profile['brand_name']) ? $profile['brand_name'] : ($profile['owner_name'] ?? $user['name'])); ?></strong>
+                                <span id="topbarCompType"><?php echo !empty($profile['profession']) ? e($profile['profession']) : 'Pemberi Kerja Individu'; ?></span>
+                            </div>
+                        </button>
+                        <div class="company-pill-divider" aria-hidden="true" style="width:1px; height:20px; background:#e2e8f0; margin:0 3px; flex-shrink:0;"></div>
+                        <button type="button" class="company-pill-btn-plus" data-open-modal="modal-user-account" title="Pilihan Usaha &amp; Akun" aria-label="Pilihan Usaha &amp; Akun" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; padding:0; margin:0 1px; background:transparent; border:none; border-radius:50%; cursor:pointer; color:#64748b;">
+                            <i class="fa-solid fa-plus company-pill-arrow" style="font-size:12px; color:inherit;"></i>
+                        </button>
                     </div>
                 </div>
             </header>

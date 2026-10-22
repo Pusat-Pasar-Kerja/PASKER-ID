@@ -3609,6 +3609,67 @@ html, body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
+.company-profile-pill.company-profile-split {
+    cursor: default;
+    padding: 3px 4px 3px 4px;
+    gap: 0;
+}
+
+.company-pill-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 8px 2px 3px;
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.company-pill-info:hover {
+    background-color: #f1f5f9;
+}
+
+.company-pill-info:active {
+    opacity: 0.8;
+}
+
+.company-pill-divider {
+    width: 1px;
+    height: 20px;
+    background-color: #e2e8f0;
+    margin: 0 3px;
+    flex-shrink: 0;
+}
+
+.company-pill-btn-plus {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0 1px;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    color: #64748b;
+    transition: all 0.15s ease;
+}
+
+.company-pill-btn-plus:hover {
+    background-color: #f0f9ff;
+    color: #0284c7;
+}
+
+.company-pill-btn-plus:active {
+    transform: scale(0.92);
+}
+
 .company-pill-avatar {
     width: 28px;
     height: 28px;
@@ -4955,6 +5016,23 @@ html.dark-theme .topbar-search-pill input {
 html.dark-theme .company-profile-pill {
     background: #0b132b !important;
     border-color: #1e293b !important;
+}
+
+html.dark-theme .company-pill-info:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+html.dark-theme .company-pill-divider {
+    background-color: #1e293b;
+}
+
+html.dark-theme .company-pill-btn-plus {
+    color: #94a3b8;
+}
+
+html.dark-theme .company-pill-btn-plus:hover {
+    background-color: rgba(2, 132, 199, 0.15);
+    color: #38bdf8;
 }
 
 html.dark-theme .company-pill-text strong {
