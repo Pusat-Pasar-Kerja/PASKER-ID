@@ -103,50 +103,35 @@ if ($hasFullLocation) {
 
 $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
 
-$professionGroups = [
+$professionGroups = function_exists('individual_business_types') ? individual_business_types() : [
     'Kesehatan & Terapi' => [
         'Praktik Dokter Umum', 'Praktik Dokter Gigi', 'Praktik Bidan', 'Praktik Keperawatan Mandiri',
         'Praktik Psikolog', 'Layanan Fisioterapi', 'Praktik Terapis Wicara', 'Layanan Akupunktur',
-        'Layanan Terapi Tumbuh Kembang Anak', 'Jasa Pijat dan Refleksi', 'Layanan Terapi Okupasi', 'Layanan Konsultasi Gizi/Nutrisionis',
+        'Layanan Terapi Tumbuh Kembang Anak', 'Layanan Konsultasi Gizi/Nutrisionis',
     ],
     'Hukum, Keuangan & Jasa Profesional' => [
-        'Praktik Notaris', 'Praktik PPAT', 'Praktik Advokat/Pengacara', 'Konsultan Hukum',
-        'Konsultan Pajak', 'Jasa Akuntansi', 'Jasa Pembukuan', 'Konsultan Manajemen',
-        'Jasa Administrasi dan Pengurusan Dokumen', 'Jasa Penerjemah', 'Konsultan SDM', 'Jasa Sekretarial/Administrasi Perkantoran',
+        'Praktik Notaris / PPAT', 'Praktik Advokat/Pengacara / Konsultan Hukum', 'Konsultan Pajak',
+        'Jasa Akuntansi', 'Konsultan Manajemen', 'Jasa Administrasi dan Pengurusan Dokumen', 'Jasa Penerjemah',
     ],
     'Teknik, Arsitektur & Desain' => [
-        'Praktik Arsitek', 'Konsultan Teknik Sipil', 'Konsultan Mekanikal dan Elektrikal',
-        'Jasa Desain Interior', 'Jasa Desain Lanskap', 'Jasa Drafter', 'Jasa Survei dan Pemetaan',
-        'Jasa Desain Produk', 'Jasa Pembuatan Maket dan Prototipe', 'Jasa Perbaikan/Bengkel Teknik',
-        'Jasa Instalasi Listrik', 'Jasa Teknisi Elektronik',
+        'Praktik Arsitek', 'Jasa Desain Interior', 'Jasa Drafter', 'Jasa Perbaikan/Bengkel Teknik (Instalasi Listrik & Elektronik)',
     ],
     'Pendidikan & Pelatihan' => [
-        'Bimbingan Belajar', 'Guru Privat', 'Kursus Bahasa', 'Kursus Musik', 'Kursus Tari',
-        'Kursus Seni Rupa', 'Pelatihan Public Speaking', 'Pelatihan Komputer dan Digital',
-        'Pelatihan Keterampilan Vokasional', 'Pelatih Olahraga/Kebugaran', 'Pelatihan Kewirausahaan', 'Pelatihan Kerja/Keterampilan Profesi',
+        'Bimbingan Belajar', 'Kursus Bahasa', 'Kursus Musik', 'Kursus Tari',
     ],
     'Jasa Acara, Kreatif & Hewan Peliharaan' => [
-        'Studio Foto dan Video', 'Jasa Fotografi/Videografi', 'Jasa Dekorasi Acara', 'Wedding Organizer',
-        'Event Organizer', 'Jasa Penjahit/Atelier', 'Jasa Grooming Hewan', 'Jasa Penitipan Hewan',
-        'Jasa Percetakan', 'Jasa Desain Grafis', 'Jasa Pembuatan Suvenir/Handicraft', 'Jasa Florist/Dekorasi Bunga',
+        'Studio Foto dan Video', 'Jasa Fotografi/Videografi', 'Jasa Dekorasi Acara',
+        'Jasa Penjahit/Atelier', 'Jasa Grooming Hewan', 'Jasa Desain Grafis', 'Jasa Florist/Dekorasi Bunga',
     ],
     'Digital, Media & Konten' => [
-        'Konten Kreator/Digital Creator', 'Jasa Pengelolaan Media Sosial', 'Jasa Pembuatan Konten Digital',
-        'Jasa Editing Video', 'Jasa Copywriting/Content Writing', 'Jasa Desain Konten Media Sosial',
-        'Jasa Live Streaming', 'Studio Podcast', 'Jasa Produksi Audio/Video', 'Jasa Digital Marketing',
-    ],
-    'Kuliner & Industri Pangan Rumah Tangga' => [
-        'Usaha Makanan Rumahan', 'Jasa Katering', 'Bakery dan Pastry Rumahan', 'Usaha Kue dan Makanan Ringan',
-        'Produksi Minuman Rumahan', 'Produksi Makanan Olahan', 'Produksi Makanan Beku/Frozen Food',
-        'Produksi Sambal/Bumbu Olahan', 'Produksi Camilan/Keripik', 'Usaha Jajanan/Pangan Siap Saji',
+        'Konten Kreator/Digital Creator', 'Jasa Editing Video / Transfer Video',
+        'Jasa Live Streaming / Host Live Streaming', 'Studio Podcast',
     ],
     'Kecantikan & Perawatan Pribadi' => [
-        'Salon Kecantikan', 'Barbershop/Pangkas Rambut', 'Makeup Artist', 'Jasa Tata Rambut',
-        'Nail Art', 'Jasa Perawatan Kecantikan Nonmedis', 'Jasa Perawatan Pengantin',
+        'Barbershop', 'Makeup Artist',
     ],
     'Jasa Rumah Tangga, Pemeliharaan & Perbaikan' => [
-        'Jasa Kebersihan Rumah', 'Jasa Laundry', 'Jasa Servis AC', 'Jasa Perbaikan Peralatan Rumah Tangga',
-        'Jasa Instalasi/Perbaikan Plumbing', 'Jasa Perawatan Taman', 'Jasa Pengecatan', 'Jasa Pertukangan',
+        'Jasa Laundry', 'Jasa Servis AC',
     ],
 ];
 ?>
