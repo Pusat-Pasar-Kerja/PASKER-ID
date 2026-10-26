@@ -1116,17 +1116,20 @@ function pcrUpdateMapPreview() {
     const profDisplay = document.getElementById('pcr_profession_display');
     const profHidden = document.getElementById('pcr_profession');
 
+    window.PERMIT_DOC_REQUIREMENTS = window.PERMIT_DOC_REQUIREMENTS || <?php echo json_encode(function_exists('individual_business_permit_requirements') ? individual_business_permit_requirements() : []); ?>;
+
     function updatePcrPermitDocHelper(profession) {
         const helper = document.getElementById('pcr_helper_permit_document');
         if (!helper) return;
         if (typeof window.getPermitDocHelperHtml === 'function') {
             helper.innerHTML = window.getPermitDocHelperHtml(profession);
-        } else if (window.PERMIT_DOC_REQUIREMENTS) {
+        } else {
+            const reqMap = window.PERMIT_DOC_REQUIREMENTS || {};
             const p = (profession || '').trim();
-            if (p && window.PERMIT_DOC_REQUIREMENTS[p]) {
+            if (p && reqMap[p]) {
                 helper.innerHTML = '<div class="pki-permit-doc-helper-wrap">' +
                     '<div style="font-weight:600; color:#334155; margin-bottom:2px;">Dokumen yang perlu diunggah:</div>' +
-                    '<div style="color:#475569; margin-bottom:4px; line-height:1.45;">' + window.PERMIT_DOC_REQUIREMENTS[p] + '</div>' +
+                    '<div style="color:#475569; margin-bottom:4px; line-height:1.45;">' + reqMap[p] + '</div>' +
                     '<div style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div>' +
                     '</div>';
             } else {

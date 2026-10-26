@@ -289,55 +289,127 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
         exit;
     }
 
-    // 3. JALUR MANUAL DINAS: CONTROLLED EDIT & AJUKAN PERMOHONAN ULANG
+    // 3. JALUR MANUAL DINAS & VERIFIKASI ULANG OFFLINE: CONTROLLED EDIT & SIMPAN DATA
     if ($action === 'manual_dinas_edit') {
         $targetUserId = (int)$_POST['user_id'];
-        $ownerName = trim($_POST['owner_name'] ?? '');
-        $nik = trim($_POST['nik'] ?? '');
-        $profession = trim($_POST['profession'] ?? '');
-        $phone = trim($_POST['phone'] ?? '');
-        $whatsapp = trim($_POST['whatsapp'] ?? '');
-        $npwp = trim($_POST['npwp'] ?? '');
-        $instagram = trim($_POST['instagram'] ?? '');
-        $facebook = trim($_POST['facebook'] ?? '');
-        $linkedin = trim($_POST['linkedin'] ?? '');
+
+        // Fetch existing profile first for complete fallback protection
+        $stmtOld = db()->prepare('SELECT * FROM employer_profiles WHERE user_id = ? LIMIT 1');
+        $stmtOld->execute([$targetUserId]);
+        $oldProfile = $stmtOld->fetch() ?: [];
+
+        $ownerName = trim($_POST['owner_name'] ?? ($oldProfile['owner_name'] ?? ''));
+        $nik = trim($_POST['nik'] ?? ($oldProfile['nik'] ?? ''));
+        $profession = trim($_POST['profession'] ?? ($oldProfile['profession'] ?? ''));
+        $phone = trim($_POST['phone'] ?? ($oldProfile['phone'] ?? ''));
+        $whatsapp = trim($_POST['whatsapp'] ?? ($oldProfile['whatsapp'] ?? ''));
+        $npwp = trim($_POST['npwp'] ?? ($oldProfile['npwp'] ?? ''));
+        $instagram = trim($_POST['instagram'] ?? ($oldProfile['instagram'] ?? ''));
+        $facebook = trim($_POST['facebook'] ?? ($oldProfile['facebook'] ?? ''));
+        $linkedin = trim($_POST['linkedin'] ?? ($oldProfile['linkedin'] ?? ''));
+        $tiktok = trim($_POST['tiktok'] ?? ($oldProfile['tiktok'] ?? ''));
+        $description = trim($_POST['description'] ?? ($oldProfile['description'] ?? ''));
+        $brandName = trim($_POST['brand_name'] ?? ($oldProfile['brand_name'] ?? ''));
+
+        // Primary location inputs from form
         $province = trim($_POST['province'] ?? '');
         $city = trim($_POST['city'] ?? '');
         $district = trim($_POST['district'] ?? '');
         $village = trim($_POST['village'] ?? '');
         $postalCode = trim($_POST['postal_code'] ?? '');
         $address = trim($_POST['address'] ?? '');
-        $addressDetail = trim($_POST['address_detail'] ?? '');
-        $description = trim($_POST['description'] ?? '');
+        $addressDetail = trim($_POST['address_detail'] ?? ($_POST['workplace_detail'] ?? ''));
 
-        // Fetch old profile
-        $stmtOld = db()->prepare('SELECT * FROM employer_profiles WHERE user_id = ? LIMIT 1');
-        $stmtOld->execute([$targetUserId]);
-        $oldProfile = $stmtOld->fetch() ?: [];
-        $brandName = trim($_POST['brand_name'] ?? ($oldProfile['brand_name'] ?? ''));
+        // Fallback from workplace or domicile fields if primary was omitted
+        if ($province === '') $province = trim($_POST['workplace_province'] ?? ($_POST['domicile_province'] ?? ''));
+        if ($city === '') $city = trim($_POST['workplace_city'] ?? ($_POST['domicile_city'] ?? ''));
+        if ($district === '') $district = trim($_POST['workplace_district'] ?? ($_POST['domicile_district'] ?? ''));
+        if ($village === '') $village = trim($_POST['workplace_village'] ?? ($_POST['domicile_village'] ?? ''));
+        if ($postalCode === '') $postalCode = trim($_POST['workplace_postal_code'] ?? ($_POST['domicile_postal_code'] ?? ''));
+        if ($address === '') $address = trim($_POST['workplace_address'] ?? ($_POST['domicile_address'] ?? ''));
 
-        $permitDoc = store_upload('permit_document', 'employer/' . $targetUserId, ['pdf', 'docx']);
+        // Fallbacks from existing profile database so data is NEVER wiped out
+        if ($province === '' && !empty($oldProfile['province'])) $province = $oldProfile['province'];
+        if ($city === '' && !empty($oldProfile['city'])) $city = $oldProfile['city'];
+        if ($district === '' && !empty($oldProfile['district'])) $district = $oldProfile['district'];
+        if ($village === '' && !empty($oldProfile['village'])) $village = $oldProfile['village'];
+        if ($postalCode === '' && !empty($oldProfile['postal_code'])) $postalCode = $oldProfile['postal_code'];
+        if ($address === '' && !empty($oldProfile['address'])) $address = $oldProfile['address'];
+        if ($addressDetail === '' && !empty($oldProfile['address_detail'])) $addressDetail = $oldProfile['address_detail'];
+
+        // Workplace & Domicile synchronization
+        $sameLoc = !empty($_POST['same_location_siapkerja']) || !empty($_POST['workplace_same_as_domicile']) ? 1 : 0;
+        if ($sameLoc) {
+            $domicileAddress = $address;
+            $domicileProvince = $province;
+            $domicileCity = $city;
+            $domicileDistrict = $district;
+            $domicileVillage = $village;
+            $domicilePostalCode = $postalCode;
+
+            $workplaceAddress = $address;
+            $workplaceProvince = $province;
+            $workplaceCity = $city;
+            $workplaceDistrict = $district;
+            $workplaceVillage = $village;
+            $workplacePostalCode = $postalCode;
+            $workplaceDetail = $addressDetail;
+        } else {
+            $workplaceAddress = $address;
+            $workplaceProvince = $province;
+            $workplaceCity = $city;
+            $workplaceDistrict = $district;
+            $workplaceVillage = $village;
+            $workplacePostalCode = $postalCode;
+            $workplaceDetail = $addressDetail;
+
+            $domicileAddress = trim($_POST['domicile_address'] ?? '') ?: ($oldProfile['domicile_address'] ?? $address);
+            $domicileProvince = trim($_POST['domicile_province'] ?? '') ?: ($oldProfile['domicile_province'] ?? $province);
+            $domicileCity = trim($_POST['domicile_city'] ?? '') ?: ($oldProfile['domicile_city'] ?? $city);
+            $domicileDistrict = trim($_POST['domicile_district'] ?? '') ?: ($oldProfile['domicile_district'] ?? $district);
+            $domicileVillage = trim($_POST['domicile_village'] ?? '') ?: ($oldProfile['domicile_village'] ?? $village);
+            $domicilePostalCode = trim($_POST['domicile_postal_code'] ?? '') ?: ($oldProfile['domicile_postal_code'] ?? $postalCode);
+        }
+
+        // Uploads
+        $permitDoc = store_upload('permit_document', 'employer/' . $targetUserId, ['pdf', 'docx', 'jpg', 'jpeg']);
         $workplacePhoto = store_upload('workplace_photo', 'employer/' . $targetUserId, ['png', 'jpg', 'jpeg']);
+        $businessLogo = store_upload('business_logo', 'employer/' . $targetUserId, ['png', 'jpg', 'jpeg']);
+
         $permitDoc = $permitDoc ?: (!empty($_POST['existing_permit_document']) ? trim($_POST['existing_permit_document']) : ($oldProfile['permit_document'] ?? $oldProfile['doc_permission'] ?? null));
         $workplacePhoto = $workplacePhoto ?: (!empty($_POST['existing_workplace_photo']) ? trim($_POST['existing_workplace_photo']) : ($oldProfile['workplace_photo'] ?? $oldProfile['doc_location_photo'] ?? null));
+        $businessLogo = $businessLogo ?: (!empty($_POST['existing_business_logo']) ? trim($_POST['existing_business_logo']) : ($oldProfile['business_logo'] ?? null));
+
+        $socList = [];
+        if ($instagram !== '') $socList[] = "Instagram: {$instagram}";
+        if ($facebook !== '') $socList[] = "Facebook: {$facebook}";
+        if ($linkedin !== '') $socList[] = "LinkedIn: {$linkedin}";
+        if ($tiktok !== '') $socList[] = "TikTok: {$tiktok}";
+        $socialMediaStr = implode(', ', $socList);
 
         $updateSql = <<<SQL
             UPDATE employer_profiles SET
                 owner_name = ?, nik = ?, profession = ?, phone = ?, whatsapp = ?, npwp = ?,
-                brand_name = ?,
-                instagram = ?, facebook = ?, linkedin = ?,
+                brand_name = ?, business_logo = ?,
+                instagram = ?, facebook = ?, linkedin = ?, tiktok = ?, social_media = ?,
                 province = ?, city = ?, district = ?, village = ?, postal_code = ?,
                 address = ?, address_detail = ?, description = ?,
+                domicile_address = ?, domicile_province = ?, domicile_city = ?, domicile_district = ?, domicile_village = ?, domicile_postal_code = ?, domicile_city_id = ?,
+                same_location_siapkerja = ?, workplace_same_as_domicile = ?,
+                workplace_address = ?, workplace_province = ?, workplace_city = ?, workplace_district = ?, workplace_village = ?, workplace_postal_code = ?, workplace_detail = ?,
                 permit_document = ?, doc_permission = ?, workplace_photo = ?, doc_location_photo = ?,
                 updated_at = CURRENT_TIMESTAMP
             WHERE user_id = ?
         SQL;
         db()->prepare($updateSql)->execute([
             $ownerName, $nik, $profession, $phone, $whatsapp, $npwp,
-            $brandName,
-            $instagram, $facebook, $linkedin,
+            $brandName, $businessLogo,
+            $instagram, $facebook, $linkedin, $tiktok, $socialMediaStr,
             $province, $city, $district, $village, $postalCode,
             $address, $addressDetail, $description,
+            $domicileAddress, $domicileProvince, $domicileCity, $domicileDistrict, $domicileVillage, $domicilePostalCode, $domicileCity ?: $city,
+            $sameLoc, $sameLoc,
+            $workplaceAddress, $workplaceProvince, $workplaceCity, $workplaceDistrict, $workplaceVillage, $workplacePostalCode, $workplaceDetail,
             $permitDoc, $permitDoc, $workplacePhoto, $workplacePhoto,
             $targetUserId
         ]);
@@ -346,7 +418,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
             'owner_name' => $ownerName, 'nik' => $nik, 'profession' => $profession,
             'phone' => $phone, 'whatsapp' => $whatsapp, 'npwp' => $npwp, 'province' => $province,
             'city' => $city, 'district' => $district, 'village' => $village, 'postal_code' => $postalCode,
-            'address' => $address, 'address_detail' => $addressDetail, 'description' => $description
+            'address' => $address, 'address_detail' => $addressDetail, 'description' => $description,
+            'brand_name' => $brandName, 'tiktok' => $tiktok
         ];
         $newHash = calculate_employer_consent_hash($newProfileData);
 
@@ -357,14 +430,33 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (isset($_POST['admin_act
             notify_user($targetUserId, 'Persetujuan Data Diperlukan (Jalur Dinas)', 'Petugas Dinas telah menyiapkan data perbaikan profil Anda. Silakan tinjau dan berikan persetujuan (Consent) di Dashboard Anda.', 'warning');
             flash('success', 'Data profil berhasil diperbarui dan Permintaan Persetujuan (Consent) telah dikirim ke akun pemohon.');
         } else {
-            if (!empty($oldProfile['consent_data_hash']) && $oldProfile['consent_data_hash'] !== $newHash) {
+            if (!empty($oldProfile['consent_data_hash']) && $oldProfile['consent_data_hash'] !== $newHash && ($oldProfile['manual_review_status'] ?? '') === 'CONSENT_GIVEN') {
                 db()->prepare('UPDATE employer_profiles SET manual_review_status = "INVALID", consent_agreed = 0, consent_data_hash = NULL WHERE user_id = ?')->execute([$targetUserId]);
                 record_audit_log('employer', $targetUserId, 'CONSENT_INVALIDATED', "Data profil diubah oleh Petugas Dinas setelah persetujuan pemohon. Consent sebelumnya otomatis INVALID.", $user['name'], $user['role'] ?? 'admin', true);
                 flash('warning', 'Data profil berhasil diperbarui. PERINGATAN: Karena data berubah, persetujuan (consent) pemohon sebelumnya menjadi INVALID. Silakan klik Kirim Permintaan Consent ulang.');
             } else {
                 record_audit_log('employer', $targetUserId, 'ADMIN_PROFILE_EDIT', "Petugas Dinas memperbarui data profil pemohon.", $user['name'], $user['role'] ?? 'admin', true);
-                flash('success', 'Data profil berhasil disimpan oleh Petugas Dinas.');
+                flash('success', 'Perubahan data profil berhasil disimpan.');
             }
+        }
+
+        if (!empty($_POST['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => true,
+                'message' => 'Perubahan data profil berhasil disimpan.',
+                'data' => [
+                    'province' => $province,
+                    'city' => $city,
+                    'district' => $district,
+                    'village' => $village,
+                    'postal_code' => $postalCode,
+                    'address' => $address,
+                    'address_detail' => $addressDetail,
+                    'brand_name' => $brandName
+                ]
+            ]);
+            exit;
         }
 
         redirect($redirectUrl);
@@ -962,15 +1054,22 @@ if ($view === 'directory_individual') {
 // --- FETCH DATA FOR VERIFIKASI PEMBERI KERJA ---
 if ($view === 'verifikasi_employer') {
     ensure_profile_change_schema();
+    $condOnlineReverifSql = '(ep.extension_status = "REQUESTED" OR ep.extension_requested = 1 OR ep.verification_status = "REVERIFICATION_PENDING" OR (ep.last_activated_at IS NOT NULL AND ep.verification_status = "PENDING"))';
+    $condOfflineReverifSql = '(ep.last_activated_at IS NOT NULL AND (ep.verification_status IN ("TRANSITION_LIMITED", "FULL_DISABLED") OR (ep.active_until IS NOT NULL AND ep.active_until <= DATE_ADD(NOW(), INTERVAL 7 DAY))) AND COALESCE(ep.extension_status, "") != "REQUESTED")';
+    $condPcrPendingSql = '((SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") > 0)';
+
     $query = <<<SQL
         SELECT u.id as user_id, u.name, u.email, u.created_at,
                ep.id as profile_id, ep.owner_name, ep.nik, ep.profession, ep.phone, ep.whatsapp, ep.npwp,
                ep.province, ep.city, ep.district, ep.village, ep.postal_code, ep.address, ep.address_detail,
                ep.latitude, ep.longitude, ep.description, ep.brand_name, ep.business_logo, ep.verified, ep.verification_status, ep.verifier_notes,
-               ep.verification_checklist, ep.assigned_to, ep.assigned_at, ep.assignment_reason, ep.rejection_count,
+               ep.verification_checklist, ep.assigned_to, ep.assigned_at, ep.assignment_reason, ep.rejection_count, ep.rejection_count AS revision_count,
                ep.manual_review_status, ep.consent_data_hash, ep.consent_given_at, ep.officer_statement, ep.officer_name, ep.entity_type,
-               ep.doc_permission, ep.permit_document, ep.doc_location_photo, ep.workplace_photo, ep.social_media, ep.instagram, ep.linkedin, ep.facebook, ep.domicile_city_id,
+               ep.doc_permission, ep.permit_document, ep.doc_location_photo, ep.workplace_photo, ep.social_media, ep.instagram, ep.linkedin, ep.facebook, ep.tiktok, ep.domicile_city_id,
                ep.verification_method, ep.location_check_result, ep.updated_at,
+               ep.extension_status, ep.extension_requested, ep.last_activated_at, ep.active_until,
+               ep.same_location_siapkerja, ep.domicile_address, ep.domicile_province, ep.domicile_city, ep.domicile_district, ep.domicile_village, ep.domicile_postal_code,
+               ep.workplace_same_as_domicile, ep.workplace_address, ep.workplace_province, ep.workplace_city, ep.workplace_district, ep.workplace_village, ep.workplace_postal_code, ep.workplace_detail,
                (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') AS pending_profile_changes,
                (SELECT id FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING' ORDER BY id DESC LIMIT 1) AS pending_pcr_id
     SQL;
@@ -1024,13 +1123,13 @@ if ($view === 'verifikasi_employer') {
     $tabFilter = '';
     $tabParams = [];
     if ($tab === 'process') {
-        $tabFilter = ' AND (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status = "REVERIFICATION_PENDING" OR ep.extension_status = "REQUESTED" OR ep.extension_requested = 1 OR ep.verification_status IS NULL OR (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") > 0)';
+        $tabFilter = " AND (ep.verification_status = 'PENDING' OR ep.verification_status = 'NOT_SUBMITTED' OR ep.verification_status IS NULL OR {$condOnlineReverifSql} OR {$condOfflineReverifSql} OR {$condPcrPendingSql})";
     } elseif ($tab === 'approved') {
-        $tabFilter = ' AND (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED") AND COALESCE(ep.extension_status, "") != "REQUESTED" AND (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = "PENDING") = 0';
+        $tabFilter = " AND (ep.verification_status = 'APPROVED' OR ep.verification_status = 'ACTIVE_VERIFIED') AND NOT {$condOnlineReverifSql} AND NOT {$condPcrPendingSql}";
     } elseif ($tab === 'revision') {
-        $tabFilter = ' AND ep.verification_status = "NEEDS_REVISION"';
+        $tabFilter = " AND ep.verification_status = 'NEEDS_REVISION'";
     } elseif ($tab === 'rejected') {
-        $tabFilter = ' AND (ep.verification_status = "REJECTED" OR ep.verification_status = "FULL_DISABLED")';
+        $tabFilter = " AND ep.verification_status = 'REJECTED'";
     }
 
     // Scope Admin Dinas Filter (exact domicile_city_id match)
@@ -1063,10 +1162,10 @@ if ($view === 'verifikasi_employer') {
     $statusCountSql = <<<SQL
         SELECT
             COUNT(*) AS all_count,
-            SUM(CASE WHEN (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status = "REVERIFICATION_PENDING" OR ep.extension_status = "REQUESTED" OR ep.extension_requested = 1 OR ep.verification_status IS NULL OR (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') > 0) THEN 1 ELSE 0 END) AS process_count,
+            SUM(CASE WHEN (ep.verification_status = "PENDING" OR ep.verification_status = "NOT_SUBMITTED" OR ep.verification_status IS NULL OR {$condOnlineReverifSql} OR {$condOfflineReverifSql} OR {$condPcrPendingSql}) THEN 1 ELSE 0 END) AS process_count,
             SUM(CASE WHEN ep.verification_status = "NEEDS_REVISION" THEN 1 ELSE 0 END) AS revision_count,
-            SUM(CASE WHEN (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED") AND COALESCE(ep.extension_status, "") != "REQUESTED" AND (SELECT COUNT(*) FROM profile_change_requests pcr WHERE pcr.user_id = u.id AND pcr.status = 'PENDING') = 0 THEN 1 ELSE 0 END) AS approved_count,
-            SUM(CASE WHEN (ep.verification_status = "REJECTED" OR ep.verification_status = "FULL_DISABLED") THEN 1 ELSE 0 END) AS rejected_count
+            SUM(CASE WHEN (ep.verification_status = "APPROVED" OR ep.verification_status = "ACTIVE_VERIFIED") AND NOT {$condOnlineReverifSql} AND NOT {$condPcrPendingSql} THEN 1 ELSE 0 END) AS approved_count,
+            SUM(CASE WHEN ep.verification_status = "REJECTED" THEN 1 ELSE 0 END) AS rejected_count
         {$baseFilter}
         {$entityFilter}
     SQL;
@@ -1352,13 +1451,14 @@ $statTotalSeekers = (int) db()->query('SELECT COUNT(*) FROM users WHERE role = "
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/app.css?v=admin-std-1">
+    <link rel="stylesheet" href="assets/pki-form.css?v=admin-std-1">
     <style>
         .detail-header-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 16px;
         }
         .detail-grid-container {
@@ -3363,7 +3463,1353 @@ document.addEventListener('click', function(e) {
     "suryati", "suryono", "susana margretha thei", "susi marini", "syamsul bahri", "syofian", "titiek suyatni wantogia", "vernny moriane sjultje soputan", "victor yuditara", "waode rosliani",
     "warliah", "widia apriyanti.S.STP.MM", "yakobus alex yocom", "yudha setyo nugroho", "zainal guzali"
                 ];
+
+                if (!function_exists('render_online_reverification_comparison')) {
+                    function render_online_reverification_comparison(array $selectedEmployer): void
+                    {
+                        $prevSnapshot = null;
+                        if (!empty($selectedEmployer['user_id'])) {
+                            $stmtPv = db()->prepare("SELECT snapshot_data FROM profile_versions WHERE user_id = ? AND change_summary LIKE '%Sebelum Verifikasi Ulang%' ORDER BY id DESC LIMIT 1");
+                            $stmtPv->execute([$selectedEmployer['user_id']]);
+                            $pvRow = $stmtPv->fetch();
+                            if ($pvRow && !empty($pvRow['snapshot_data'])) {
+                                $prevSnapshot = json_decode($pvRow['snapshot_data'], true);
+                            }
+                            if (!$prevSnapshot) {
+                                $stmtPv2 = db()->prepare("SELECT snapshot_data FROM profile_versions WHERE user_id = ? ORDER BY id DESC LIMIT 1");
+                                $stmtPv2->execute([$selectedEmployer['user_id']]);
+                                $pvRow2 = $stmtPv2->fetch();
+                                if ($pvRow2 && !empty($pvRow2['snapshot_data'])) {
+                                    $prevSnapshot = json_decode($pvRow2['snapshot_data'], true);
+                                }
+                            }
+                        }
+                        if (!$prevSnapshot) {
+                            $prevSnapshot = $selectedEmployer;
+                        }
+
+                        $fieldNamesMap = [
+                            'brand_name' => 'Nama Brand Usaha',
+                            'description' => 'Deskripsi Tempat Usaha',
+                            'same_location_siapkerja' => 'Same location siapkerja',
+                            'province' => 'Provinsi',
+                            'city' => 'Kabupaten / Kota',
+                            'domicile_city_id' => 'Domicile city id',
+                            'district' => 'Kecamatan',
+                            'village' => 'Kelurahan / Desa',
+                            'postal_code' => 'Kode Pos',
+                            'address' => 'Alamat Usaha',
+                            'address_detail' => 'Detail Patokan Alamat',
+                            'latitude' => 'Latitude',
+                            'longitude' => 'Longitude',
+                            'whatsapp' => 'Nomor WhatsApp',
+                            'profession' => 'Jenis Profesi / Usaha Individu',
+                            'npwp' => 'NPWP',
+                            'permit_document' => 'Dokumen Perizinan Usaha',
+                            'workplace_photo' => 'Foto Tempat Usaha / Lokasi',
+                            'business_logo' => 'Logo Usaha',
+                            'instagram' => 'Instagram',
+                            'linkedin' => 'LinkedIn',
+                            'facebook' => 'Facebook',
+                            'tiktok' => 'TikTok'
+                        ];
+                        ?>
+                        <div class="section-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px; margin-bottom:20px;">
+                            <div style="font-size:14.5px; font-weight:800; color:#0f172a; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                                <i class="fa-solid fa-table-columns" style="color:#0284c7;"></i> Perbandingan Data Profil (Saat Ini vs Verifikasi Ulang):
+                            </div>
+                            <div style="border:1px solid #e2e8f0; border-radius:10px; overflow:hidden;">
+                                <table style="width:100%; border-collapse:collapse; font-size:12.5px; text-align:left;">
+                                    <thead>
+                                        <tr style="background:#f1f5f9; color:#475569; font-weight:700; border-bottom:1px solid #cbd5e1;">
+                                            <th style="padding:10px 14px; width:28%;">Field / Data</th>
+                                            <th style="padding:10px 14px; width:36%;">Data Profil Saat Ini</th>
+                                            <th style="padding:10px 14px; width:36%; background:#ecfdf5; color:#065f46;">Verifikasi Ulang Profil</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php
+                                        $renderedCount = 0;
+                                        foreach ($fieldNamesMap as $fKey => $fLabel):
+                                            $renderedCount++;
+                                            $fOldVal = $prevSnapshot[$fKey] ?? ($selectedEmployer[$fKey] ?? '-');
+                                            $fNewVal = $selectedEmployer[$fKey] ?? '-';
+
+                                            if ($fKey === 'permit_document') {
+                                                $fOldVal = $prevSnapshot['permit_document'] ?? ($prevSnapshot['doc_permission'] ?? '-');
+                                                $fNewVal = $selectedEmployer['permit_document'] ?: ($selectedEmployer['doc_permission'] ?: '-');
+                                            } elseif ($fKey === 'workplace_photo') {
+                                                $fOldVal = $prevSnapshot['workplace_photo'] ?? ($prevSnapshot['doc_location_photo'] ?? '-');
+                                                $fNewVal = $selectedEmployer['workplace_photo'] ?: ($selectedEmployer['doc_location_photo'] ?: '-');
+                                            } elseif ($fKey === 'same_location_siapkerja') {
+                                                $fOldVal = !empty($fOldVal) ? '1' : '0';
+                                                $fNewVal = !empty($fNewVal) ? '1' : '0';
+                                            }
+
+                                            $isDocField = in_array($fKey, ['permit_document', 'workplace_photo', 'business_logo'], true);
+                                        ?>
+                                            <tr style="border-bottom:1px solid #f1f5f9; background:<?php echo $renderedCount % 2 === 0 ? '#ffffff' : '#fafafa'; ?>;">
+                                                <td style="padding:10px 14px; font-weight:700; color:#334155; vertical-align:top;">
+                                                    <?php echo e($fLabel); ?>
+                                                </td>
+                                                <td style="padding:10px 14px; color:#64748b; vertical-align:top;">
+                                                    <?php if ($isDocField && !empty($fOldVal) && $fOldVal !== '-'): ?>
+                                                        <a href="<?php echo e($fOldVal); ?>" target="_blank" style="color:#0284c7; text-decoration:none; font-weight:600; display:inline-flex; align-items:center; gap:5px;">
+                                                            <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:11px;"></i> Lihat Berkas Lama
+                                                        </a>
+                                                    <?php else: ?>
+                                                        <?php echo e((string)($fOldVal !== '' ? $fOldVal : '-')); ?>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td style="padding:10px 14px; background:#f0fdf4; color:#15803d; font-weight:700; vertical-align:top; border-left:1px solid #dcfce7;">
+                                                    <?php if ($isDocField && !empty($fNewVal) && $fNewVal !== '-'): ?>
+                                                        <div style="display:flex; align-items:center; gap:10px;">
+                                                            <a href="<?php echo e($fNewVal); ?>" target="_blank" style="color:#15803d; text-decoration:none; font-weight:700; display:inline-flex; align-items:center; gap:6px; background:#dcfce7; padding:4px 10px; border-radius:6px; border:1px solid #bbf7d0;">
+                                                                <i class="fa-solid fa-file-arrow-down"></i> Buka Berkas Baru
+                                                            </a>
+                                                            <?php if (in_array(strtolower(pathinfo((string)$fNewVal, PATHINFO_EXTENSION)), ['jpg','jpeg','png','webp'], true)): ?>
+                                                                <img src="<?php echo e($fNewVal); ?>" alt="Preview" style="max-height:40px; border-radius:4px; border:1px solid #bbf7d0;">
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    <?php else: ?>
+                                                        <?php echo e((string)($fNewVal !== '' ? $fNewVal : '-')); ?>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <?php
+                    }
+                }
+
+                if (!function_exists('render_admin_employer_profile_form')) {
+    function render_admin_employer_profile_form(array $selectedEmployer, string $mode = 'dinas_revision_3'): void
+    {
+        $isOfflineReverif = ($mode === 'offline_reverif');
+        $ownerName = $selectedEmployer['owner_name'] ?: ($selectedEmployer['name'] ?? '');
+        $brandName = $selectedEmployer['brand_name'] ?: ($ownerName ? 'Usaha ' . $ownerName : '');
+        $nik = $selectedEmployer['nik'] ?? '';
+        $phone = $selectedEmployer['phone'] ?? '';
+        $whatsapp = $selectedEmployer['whatsapp'] ?: $phone;
+        $profession = $selectedEmployer['profession'] ?? '';
+        $npwp = $selectedEmployer['npwp'] ?? '';
+        $desc = $selectedEmployer['description'] ?? '';
+
+        $sameLoc = !empty($selectedEmployer['same_location_siapkerja']) || !empty($selectedEmployer['workplace_same_as_domicile']);
+        $domicileData = [
+            'province' => $selectedEmployer['domicile_province'] ?: ($selectedEmployer['province'] ?: 'Bali'),
+            'city' => $selectedEmployer['domicile_city'] ?: ($selectedEmployer['city'] ?: ($selectedEmployer['domicile_city_id'] ?? 'Kabupaten Gianyar')),
+            'district' => $selectedEmployer['domicile_district'] ?: ($selectedEmployer['district'] ?: 'Ubud'),
+            'village' => $selectedEmployer['domicile_village'] ?: ($selectedEmployer['village'] ?: 'Petulu'),
+            'postal_code' => $selectedEmployer['domicile_postal_code'] ?: ($selectedEmployer['postal_code'] ?: '80571'),
+            'address' => $selectedEmployer['domicile_address'] ?: ($selectedEmployer['address'] ?: 'tes'),
+        ];
+        $infoIconSvg = '<svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
+
+        // Unified single location
+        $province = $selectedEmployer['province'] ?: ($selectedEmployer['workplace_province'] ?: ($selectedEmployer['domicile_province'] ?? ''));
+        $city = $selectedEmployer['city'] ?: ($selectedEmployer['workplace_city'] ?: ($selectedEmployer['domicile_city'] ?? ''));
+        $district = $selectedEmployer['district'] ?: ($selectedEmployer['workplace_district'] ?: ($selectedEmployer['domicile_district'] ?? ''));
+        $village = $selectedEmployer['village'] ?: ($selectedEmployer['workplace_village'] ?: ($selectedEmployer['domicile_village'] ?? ''));
+        $postalCode = $selectedEmployer['postal_code'] ?: ($selectedEmployer['workplace_postal_code'] ?: ($selectedEmployer['domicile_postal_code'] ?? ''));
+        $address = $selectedEmployer['address'] ?: ($selectedEmployer['workplace_address'] ?: ($selectedEmployer['domicile_address'] ?? ''));
+        $addressDetail = $selectedEmployer['address_detail'] ?: ($selectedEmployer['workplace_detail'] ?? '');
+
+        // Computed display text for hierarchical location picker
+        $locParts = array_filter([$village, $district, $city, $province]);
+        $locDisplayText = !empty($locParts) ? implode(', ', $locParts) : '';
+
+        // Documents
+        $permitDoc = $selectedEmployer['permit_document'] ?: ($selectedEmployer['doc_permission'] ?: '');
+        $workPhoto = $selectedEmployer['workplace_photo'] ?: ($selectedEmployer['doc_location_photo'] ?: '');
+        $bizLogo = $selectedEmployer['business_logo'] ?: ($selectedEmployer['brand_logo'] ?? '');
+
+        // Social Media
+        $ig = $selectedEmployer['instagram'] ?? '';
+        $li = $selectedEmployer['linkedin'] ?? '';
+        $fb = $selectedEmployer['facebook'] ?? '';
+        $tt = $selectedEmployer['tiktok'] ?? '';
+
+        $existingSocials = [];
+        if (!empty($li)) $existingSocials[] = ['platform' => 'LinkedIn', 'handle' => $li];
+        if (!empty($fb)) $existingSocials[] = ['platform' => 'Facebook', 'handle' => $fb];
+        if (!empty($ig)) $existingSocials[] = ['platform' => 'Instagram', 'handle' => $ig];
+        if (!empty($tt)) $existingSocials[] = ['platform' => 'TikTok', 'handle' => $tt];
+        if (empty($existingSocials)) {
+            $existingSocials[] = ['platform' => 'LinkedIn', 'handle' => ''];
+        }
+
+        $professionGroups = function_exists('individual_business_types') ? individual_business_types() : [
+            'Kesehatan & Terapi' => ['Praktik Dokter Umum', 'Praktik Dokter Gigi', 'Praktik Bidan', 'Praktik Keperawatan Mandiri', 'Praktik Psikolog', 'Layanan Fisioterapi', 'Praktik Terapis Wicara', 'Layanan Akupunktur', 'Layanan Terapi Tumbuh Kembang Anak', 'Layanan Konsultasi Gizi/Nutrisionis'],
+            'Hukum, Keuangan & Jasa Profesional' => ['Praktik Notaris / PPAT', 'Praktik Advokat/Pengacara / Konsultan Hukum', 'Konsultan Pajak', 'Jasa Akuntansi', 'Konsultan Manajemen', 'Jasa Administrasi dan Pengurusan Dokumen', 'Jasa Penerjemah'],
+            'Teknik, Arsitektur & Desain' => ['Praktik Arsitek', 'Jasa Desain Interior', 'Jasa Drafter', 'Jasa Perbaikan/Bengkel Teknik (Instalasi Listrik & Elektronik)'],
+            'Pendidikan & Pelatihan' => ['Bimbingan Belajar', 'Kursus Bahasa', 'Kursus Musik', 'Kursus Tari'],
+            'Jasa Acara, Kreatif & Hewan Peliharaan' => ['Studio Foto dan Video', 'Jasa Fotografi/Videografi', 'Jasa Dekorasi Acara', 'Jasa Penjahit/Atelier', 'Jasa Grooming Hewan', 'Jasa Desain Grafis', 'Jasa Florist/Dekorasi Bunga'],
+            'Digital, Media & Konten' => ['Konten Kreator/Digital Creator', 'Jasa Editing Video / Transfer Video', 'Jasa Live Streaming / Host Live Streaming', 'Studio Podcast'],
+            'Kecantikan & Perawatan Pribadi' => ['Barbershop', 'Makeup Artist'],
+            'Jasa Rumah Tangga, Pemeliharaan & Perbaikan' => ['Jasa Laundry', 'Jasa Servis AC']
+        ];
+        $flatProfessions = [];
+        foreach ($professionGroups as $groupItems) {
+            foreach ($groupItems as $item) {
+                $flatProfessions[] = $item;
+            }
+        }
+        ?>
+        <form id="adm_profile_form_<?php echo $mode; ?>" method="post" action="admin.php?view=verifikasi_employer&detail_id=<?php echo $selectedEmployer['user_id']; ?>&profile_id=<?php echo $selectedEmployer['id']; ?>" enctype="multipart/form-data" style="margin-top:16px;">
+            <input type="hidden" name="admin_action" value="manual_dinas_edit">
+            <input type="hidden" name="user_id" value="<?php echo $selectedEmployer['user_id']; ?>">
+
+            <!-- Hidden duplicate fields for comprehensive backend compatibility -->
+            <input type="hidden" name="workplace_province" id="adm_wp_prov_<?php echo $mode; ?>" value="<?php echo e($province); ?>">
+            <input type="hidden" name="workplace_city" id="adm_wp_city_<?php echo $mode; ?>" value="<?php echo e($city); ?>">
+            <input type="hidden" name="workplace_district" id="adm_wp_dist_<?php echo $mode; ?>" value="<?php echo e($district); ?>">
+            <input type="hidden" name="workplace_village" id="adm_wp_vill_<?php echo $mode; ?>" value="<?php echo e($village); ?>">
+            <input type="hidden" name="workplace_postal_code" id="adm_wp_post_<?php echo $mode; ?>" value="<?php echo e($postalCode); ?>">
+            <input type="hidden" name="workplace_address" id="adm_wp_addr_<?php echo $mode; ?>" value="<?php echo e($address); ?>">
+            <input type="hidden" name="workplace_detail" id="adm_wp_detail_<?php echo $mode; ?>" value="<?php echo e($addressDetail); ?>">
+            <input type="hidden" name="domicile_province" id="adm_dp_prov_<?php echo $mode; ?>" value="<?php echo e($province); ?>">
+            <input type="hidden" name="domicile_city" id="adm_dp_city_<?php echo $mode; ?>" value="<?php echo e($city); ?>">
+            <input type="hidden" name="domicile_district" id="adm_dp_dist_<?php echo $mode; ?>" value="<?php echo e($district); ?>">
+            <input type="hidden" name="domicile_village" id="adm_dp_vill_<?php echo $mode; ?>" value="<?php echo e($village); ?>">
+            <input type="hidden" name="domicile_postal_code" id="adm_dp_post_<?php echo $mode; ?>" value="<?php echo e($postalCode); ?>">
+            <input type="hidden" name="domicile_address" id="adm_dp_addr_<?php echo $mode; ?>" value="<?php echo e($address); ?>">
+
+            <!-- 1. IDENTITAS PEMBERI KERJA INDIVIDU (LANGKAH 1) -->
+            <div style="font-size:12.5px; font-weight:800; color:#0369a1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:14px; padding-bottom:6px; border-bottom:1.5px solid #e0f2fe; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-user"></i> 1. Identitas Pemberi Kerja Individu
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+                <div>
+                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                        Nama Pemberi Kerja <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input type="text" name="owner_name" value="<?php echo e($ownerName); ?>" required placeholder="Masukkan nama lengkap" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
+                    <div style="font-size:11px; color:#64748b; margin-top:4px;">Terisi otomatis dari akun SIAPKerja.</div>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                        NIK (16 Digit) <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input type="text" name="nik" id="admin_form_nik_<?php echo $mode; ?>" value="<?php echo e($nik); ?>" required maxlength="16" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="Masukkan 16 digit NIK" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
+                    <div style="font-size:11px; color:#64748b; margin-top:4px;">Terisi otomatis dari akun SIAPKerja.</div>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                        Nomor Telepon Aktif <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input type="text" name="phone" id="admin_form_phone_<?php echo $mode; ?>" value="<?php echo e($phone); ?>" required maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
+                    <div style="font-size:11px; color:#64748b; margin-top:4px;">Terisi otomatis dari akun SIAPKerja.</div>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                        Jenis Usaha Individu <span style="color:#ef4444;">*</span>
+                        <span class="admin-tooltip" tabindex="0">
+                            <i class="fa-solid fa-circle-info" style="font-size:12px; color:#0284c7; cursor:pointer;"></i>
+                            <span class="admin-tooltip-text">Pilih jenis usaha perorangan yang dijalankan pemohon.</span>
+                        </span>
+                    </label>
+                    <select name="profession" id="adm_select_profession_<?php echo $mode; ?>" onchange="adminUpdatePermitDocHelper(this.value, '<?php echo $mode; ?>')" required style="width:100%; height:40px; padding:8px 12px; font-size:13px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
+                        <option value="">Pilih Jenis Usaha Individu</option>
+                        <?php foreach ($professionGroups as $grp => $items): ?>
+                            <optgroup label="<?php echo e($grp); ?>">
+                                <?php foreach ($items as $item): ?>
+                                    <option value="<?php echo e($item); ?>" <?php echo ($profession === $item) ? 'selected' : ''; ?>><?php echo e($item); ?></option>
+                                <?php endforeach; ?>
+                            </optgroup>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="font-size:11px; color:#64748b; margin-top:4px;">Pilih jenis usaha perorangan yang Anda jalankan.</div>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                        Nomor WhatsApp <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input type="text" name="whatsapp" id="admin_form_wa_<?php echo $mode; ?>" value="<?php echo e($whatsapp); ?>" required maxlength="15" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="08xxxxxxxxxx" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
+                    <div style="font-size:11px; color:#64748b; margin-top:4px;">Gunakan nomor WhatsApp aktif.</div>
+                    <div style="margin-top:6px;">
+                        <label style="font-size:12px; font-weight:500; color:#334155; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" onchange="if(this.checked){ const p=document.getElementById('admin_form_phone_<?php echo $mode; ?>'); const w=document.getElementById('admin_form_wa_<?php echo $mode; ?>'); if(p&&w) w.value=p.value; }" style="width:14px; height:14px; accent-color:#0284c7; cursor:pointer;" <?php echo (!empty($phone) && $phone === $whatsapp) ? 'checked' : ''; ?>>
+                            <span>Samakan dengan Nomor Telepon Aktif</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                        Status &amp; Nomor NPWP <span style="color:#ef4444;">*</span>
+                        <span class="admin-tooltip" tabindex="0">
+                            <i class="fa-solid fa-circle-info" style="font-size:12px; color:#0284c7; cursor:pointer;"></i>
+                            <span class="admin-tooltip-text">Informasi: Untuk Wajib Pajak Orang Pribadi yang merupakan penduduk Indonesia, NIK digunakan sebagai NPWP.</span>
+                        </span>
+                    </label>
+                    <input type="text" name="npwp" id="admin_form_npwp_<?php echo $mode; ?>" value="<?php echo e($npwp ?: $nik); ?>" placeholder="Masukkan NPWP atau 16 digit NIK" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
+                    <div style="margin-top:6px;">
+                        <label style="font-size:12px; font-weight:500; color:#334155; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" name="npwp_status" value="1" onchange="if(this.checked){ const n=document.getElementById('admin_form_nik_<?php echo $mode; ?>'); const p=document.getElementById('admin_form_npwp_<?php echo $mode; ?>'); if(n&&p&&n.value) p.value=n.value; }" style="width:14px; height:14px; accent-color:#0284c7; cursor:pointer;" <?php echo (!empty($npwp) || !empty($selectedEmployer['npwp_status'])) ? 'checked' : ''; ?>>
+                            <span>Saya terdaftar sebagai Wajib Pajak Orang Pribadi dan menggunakan NIK sebagai NPWP</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. PROFIL USAHA / KEGIATAN & LOKASI (LANGKAH 2 - UNIFIED MATCHING FORM) -->
+            <div style="font-size:12.5px; font-weight:800; color:#0369a1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:14px; padding-bottom:6px; border-bottom:1.5px solid #e0f2fe; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-store"></i> 2. Profil Usaha / Kegiatan &amp; Lokasi
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                <div>
+                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                        Nama Brand Usaha <span style="color:#ef4444;">*</span>
+                        <span class="pki-tooltip" tabindex="0" role="tooltip">
+                            <?php echo $infoIconSvg; ?>
+                            <span class="tooltip-popover">Nama merek dagang, brand, atau nama komersial tempat usaha/kegiatan Anda.</span>
+                        </span>
+                    </label>
+                    <input type="text" name="brand_name" value="<?php echo e($brandName); ?>" required placeholder="Masukkan nama brand usaha" style="width:100%; height:40px; padding:8px 12px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
+                    <div style="font-size:11.5px; color:#64748b; margin-top:4px;">Nama brand atau merek usaha/kegiatan yang dijalankan.</div>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                        Logo Usaha
+                        <span class="pki-tooltip" tabindex="0" role="tooltip">
+                            <?php echo $infoIconSvg; ?>
+                            <span class="tooltip-popover">Unggah logo resmi atau foto identitas visual usaha/kegiatan Anda.</span>
+                        </span>
+                    </label>
+                    <div class="pki-upload-box" id="adm_box_business_logo_<?php echo $mode; ?>" onclick="adminTriggerUpload('business_logo_<?php echo $mode; ?>')">
+                        <span class="pki-upload-text <?php echo !empty($bizLogo) ? 'has-file' : ''; ?>" id="adm_text_business_logo_<?php echo $mode; ?>">
+                            <?php if (!empty($bizLogo)): ?>
+                                <i class="fa-solid fa-image" style="color:#0284c7; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($bizLogo)); ?></span>
+                            <?php else: ?>
+                                <span>Klik dan letakkan fil...</span>
+                            <?php endif; ?>
+                        </span>
+                        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                            <?php if (!empty($bizLogo)): ?>
+                                <a href="<?php echo e($bizLogo); ?>" target="_blank" class="pki-upload-clear-btn" title="Lihat Logo" onclick="event.stopPropagation();" style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:4px; background:#f1f5f9; color:#0284c7; text-decoration:none;">
+                                    <i class="fa-solid fa-eye" style="font-size:11px;"></i>
+                                </a>
+                                <button type="button" class="pki-upload-clear-btn" title="Hapus logo" onclick="adminClearUpload(event, 'business_logo_<?php echo $mode; ?>')">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            <?php endif; ?>
+                            <button type="button" class="pki-upload-btn" id="adm_btn_business_logo_<?php echo $mode; ?>"><?php echo !empty($bizLogo) ? 'Ganti' : 'Pilih File'; ?></button>
+                        </div>
+                    </div>
+                    <input type="file" name="business_logo" id="adm_input_business_logo_<?php echo $mode; ?>" accept=".png,.jpg,.jpeg" style="display:none;" onchange="adminHandleFileChange(this, 'business_logo_<?php echo $mode; ?>')">
+                    <input type="hidden" name="existing_business_logo" id="adm_existing_business_logo_<?php echo $mode; ?>" value="<?php echo e($bizLogo); ?>">
+                    <div style="font-size:11.5px; color:#64748b; margin-top:4px;">Ukuran maksimum 2 MB • Format PNG, JPG</div>
+                </div>
+                <div style="grid-column: span 2;">
+                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                        Deskripsi Singkat Usaha / Rekrutmen <span style="color:#ef4444;">*</span>
+                        <span class="pki-tooltip" tabindex="0" role="tooltip">
+                            <?php echo $infoIconSvg; ?>
+                            <span class="tooltip-popover">Jelaskan secara singkat usaha atau kegiatan yang dijalankan serta gambaran kebutuhan rekrutmen yang dilakukan.</span>
+                        </span>
+                    </label>
+                    <textarea name="description" required placeholder="Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen..." style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; min-height:75px; color:#0f172a; box-sizing:border-box; background:#ffffff; font-family:inherit; resize:vertical;"><?php echo e($desc); ?></textarea>
+                    <div style="font-size:11.5px; color:#64748b; margin-top:4px;">Deskripsikan secara singkat profil usaha, produk/layanan, atau kebutuhan rekrutmen.</div>
+                </div>
+            </div>
+
+            <!-- CHECKBOX SAMA DENGAN ALAMAT DOMISILI SIAPKERJA (IMAGE 2) -->
+            <div style="margin-bottom:14px;">
+                <label style="font-size:12.5px; font-weight:600; color:#334155; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" name="same_location_siapkerja" id="admin_same_location_<?php echo $mode; ?>" value="1" <?php echo $sameLoc ? 'checked' : ''; ?> style="accent-color:#0284c7; cursor:pointer;" onchange="adminHandleSameLocationToggle(this, '<?php echo $mode; ?>')">
+                    <span>Gunakan alamat domisili di SIAPKerja sebagai lokasi tempat usaha/kegiatan</span>
+                </label>
+            </div>
+
+            <!-- Hidden Location Fields -->
+            <input type="hidden" name="province" id="adm_hiddenProvince_<?php echo $mode; ?>" value="<?php echo e($province); ?>">
+            <input type="hidden" name="city" id="adm_hiddenCity_<?php echo $mode; ?>" value="<?php echo e($city); ?>">
+            <input type="hidden" name="district" id="adm_hiddenDistrict_<?php echo $mode; ?>" value="<?php echo e($district); ?>">
+            <input type="hidden" name="village" id="adm_hiddenVillage_<?php echo $mode; ?>" value="<?php echo e($village); ?>">
+            <input type="hidden" name="domicile_city_id" id="adm_hiddenDomicileCityId_<?php echo $mode; ?>" value="<?php echo e($city); ?>">
+            <input type="hidden" name="latitude" id="adm_inputLat_<?php echo $mode; ?>" value="<?php echo e($selectedEmployer['latitude'] ?? '-6.887844'); ?>">
+            <input type="hidden" name="longitude" id="adm_inputLng_<?php echo $mode; ?>" value="<?php echo e($selectedEmployer['longitude'] ?? '107.613038'); ?>">
+
+            <!-- Lokasi Tempat Usaha / Kegiatan (IMAGE 2) -->
+            <div class="pki-field" style="position:relative; margin-bottom:14px;">
+                <label class="pki-field-label" id="label_adm_location_<?php echo $mode; ?>" for="adm_hierarchicalLocationInput_<?php echo $mode; ?>" style="font-size:12.5px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                    Lokasi Tempat Usaha / Kegiatan <span class="req" style="color:#ef4444;">*</span>
+                    <span class="pki-tooltip" tabindex="0" role="tooltip">
+                        <?php echo $infoIconSvg; ?>
+                        <span class="tooltip-popover">Lokasi tempat Anda menjalankan usaha atau kegiatan sebagai Pemberi Kerja Individu.</span>
+                    </span>
+                </label>
+                <div id="adm_hierarchicalLocationInput_<?php echo $mode; ?>" class="hierarchical-loc-field" tabindex="0" onclick="adminToggleLocDropdown('<?php echo $mode; ?>')">
+                    <span id="adm_locDisplayValue_<?php echo $mode; ?>" class="<?php echo !empty($locDisplayText) ? '' : 'placeholder'; ?>"><?php echo !empty($locDisplayText) ? e($locDisplayText) : 'Pilih lokasi tempat usaha / kegiatan'; ?></span>
+                    <i id="adm_locCaret_<?php echo $mode; ?>" class="fa-solid fa-chevron-down" style="color:#64748b; font-size:12px;"></i>
+                </div>
+                <div id="adm_hierarchicalLocDropdown_<?php echo $mode; ?>" class="loc-dropdown-popup" style="display:none;">
+                    <div id="adm_locBreadcrumbs_<?php echo $mode; ?>" class="loc-breadcrumbs">
+                        <span class="crumb-btn active" data-level="1">Pilih Provinsi</span>
+                    </div>
+                    <div id="adm_locOptionsList_<?php echo $mode; ?>" class="loc-options-list"></div>
+                </div>
+                <div class="pki-field-helper" style="font-size:11.5px; color:#64748b; margin-top:4px;">Pilih lokasi secara berjenjang sampai Kelurahan/Desa.</div>
+            </div>
+
+            <!-- Alamat Lengkap Tempat Usaha (IMAGE 2) -->
+            <div class="pki-field" style="margin-bottom:14px;">
+                <label class="pki-field-label" id="label_adm_address_<?php echo $mode; ?>" for="adm_inputAddress_<?php echo $mode; ?>" style="font-size:12.5px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                    Alamat Lengkap Tempat Usaha <span class="req" style="color:#ef4444;">*</span>
+                </label>
+                <input type="text" name="address" id="adm_inputAddress_<?php echo $mode; ?>" value="<?php echo e($address); ?>" placeholder="Masukkan nama jalan, nomor bangunan, RT/RW, dan alamat lengkap..." oninput="adminUpdateMapPreview('<?php echo $mode; ?>')" style="width:100%; height:38px; padding:6px 12px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#0f172a; background:#ffffff;">
+                <div class="pki-field-helper" style="font-size:11.5px; color:#64748b; margin-top:4px;">Tuliskan alamat lengkap tempat usaha/kegiatan.</div>
+            </div>
+
+            <!-- Kode Pos (IMAGE 2) -->
+            <div class="pki-field" style="margin-bottom:14px;">
+                <label class="pki-field-label" id="label_adm_postal_code_<?php echo $mode; ?>" for="adm_selectPostalCode_<?php echo $mode; ?>" style="font-size:12.5px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                    Kode Pos <span class="req" style="color:#ef4444;">*</span>
+                </label>
+                <select name="postal_code" id="adm_selectPostalCode_<?php echo $mode; ?>" style="width:100%; height:38px; padding:6px 12px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#0f172a; background:#ffffff;">
+                    <option value="">Pilih kode pos</option>
+                    <?php if (!empty($postalCode)): ?>
+                        <option value="<?php echo e($postalCode); ?>" selected><?php echo e($postalCode); ?></option>
+                    <?php endif; ?>
+                </select>
+                <div class="pki-field-helper" style="font-size:11.5px; color:#64748b; margin-top:4px;">Pilihan kode pos mengikuti lokasi yang dipilih.</div>
+            </div>
+
+            <!-- Detail Alamat / Patokan (Opsional) (IMAGE 2) -->
+            <div class="pki-field" style="margin-bottom:14px;">
+                <label class="pki-field-label" id="label_adm_address_detail_<?php echo $mode; ?>" for="adm_inputAddressDetail_<?php echo $mode; ?>" style="font-size:12.5px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                    Detail Alamat / Patokan (Opsional)
+                    <span class="pki-tooltip" tabindex="0" role="tooltip">
+                        <?php echo $infoIconSvg; ?>
+                        <span class="tooltip-popover">Tambahkan informasi yang membantu mengenali lokasi, seperti nomor bangunan, blok, lantai, atau patokan terdekat.</span>
+                    </span>
+                </label>
+                <input type="text" name="address_detail" id="adm_inputAddressDetail_<?php echo $mode; ?>" value="<?php echo e($addressDetail); ?>" placeholder="Contoh: Ruko lantai 2, sebelah Kantor Kelurahan" style="width:100%; height:38px; padding:6px 12px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#0f172a; background:#ffffff;">
+                <div class="pki-field-helper" style="font-size:11.5px; color:#64748b; margin-top:4px;">Opsional. Tambahkan informasi yang membantu mengenali lokasi.</div>
+            </div>
+
+            <!-- Peta Lokasi (IMAGE 2) -->
+            <div class="pki-field" style="margin-bottom:20px;">
+                <label class="pki-field-label" style="font-size:12.5px; font-weight:700; color:#1e293b; display:block; margin-bottom:6px;">Peta Lokasi</label>
+                <div id="adm_mapContainer_<?php echo $mode; ?>" class="pki-map-container" style="height:190px; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; position:relative; background:#f8fafc;">
+                    <div id="adm_mapPlaceholder_<?php echo $mode; ?>" class="pki-map-placeholder <?php echo (!empty($address) || !empty($city)) ? 'is-hidden' : ''; ?>" style="<?php echo (!empty($address) || !empty($city)) ? 'display:none;' : 'display:flex;'; ?> flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:20px;">
+                        <div style="font-size:26px; margin-bottom:4px;">🗺</div>
+                        <div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:2px;">Pratinjau peta belum tersedia</div>
+                        <div style="font-size:11.5px; color:#64748b; max-width:340px; line-height:1.4;">Lengkapi lokasi dan alamat terlebih dahulu.</div>
+                    </div>
+                    <div id="adm_googleMapWrapper_<?php echo $mode; ?>" class="pki-map-wrapper <?php echo (!empty($address) || !empty($city)) ? 'is-visible' : ''; ?>" style="<?php echo (!empty($address) || !empty($city)) ? 'display:block;' : 'display:none;'; ?> width:100%; height:100%;">
+                        <iframe id="adm_gmapIframe_<?php echo $mode; ?>" width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" src="<?php echo (!empty($address) || !empty($city)) ? 'https://maps.google.com/maps?q=' . urlencode(trim(($address ? $address . ', ' : '') . ($village ? $village . ', ' : '') . ($district ? $district . ', ' : '') . ($city ? $city . ', ' : '') . $province)) . '&output=embed' : 'about:blank'; ?>"></iframe>
+                    </div>
+                </div>
+                <div class="pki-field-helper" style="font-size:11.5px; color:#64748b; margin-top:6px;">Peta muncul otomatis setelah lokasi dan alamat lengkap tersedia.</div>
+            </div>
+
+            <!-- 3. DOKUMEN & BUKTI TEMPAT USAHA (IMAGE 1) -->
+            <div class="section-title" style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                3. DOKUMEN &amp; BUKTI TEMPAT USAHA
+            </div>
+            <div class="pki-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+                <!-- Dokumen Perizinan Usaha (IMAGE 1) -->
+                <div class="pki-field">
+                    <label class="pki-field-label" style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                        Dokumen Perizinan Usaha <span class="req" style="color:#ef4444;">*</span>
+                        <span class="pki-tooltip" tabindex="0" role="tooltip">
+                            <?php echo $infoIconSvg; ?>
+                            <span class="tooltip-popover">Dokumen yang diunggah harus sesuai dengan Jenis Usaha Individu yang dipilih. Format PDF/JPG, maksimal 2 MB per file.</span>
+                        </span>
+                    </label>
+                    <div class="pki-upload-box" id="adm_box_permit_document_<?php echo $mode; ?>" onclick="adminTriggerUpload('permit_document_<?php echo $mode; ?>')">
+                        <span class="pki-upload-text <?php echo !empty($permitDoc) ? 'has-file' : ''; ?>" id="adm_text_permit_document_<?php echo $mode; ?>">
+                            <?php if (!empty($permitDoc)): ?>
+                                <i class="fa-solid fa-file-pdf" style="color:#ef4444; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($permitDoc)); ?></span>
+                            <?php else: ?>
+                                <span>Klik dan letakkan fil...</span>
+                            <?php endif; ?>
+                        </span>
+                        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                            <?php if (!empty($permitDoc)): ?>
+                                <a href="<?php echo e($permitDoc); ?>" target="_blank" class="pki-upload-clear-btn" title="Lihat Berkas" onclick="event.stopPropagation();" style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:4px; background:#f1f5f9; color:#0284c7; text-decoration:none;">
+                                    <i class="fa-solid fa-eye" style="font-size:11px;"></i>
+                                </a>
+                                <button type="button" class="pki-upload-clear-btn" title="Hapus berkas" onclick="adminClearUpload(event, 'permit_document_<?php echo $mode; ?>')">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            <?php endif; ?>
+                            <button type="button" class="pki-upload-btn" id="adm_btn_permit_document_<?php echo $mode; ?>"><?php echo !empty($permitDoc) ? 'Ganti' : 'Pilih File'; ?></button>
+                        </div>
+                    </div>
+                    <input type="file" name="permit_document" id="adm_input_permit_document_<?php echo $mode; ?>" accept=".pdf,.docx,.jpg,.jpeg" style="display:none;" onchange="adminHandleFileChange(this, 'permit_document_<?php echo $mode; ?>')">
+                    <input type="hidden" name="existing_permit_document" id="adm_existing_permit_document_<?php echo $mode; ?>" value="<?php echo e($permitDoc); ?>">
+                    <div class="pki-field-helper" id="adm_helper_permit_document_<?php echo $mode; ?>" style="margin-top:6px;">
+                        <?php echo function_exists('get_permit_document_helper_html') ? get_permit_document_helper_html($profession) : ''; ?>
+                    </div>
+                </div>
+
+                <!-- Foto Bukti Tempat Usaha / Lokasi (IMAGE 1) -->
+                <div class="pki-field">
+                    <label class="pki-field-label" style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                        Foto Bukti Tempat Usaha / Lokasi <span class="req" style="color:#ef4444;">*</span>
+                        <span class="pki-tooltip" tabindex="0" role="tooltip">
+                            <?php echo $infoIconSvg; ?>
+                            <span class="tooltip-popover">Unggah foto yang menunjukkan kondisi tempat usaha, lokasi kegiatan, dan/atau sarana pendukung usaha sebagai bukti aktivitas usaha.</span>
+                        </span>
+                    </label>
+                    <div class="pki-upload-box" id="adm_box_workplace_photo_<?php echo $mode; ?>" onclick="adminTriggerUpload('workplace_photo_<?php echo $mode; ?>')">
+                        <span class="pki-upload-text <?php echo !empty($workPhoto) ? 'has-file' : ''; ?>" id="adm_text_workplace_photo_<?php echo $mode; ?>">
+                            <?php if (!empty($workPhoto)): ?>
+                                <i class="fa-solid fa-image" style="color:#0284c7; flex-shrink:0;"></i> <span class="pki-upload-filename"><?php echo e(basename($workPhoto)); ?></span>
+                            <?php else: ?>
+                                <span>Klik dan letakkan fil...</span>
+                            <?php endif; ?>
+                        </span>
+                        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                            <?php if (!empty($workPhoto)): ?>
+                                <a href="<?php echo e($workPhoto); ?>" target="_blank" class="pki-upload-clear-btn" title="Lihat Foto" onclick="event.stopPropagation();" style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:4px; background:#f1f5f9; color:#0284c7; text-decoration:none;">
+                                    <i class="fa-solid fa-eye" style="font-size:11px;"></i>
+                                </a>
+                                <button type="button" class="pki-upload-clear-btn" title="Hapus foto" onclick="adminClearUpload(event, 'workplace_photo_<?php echo $mode; ?>')">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            <?php endif; ?>
+                            <button type="button" class="pki-upload-btn" id="adm_btn_workplace_photo_<?php echo $mode; ?>"><?php echo !empty($workPhoto) ? 'Ganti' : 'Pilih File'; ?></button>
+                        </div>
+                    </div>
+                    <input type="file" name="workplace_photo" id="adm_input_workplace_photo_<?php echo $mode; ?>" accept=".png,.jpg,.jpeg" style="display:none;" onchange="adminHandleFileChange(this, 'workplace_photo_<?php echo $mode; ?>')">
+                    <input type="hidden" name="existing_workplace_photo" id="adm_existing_workplace_photo_<?php echo $mode; ?>" value="<?php echo e($workPhoto); ?>">
+                    <div class="pki-field-helper" id="adm_helper_workplace_photo_<?php echo $mode; ?>" style="margin-top:6px;">
+                        <div class="pki-permit-doc-helper-wrap">
+                            <div class="pki-permit-doc-title" style="font-weight:600; color:#334155; margin-bottom:2px; font-size:12px;">Foto yang perlu diunggah:</div>
+                            <div class="pki-permit-doc-requirement" style="color:#475569; margin-bottom:4px; line-height:1.45; font-size:12px;">Foto tempat usaha, lokasi kegiatan, atau sarana pendukung usaha.</div>
+                            <div class="pki-permit-doc-format" style="color:#64748b; font-size:11px;">Format PNG/JPG, maksimal 2 MB per file.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. MEDIA SOSIAL (LANGKAH 3 - UNIFIED SOCIAL CONTAINER) -->
+            <div style="font-size:12.5px; font-weight:800; color:#0369a1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; padding-bottom:6px; border-bottom:1.5px solid #e0f2fe; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-share-nodes"></i> 4. Media Sosial <span style="color:#ef4444;">*</span>
+            </div>
+            <div style="font-size:12px; color:#64748b; margin-bottom:12px;">
+                Wajib mengisi minimal salah satu akun media sosial (LinkedIn, Facebook, Instagram, atau TikTok).
+            </div>
+
+            <!-- Hidden compatibility inputs synced automatically -->
+            <input type="hidden" name="linkedin" id="adm_soc_linkedin_<?php echo $mode; ?>" value="<?php echo e($li); ?>">
+            <input type="hidden" name="facebook" id="adm_soc_facebook_<?php echo $mode; ?>" value="<?php echo e($fb); ?>">
+            <input type="hidden" name="instagram" id="adm_soc_instagram_<?php echo $mode; ?>" value="<?php echo e($ig); ?>">
+            <input type="hidden" name="tiktok" id="adm_soc_tiktok_<?php echo $mode; ?>" value="<?php echo e($tt); ?>">
+
+            <div class="pki-social-container" id="adm_social_container_<?php echo $mode; ?>" style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                <?php 
+                $socialMetaMap = [
+                    'LinkedIn'  => ['icon' => 'fa-brands fa-linkedin', 'color' => '#0a66c2', 'placeholder' => 'username atau https://linkedin.com/in/...'],
+                    'Facebook'  => ['icon' => 'fa-brands fa-facebook', 'color' => '#1877f2', 'placeholder' => '@username atau https://facebook.com/...'],
+                    'Instagram' => ['icon' => 'fa-brands fa-instagram', 'color' => '#e1306c', 'placeholder' => '@username atau https://instagram.com/...'],
+                    'TikTok'    => ['icon' => 'fa-brands fa-tiktok', 'color' => '#000000', 'placeholder' => '@username atau https://tiktok.com/@...'],
+                ];
+                $totalSoc = count($existingSocials);
+                foreach ($existingSocials as $sIdx => $socItem): 
+                    $curPlat = $socItem['platform'];
+                    $curHandle = $socItem['handle'];
+                    $platMeta = $socialMetaMap[$curPlat] ?? $socialMetaMap['LinkedIn'];
+                    $isLast = ($sIdx === $totalSoc - 1);
                 ?>
+                <div class="pki-social-row" data-index="<?php echo $sIdx; ?>" style="display:flex; align-items:center; gap:8px;">
+                    <div class="pki-social-select-wrap" style="position:relative; width:170px; flex-shrink:0;">
+                        <span class="pki-social-platform-icon" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:16px;">
+                            <i class="<?php echo $platMeta['icon']; ?>" style="color:<?php echo $platMeta['color']; ?>;"></i>
+                        </span>
+                        <select name="social_platform[]" class="pki-social-platform-select" style="width:100%; height:40px; padding:6px 10px 6px 36px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; font-weight:600; color:#0f172a; background:#ffffff; box-sizing:border-box;">
+                            <option value="LinkedIn" <?php echo $curPlat === 'LinkedIn' ? 'selected' : ''; ?>>LinkedIn</option>
+                            <option value="Facebook" <?php echo $curPlat === 'Facebook' ? 'selected' : ''; ?>>Facebook</option>
+                            <option value="Instagram" <?php echo $curPlat === 'Instagram' ? 'selected' : ''; ?>>Instagram</option>
+                            <option value="TikTok" <?php echo $curPlat === 'TikTok' ? 'selected' : ''; ?>>TikTok</option>
+                        </select>
+                    </div>
+                    <div class="pki-social-input-wrap" style="flex:1;">
+                        <input type="text" name="social_handle[]" class="pki-social-handle-input" value="<?php echo e($curHandle); ?>" placeholder="<?php echo $platMeta['placeholder']; ?>" style="width:100%; height:40px; padding:8px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; color:#0f172a; box-sizing:border-box;">
+                    </div>
+                    <div class="pki-social-actions" style="display:flex; gap:6px;">
+                        <?php if ($totalSoc > 1): ?>
+                            <button type="button" class="pki-social-btn pki-social-btn-del" title="Hapus akun" style="width:36px; height:36px; border:1px solid #fee2e2; background:#fef2f2; color:#ef4444; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        <?php endif; ?>
+                        <?php if ($isLast && $totalSoc < 4): ?>
+                            <button type="button" class="pki-social-btn pki-social-btn-add" title="Tambah akun" style="width:36px; height:36px; border:1px solid #bae6fd; background:#f0f9ff; color:#0284c7; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- 5. PERNYATAAN (LANGKAH 4) -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; font-size:12.5px; color:#334155; line-height:1.6; margin-bottom:16px;">
+                Saya menyatakan bahwa seluruh informasi yang diisikan benar, valid, dan dapat dipertanggungjawabkan sesuai data faktual pemberi kerja.
+            </div>
+
+            <!-- SAVE FEEDBACK NOTIFICATION CONTAINER -->
+            <div id="adm_save_feedback_<?php echo $mode; ?>" style="display:none; margin-top:14px; padding:12px 16px; border-radius:8px; font-size:13px; font-weight:600; transition:all 0.3s ease;"></div>
+
+            <!-- FORM ACTION BUTTONS -->
+            <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid #e2e8f0; padding-top:16px; margin-top:12px;">
+                <?php if ($isOfflineReverif): ?>
+                    <button type="button" id="adm_btn_save_only_<?php echo $mode; ?>" name="save_only" value="1" class="primary-btn" style="height:40px; padding:0 22px; font-size:13.5px; font-weight:700; background:#0284c7; color:#ffffff; border:none; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 6px rgba(2,132,199,0.25);">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan Data
+                    </button>
+                <?php else: ?>
+                    <button type="button" id="adm_btn_save_only_<?php echo $mode; ?>" name="save_only" value="1" class="secondary-btn" style="height:38px; padding:0 18px; font-size:13px; font-weight:600; border:1.5px solid #cbd5e1; border-radius:8px; cursor:pointer; background:#ffffff; color:#334155; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan Data
+                    </button>
+                    <button type="submit" name="send_consent" value="1" class="primary-btn" style="height:38px; padding:0 18px; font-size:13px; font-weight:700; background:#0284c7; color:#ffffff; border:none; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-paper-plane"></i> Kirim Permintaan Consent
+                    </button>
+                <?php endif; ?>
+            </div>
+        </form>
+        <script>
+        (function(){
+            const mode = '<?php echo $mode; ?>';
+            const siapkerjaDom = <?php echo json_encode($domicileData); ?>;
+            const adminPermitDocRequirements = <?php echo json_encode(function_exists('individual_business_permit_requirements') ? individual_business_permit_requirements() : []); ?>;
+
+            window.adminUpdatePermitDocHelper = function(profession, m) {
+                const helper = document.getElementById('adm_helper_permit_document_' + m);
+                if (!helper) return;
+                const p = (profession || '').trim();
+                let reqText = (p && adminPermitDocRequirements[p]) ? adminPermitDocRequirements[p] : '';
+
+                if (reqText) {
+                    helper.innerHTML = '<div class="pki-permit-doc-helper-wrap">' +
+                        '<div class="pki-permit-doc-title" style="font-weight:600; color:#334155; margin-bottom:2px; font-size:12px;">Dokumen yang perlu diunggah:</div>' +
+                        '<div class="pki-permit-doc-requirement" style="color:#475569; margin-bottom:4px; line-height:1.45; font-size:12px;">' + reqText + '</div>' +
+                        '<div class="pki-permit-doc-format" style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div>' +
+                        '</div>';
+                } else {
+                    helper.innerHTML = '<div class="pki-permit-doc-helper-wrap">' +
+                        '<div class="pki-permit-doc-prompt" style="color:#64748b; line-height:1.45; margin-bottom:3px; font-size:12px;">Pilih Jenis Usaha Individu terlebih dahulu untuk melihat dokumen yang perlu diunggah.</div>' +
+                        '<div class="pki-permit-doc-format" style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div>' +
+                        '</div>';
+                }
+            };
+
+            // --- 1. UPLOAD BOX TRIGGERS & HANDLERS ---
+            window.adminTriggerUpload = function(fieldId) {
+                const inp = document.getElementById('adm_input_' + fieldId);
+                if (inp) inp.click();
+            };
+
+            window.adminHandleFileChange = function(inp, fieldId) {
+                if (!inp.files || inp.files.length === 0) return;
+                const file = inp.files[0];
+                const textBox = document.getElementById('adm_text_' + fieldId);
+                const btn = document.getElementById('adm_btn_' + fieldId);
+                const box = document.getElementById('adm_box_' + fieldId);
+
+                if (textBox) {
+                    const ext = (file.name.split('.').pop() || '').toLowerCase();
+                    const iconClass = (fieldId.indexOf('permit_document') !== -1)
+                        ? (ext === 'docx' ? 'fa-file-word' : 'fa-file-pdf')
+                        : 'fa-image';
+                    const iconColor = (fieldId.indexOf('permit_document') !== -1)
+                        ? (ext === 'docx' ? '#2563eb' : '#ef4444')
+                        : '#0284c7';
+                    textBox.innerHTML = '<i class="fa-solid ' + iconClass + '" style="color:' + iconColor + '; flex-shrink:0;"></i> <span class="pki-upload-filename">' + file.name + '</span>';
+                    textBox.classList.add('has-file');
+                }
+                if (btn) btn.textContent = 'Ganti';
+
+                if (box) {
+                    let clearBtn = box.querySelector('.pki-upload-clear-btn:not(a)');
+                    if (!clearBtn) {
+                        const btnContainer = box.querySelector('div');
+                        if (btnContainer) {
+                            clearBtn = document.createElement('button');
+                            clearBtn.type = 'button';
+                            clearBtn.className = 'pki-upload-clear-btn';
+                            clearBtn.title = 'Hapus';
+                            clearBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                            clearBtn.onclick = function(e) { adminClearUpload(e, fieldId); };
+                            btnContainer.insertBefore(clearBtn, btnContainer.firstChild);
+                        }
+                    }
+                }
+            };
+
+            window.adminClearUpload = function(e, fieldId) {
+                if (e) e.stopPropagation();
+                const inp = document.getElementById('adm_input_' + fieldId);
+                const exist = document.getElementById('adm_existing_' + fieldId);
+                const textBox = document.getElementById('adm_text_' + fieldId);
+                const btn = document.getElementById('adm_btn_' + fieldId);
+                const box = document.getElementById('adm_box_' + fieldId);
+
+                if (inp) inp.value = '';
+                if (exist) exist.value = '';
+                if (textBox) {
+                    textBox.classList.remove('has-file');
+                    textBox.innerHTML = '<span>Klik dan letakkan fil...</span>';
+                }
+                if (btn) btn.textContent = 'Pilih File';
+                if (box) {
+                    const viewLink = box.querySelector('a.pki-upload-clear-btn');
+                    if (viewLink) viewLink.remove();
+                    const clearBtn = box.querySelector('button.pki-upload-clear-btn');
+                    if (clearBtn) clearBtn.remove();
+                }
+            };
+
+            // Drag and drop for upload boxes
+            ['business_logo_' + mode, 'permit_document_' + mode, 'workplace_photo_' + mode].forEach(fid => {
+                const b = document.getElementById('adm_box_' + fid);
+                const i = document.getElementById('adm_input_' + fid);
+                if (b && i) {
+                    ['dragenter', 'dragover'].forEach(evt => {
+                        b.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); b.style.borderColor = '#0284c7'; b.style.background = '#f0f9ff'; });
+                    });
+                    ['dragleave', 'drop'].forEach(evt => {
+                        b.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); b.style.borderColor = ''; b.style.background = ''; });
+                    });
+                    b.addEventListener('drop', e => {
+                        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                            i.files = e.dataTransfer.files;
+                            adminHandleFileChange(i, fid);
+                        }
+                    });
+                }
+            });
+
+            // --- 2. HIERARCHICAL LOCATION SELECTOR (IDENTICAL TO PKI-FORM) ---
+            const locDb = window.PKI_LOCATION_DATABASE || {
+                'Bali': {
+                    'Kota Denpasar': {
+                        'Denpasar Selatan': { 'Sanur': '80228', 'Panjer': '80225', 'Sesetan': '80223', 'Sidakarya': '80224', 'Renon': '80226' },
+                        'Denpasar Barat': { 'Pemecutan': '80112', 'Padangsambian': '80118', 'Dauh Puri': '80113' },
+                        'Denpasar Utara': { 'Peguyangan': '80115', 'Tonja': '80235', 'Ubung': '80116' },
+                        'Denpasar Timur': { 'Kesiman': '80237', 'Sumerta': '80236', 'Penatih': '80238' }
+                    },
+                    'Kabupaten Gianyar': {
+                        'Ubud': { 'Petulu': '80571', 'Kedewatan': '80571', 'Sayan': '80571', 'Ubud': '80571' },
+                        'Gianyar': { 'Gianyar': '80511', 'Beng': '80513', 'Samplangan': '80512' },
+                        'Sukawati': { 'Batubulan': '80582', 'Celuk': '80582', 'Singapadu': '80582' }
+                    },
+                    'Kabupaten Badung': {
+                        'Kuta': { 'Kuta': '80361', 'Legian': '80361', 'Seminyak': '80361', 'Tuban': '80361' },
+                        'Kuta Selatan': { 'Jimbaran': '80361', 'Benoa': '80361', 'Ungasan': '80361' },
+                        'Kuta Utara': { 'Canggu': '80361', 'Kerobokan': '80361', 'Tibubeneng': '80361' }
+                    }
+                },
+                'DKI Jakarta': {
+                    'Kota Jakarta Pusat': {
+                        'Gambir': { 'Gambir': '10110', 'Kebon Kelapa': '10120', 'Petojo Selatan': '10160' },
+                        'Menteng': { 'Menteng': '10310', 'Pegangsaan': '10320', 'Cikini': '10330' }
+                    },
+                    'Kota Jakarta Selatan': {
+                        'Kebayoran Baru': { 'Melawai': '12160', 'Senayan': '12190', 'Gandaria Utara': '12140' },
+                        'Setiabudi': { 'Karet': '12920', 'Kuningan Timur': '12950', 'Menteng Atas': '12960' }
+                    }
+                },
+                'Jawa Barat': {
+                    'Kota Bandung': {
+                        'Coblong': { 'Dago': '40135', 'Lebak Siliwangi': '40132', 'Sadang Serang': '40133' },
+                        'Sumur Bandung': { 'Braga': '40111', 'Kebon Pisang': '40112' }
+                    }
+                }
+            };
+            window.PKI_LOCATION_DATABASE = locDb;
+
+            const locInput = document.getElementById('adm_hierarchicalLocationInput_' + mode);
+            const locDropdown = document.getElementById('adm_hierarchicalLocDropdown_' + mode);
+            const locDisplay = document.getElementById('adm_locDisplayValue_' + mode);
+            const locCaret = document.getElementById('adm_locCaret_' + mode);
+            const breadcrumbs = document.getElementById('adm_locBreadcrumbs_' + mode);
+            const optionsList = document.getElementById('adm_locOptionsList_' + mode);
+
+            let locLevel = 1;
+            let selProv = document.getElementById('adm_hiddenProvince_' + mode)?.value || '';
+            let selCity = document.getElementById('adm_hiddenCity_' + mode)?.value || '';
+            let selDistrict = document.getElementById('adm_hiddenDistrict_' + mode)?.value || '';
+            let selVillage = document.getElementById('adm_hiddenVillage_' + mode)?.value || '';
+
+            window.adminToggleLocDropdown = function(m) {
+                if (!locDropdown) return;
+                if (locDropdown.style.display === 'block') {
+                    closeLocDropdown();
+                } else {
+                    openLocDropdown();
+                }
+            };
+
+            function openLocDropdown() {
+                if (!locDropdown) return;
+                locDropdown.style.display = 'block';
+                if (locCaret) {
+                    locCaret.classList.remove('fa-chevron-down');
+                    locCaret.classList.add('fa-chevron-up');
+                }
+                if (selProv && selCity && selDistrict && locDb[selProv]?.[selCity]?.[selDistrict]) {
+                    locLevel = 4;
+                } else if (selProv && selCity && locDb[selProv]?.[selCity]) {
+                    locLevel = 3;
+                } else if (selProv && locDb[selProv]) {
+                    locLevel = 2;
+                } else {
+                    locLevel = 1;
+                }
+                renderLocView();
+            }
+
+            function closeLocDropdown() {
+                if (!locDropdown) return;
+                locDropdown.style.display = 'none';
+                if (locCaret) {
+                    locCaret.classList.remove('fa-chevron-up');
+                    locCaret.classList.add('fa-chevron-down');
+                }
+            }
+
+            document.addEventListener('click', function(e) {
+                if (locInput && locDropdown && !locInput.contains(e.target) && !locDropdown.contains(e.target)) {
+                    closeLocDropdown();
+                }
+            });
+
+            function renderLocView() {
+                renderBreadcrumbs();
+                renderOptions();
+            }
+
+            function renderBreadcrumbs() {
+                if (!breadcrumbs) return;
+                let html = '';
+                if (locLevel === 1) {
+                    html += '<span class="crumb-btn active" onclick="adminSwitchLevel(1)">Pilih Provinsi</span>';
+                } else if (locLevel === 2) {
+                    html += '<span class="crumb-btn" onclick="adminSwitchLevel(1)">' + selProv + '</span> <span class="crumb-sep">›</span> ';
+                    html += '<span class="crumb-btn active" onclick="adminSwitchLevel(2)">Pilih Kabupaten / Kota</span>';
+                } else if (locLevel === 3) {
+                    html += '<span class="crumb-btn" onclick="adminSwitchLevel(1)">' + selProv + '</span> <span class="crumb-sep">›</span> ';
+                    html += '<span class="crumb-btn" onclick="adminSwitchLevel(2)">' + selCity + '</span> <span class="crumb-sep">›</span> ';
+                    html += '<span class="crumb-btn active" onclick="adminSwitchLevel(3)">Pilih Kecamatan</span>';
+                } else if (locLevel === 4) {
+                    html += '<span class="crumb-btn" onclick="adminSwitchLevel(1)">' + selProv + '</span> <span class="crumb-sep">›</span> ';
+                    html += '<span class="crumb-btn" onclick="adminSwitchLevel(2)">' + selCity + '</span> <span class="crumb-sep">›</span> ';
+                    html += '<span class="crumb-btn" onclick="adminSwitchLevel(3)">' + selDistrict + '</span> <span class="crumb-sep">›</span> ';
+                    html += '<span class="crumb-btn active" onclick="adminSwitchLevel(4)">Pilih Kelurahan / Desa</span>';
+                }
+                breadcrumbs.innerHTML = html;
+            }
+
+            window.adminSwitchLevel = function(lvl) {
+                locLevel = lvl;
+                renderLocView();
+            };
+
+            function renderOptions() {
+                if (!optionsList) return;
+                optionsList.innerHTML = '';
+
+                if (locLevel === 1) {
+                    const provinces = Object.keys(locDb);
+                    provinces.forEach(prov => {
+                        const isSel = prov === selProv;
+                        const row = document.createElement('div');
+                        row.className = 'loc-opt-row' + (isSel ? ' selected' : '');
+                        row.innerHTML = '<div style="display:flex; align-items:center;"><span class="radio-bullet"></span><span>' + prov + '</span></div>' + (isSel ? '<span class="sel-tag">✓ Dipilih</span>' : '');
+                        row.onclick = () => selectProv(prov);
+                        optionsList.appendChild(row);
+                    });
+                } else if (locLevel === 2) {
+                    const cities = Object.keys(locDb[selProv] || {});
+                    cities.forEach(city => {
+                        const isSel = city === selCity;
+                        const row = document.createElement('div');
+                        row.className = 'loc-opt-row' + (isSel ? ' selected' : '');
+                        row.innerHTML = '<div style="display:flex; align-items:center;"><span class="radio-bullet"></span><span>' + city + '</span></div>' + (isSel ? '<span class="sel-tag">✓ Dipilih</span>' : '');
+                        row.onclick = () => selectCity(city);
+                        optionsList.appendChild(row);
+                    });
+                } else if (locLevel === 3) {
+                    const districts = Object.keys(locDb[selProv]?.[selCity] || {});
+                    districts.forEach(dist => {
+                        const isSel = dist === selDistrict;
+                        const row = document.createElement('div');
+                        row.className = 'loc-opt-row' + (isSel ? ' selected' : '');
+                        row.innerHTML = '<div style="display:flex; align-items:center;"><span class="radio-bullet"></span><span>' + dist + '</span></div>' + (isSel ? '<span class="sel-tag">✓ Dipilih</span>' : '');
+                        row.onclick = () => selectDistrict(dist);
+                        optionsList.appendChild(row);
+                    });
+                } else if (locLevel === 4) {
+                    const villagesObj = locDb[selProv]?.[selCity]?.[selDistrict] || {};
+                    const villages = Object.keys(villagesObj);
+                    villages.forEach(vill => {
+                        const postal = villagesObj[vill] || '';
+                        const isSel = vill === selVillage;
+                        const row = document.createElement('div');
+                        row.className = 'loc-opt-row' + (isSel ? ' selected' : '');
+                        row.innerHTML = '<div style="display:flex; align-items:center;"><span class="radio-bullet"></span><span>' + vill + (postal ? ' (' + postal + ')' : '') + '</span></div>' + (isSel ? '<span class="sel-tag">✓ Dipilih</span>' : '');
+                        row.onclick = () => selectVillage(vill, postal);
+                        optionsList.appendChild(row);
+                    });
+                }
+            }
+
+            function selectProv(prov) {
+                selProv = prov;
+                selCity = '';
+                selDistrict = '';
+                selVillage = '';
+                syncLocFields();
+                locLevel = 2;
+                renderLocView();
+            }
+
+            function selectCity(city) {
+                selCity = city;
+                selDistrict = '';
+                selVillage = '';
+                syncLocFields();
+                locLevel = 3;
+                renderLocView();
+            }
+
+            function selectDistrict(dist) {
+                selDistrict = dist;
+                selVillage = '';
+                syncLocFields();
+                locLevel = 4;
+                renderLocView();
+            }
+
+            function selectVillage(vill, postal) {
+                selVillage = vill;
+                syncLocFields();
+                if (locDisplay) {
+                    locDisplay.textContent = selVillage + ', ' + selDistrict + ', ' + selCity + ', ' + selProv;
+                    locDisplay.classList.remove('placeholder');
+                }
+                const postSelect = document.getElementById('adm_selectPostalCode_' + mode);
+                if (postSelect && postal) {
+                    postSelect.innerHTML = '<option value="' + postal + '" selected>' + postal + '</option>';
+                }
+                closeLocDropdown();
+                adminUpdateMapPreview(mode);
+            }
+
+            function syncLocFields() {
+                const elP = document.getElementById('adm_hiddenProvince_' + mode);
+                const elC = document.getElementById('adm_hiddenCity_' + mode);
+                const elD = document.getElementById('adm_hiddenDistrict_' + mode);
+                const elV = document.getElementById('adm_hiddenVillage_' + mode);
+                const elDomId = document.getElementById('adm_hiddenDomicileCityId_' + mode);
+
+                if (elP) elP.value = selProv;
+                if (elC) elC.value = selCity;
+                if (elD) elD.value = selDistrict;
+                if (elV) elV.value = selVillage;
+                if (elDomId) elDomId.value = selCity;
+
+                // Sync workplace duplicates
+                const wpP = document.getElementById('adm_wp_prov_' + mode);
+                const wpC = document.getElementById('adm_wp_city_' + mode);
+                const wpD = document.getElementById('adm_wp_dist_' + mode);
+                const wpV = document.getElementById('adm_wp_vill_' + mode);
+                if (wpP) wpP.value = selProv;
+                if (wpC) wpC.value = selCity;
+                if (wpD) wpD.value = selDistrict;
+                if (wpV) wpV.value = selVillage;
+
+                // Sync domicile duplicates
+                const dpP = document.getElementById('adm_dp_prov_' + mode);
+                const dpC = document.getElementById('adm_dp_city_' + mode);
+                const dpD = document.getElementById('adm_dp_dist_' + mode);
+                const dpV = document.getElementById('adm_dp_vill_' + mode);
+                if (dpP) dpP.value = selProv;
+                if (dpC) dpC.value = selCity;
+                if (dpD) dpD.value = selDistrict;
+                if (dpV) dpV.value = selVillage;
+            }
+
+            // --- 3. SAME AS SIAPKERJA CHECKBOX ---
+            window.adminHandleSameLocationToggle = function(cb, m) {
+                if (!cb.checked) return;
+                if (!siapkerjaDom) return;
+
+                selProv = siapkerjaDom.province || selProv || 'Bali';
+                selCity = siapkerjaDom.city || selCity || 'Kabupaten Gianyar';
+                selDistrict = siapkerjaDom.district || selDistrict || 'Ubud';
+                selVillage = siapkerjaDom.village || selVillage || 'Petulu';
+                syncLocFields();
+
+                if (locDisplay) {
+                    const parts = [selVillage, selDistrict, selCity, selProv].filter(Boolean);
+                    if (parts.length > 0) {
+                        locDisplay.textContent = parts.join(', ');
+                        locDisplay.classList.remove('placeholder');
+                    }
+                }
+
+                const postSelect = document.getElementById('adm_selectPostalCode_' + mode);
+                if (postSelect && siapkerjaDom.postal_code) {
+                    postSelect.innerHTML = '<option value="' + siapkerjaDom.postal_code + '" selected>' + siapkerjaDom.postal_code + '</option>';
+                    postSelect.value = siapkerjaDom.postal_code;
+                }
+
+                const addrInput = document.getElementById('adm_inputAddress_' + mode);
+                if (addrInput && siapkerjaDom.address) {
+                    addrInput.value = siapkerjaDom.address;
+                }
+
+                adminUpdateMapPreview(mode);
+            };
+
+            // --- 4. LIVE GOOGLE MAPS PREVIEW ---
+            window.adminUpdateMapPreview = function(m) {
+                const addr = document.getElementById('adm_inputAddress_' + mode)?.value?.trim() || '';
+                const vill = document.getElementById('adm_hiddenVillage_' + mode)?.value?.trim() || selVillage;
+                const dist = document.getElementById('adm_hiddenDistrict_' + mode)?.value?.trim() || selDistrict;
+                const city = document.getElementById('adm_hiddenCity_' + mode)?.value?.trim() || selCity;
+                const prov = document.getElementById('adm_hiddenProvince_' + mode)?.value?.trim() || selProv;
+
+                const iframe = document.getElementById('adm_gmapIframe_' + mode);
+                const placeholder = document.getElementById('adm_mapPlaceholder_' + mode);
+                const wrapper = document.getElementById('adm_googleMapWrapper_' + mode);
+
+                const parts = [addr, vill, dist, city, prov].filter(p => p && p.length > 0);
+                if (parts.length > 0 && iframe) {
+                    const q = parts.join(', ');
+                    iframe.src = 'https://maps.google.com/maps?q=' + encodeURIComponent(q) + '&t=&z=14&ie=UTF8&iwloc=&output=embed';
+                    if (placeholder) {
+                        placeholder.style.display = 'none';
+                        placeholder.classList.add('is-hidden');
+                    }
+                    if (wrapper) {
+                        wrapper.style.display = 'block';
+                        wrapper.classList.add('is-visible');
+                    }
+                } else {
+                    if (placeholder) {
+                        placeholder.style.display = 'flex';
+                        placeholder.classList.remove('is-hidden');
+                    }
+                    if (wrapper) {
+                        wrapper.style.display = 'none';
+                        wrapper.classList.remove('is-visible');
+                    }
+                }
+            };
+
+            // --- 5. SOCIAL MEDIA REPEATER ---
+            const container = document.getElementById('adm_social_container_' + mode);
+            const hiddenLi = document.getElementById('adm_soc_linkedin_' + mode);
+            const hiddenFb = document.getElementById('adm_soc_facebook_' + mode);
+            const hiddenIg = document.getElementById('adm_soc_instagram_' + mode);
+            const hiddenTt = document.getElementById('adm_soc_tiktok_' + mode);
+
+            const PLATFORMS = {
+                'LinkedIn':  { icon: 'fa-brands fa-linkedin', color: '#0a66c2', placeholder: 'username atau https://linkedin.com/in/...' },
+                'Facebook':  { icon: 'fa-brands fa-facebook', color: '#1877f2', placeholder: '@username atau https://facebook.com/...' },
+                'Instagram': { icon: 'fa-brands fa-instagram', color: '#e1306c', placeholder: '@username atau https://instagram.com/...' },
+                'TikTok':    { icon: 'fa-brands fa-tiktok', color: '#000000', placeholder: '@username atau https://tiktok.com/@...' }
+            };
+
+            function syncHidden() {
+                if (!container) return;
+                let li = '', fb = '', ig = '', tt = '';
+                container.querySelectorAll('.pki-social-row').forEach(row => {
+                    const sel = row.querySelector('.pki-social-platform-select');
+                    const inp = row.querySelector('.pki-social-handle-input');
+                    if (sel && inp) {
+                        const plat = sel.value;
+                        const val = inp.value.trim();
+                        if (plat === 'LinkedIn') li = val;
+                        else if (plat === 'Facebook') fb = val;
+                        else if (plat === 'Instagram') ig = val;
+                        else if (plat === 'TikTok') tt = val;
+                    }
+                });
+                if (hiddenLi) hiddenLi.value = li;
+                if (hiddenFb) hiddenFb.value = fb;
+                if (hiddenIg) hiddenIg.value = ig;
+                if (hiddenTt) hiddenTt.value = tt;
+            }
+
+            function refreshButtons() {
+                if (!container) return;
+                const rows = container.querySelectorAll('.pki-social-row');
+                const total = rows.length;
+                rows.forEach((row, idx) => {
+                    row.dataset.index = idx;
+                    const acts = row.querySelector('.pki-social-actions');
+                    if (!acts) return;
+                    const isLast = (idx === total - 1);
+                    let html = '';
+                    if (total > 1) {
+                        html += '<button type="button" class="pki-social-btn pki-social-btn-del" title="Hapus akun" style="width:36px; height:36px; border:1px solid #fee2e2; background:#fef2f2; color:#ef4444; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-trash-can"></i></button>';
+                    }
+                    if (isLast && total < 4) {
+                        html += '<button type="button" class="pki-social-btn pki-social-btn-add" title="Tambah akun" style="width:36px; height:36px; border:1px solid #bae6fd; background:#f0f9ff; color:#0284c7; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-plus"></i></button>';
+                    }
+                    acts.innerHTML = html;
+                });
+            }
+
+            if (container) {
+                container.addEventListener('change', function(e) {
+                    const sel = e.target.closest('.pki-social-platform-select');
+                    if (sel) {
+                        const row = sel.closest('.pki-social-row');
+                        const iconSpan = row ? row.querySelector('.pki-social-platform-icon') : null;
+                        const input = row ? row.querySelector('.pki-social-handle-input') : null;
+                        const meta = PLATFORMS[sel.value] || PLATFORMS['LinkedIn'];
+                        if (iconSpan) iconSpan.innerHTML = '<i class="' + meta.icon + '" style="color:' + meta.color + ';"></i>';
+                        if (input) input.placeholder = meta.placeholder;
+                        syncHidden();
+                    }
+                });
+
+                container.addEventListener('input', function(e) {
+                    if (e.target.closest('.pki-social-handle-input')) {
+                        syncHidden();
+                    }
+                });
+
+                container.addEventListener('click', function(e) {
+                    const addBtn = e.target.closest('.pki-social-btn-add');
+                    const delBtn = e.target.closest('.pki-social-btn-del');
+                    if (addBtn) {
+                        e.preventDefault();
+                        const rows = container.querySelectorAll('.pki-social-row');
+                        if (rows.length >= 4) return;
+                        const used = Array.from(rows).map(r => r.querySelector('.pki-social-platform-select')?.value);
+                        const nextPlat = Object.keys(PLATFORMS).find(p => !used.includes(p)) || 'LinkedIn';
+                        const meta = PLATFORMS[nextPlat];
+                        const div = document.createElement('div');
+                        div.className = 'pki-social-row';
+                        div.style.cssText = 'display:flex; align-items:center; gap:8px;';
+                        let opts = '';
+                        Object.keys(PLATFORMS).forEach(p => {
+                            opts += '<option value="' + p + '"' + (p === nextPlat ? ' selected' : '') + '>' + p + '</option>';
+                        });
+                        div.innerHTML = '<div class="pki-social-select-wrap" style="position:relative; width:170px; flex-shrink:0;"><span class="pki-social-platform-icon" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:16px;"><i class="' + meta.icon + '" style="color:' + meta.color + ';"></i></span><select name="social_platform[]" class="pki-social-platform-select" style="width:100%; height:40px; padding:6px 10px 6px 36px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; font-weight:600; color:#0f172a; background:#ffffff; box-sizing:border-box;">' + opts + '</select></div><div class="pki-social-input-wrap" style="flex:1;"><input type="text" name="social_handle[]" class="pki-social-handle-input" value="" placeholder="' + meta.placeholder + '" style="width:100%; height:40px; padding:8px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; color:#0f172a; box-sizing:border-box;"></div><div class="pki-social-actions" style="display:flex; gap:6px;"></div>';
+                        container.appendChild(div);
+                        refreshButtons();
+                        syncHidden();
+                    }
+                    if (delBtn) {
+                        e.preventDefault();
+                        const row = delBtn.closest('.pki-social-row');
+                        if (row && container.querySelectorAll('.pki-social-row').length > 1) {
+                            row.remove();
+                            refreshButtons();
+                            syncHidden();
+                        }
+                    }
+                });
+
+                syncHidden();
+            }
+
+            // Auto-display initial location text if missing or if checkbox is checked
+            const cbInitial = document.getElementById('admin_same_location_' + mode);
+            if (cbInitial && cbInitial.checked && siapkerjaDom) {
+                if (!selProv && siapkerjaDom.province) selProv = siapkerjaDom.province;
+                if (!selCity && siapkerjaDom.city) selCity = siapkerjaDom.city;
+                if (!selDistrict && siapkerjaDom.district) selDistrict = siapkerjaDom.district;
+                if (!selVillage && siapkerjaDom.village) selVillage = siapkerjaDom.village;
+                syncLocFields();
+
+                if (locDisplay) {
+                    const initParts = [selVillage, selDistrict, selCity, selProv].filter(Boolean);
+                    if (initParts.length > 0) {
+                        locDisplay.textContent = initParts.join(', ');
+                        locDisplay.classList.remove('placeholder');
+                    }
+                }
+            } else if (locDisplay && (!locDisplay.textContent.trim() || locDisplay.classList.contains('placeholder')) && (selVillage || selDistrict || selCity || selProv)) {
+                const initParts = [selVillage, selDistrict, selCity, selProv].filter(Boolean);
+                if (initParts.length > 0) {
+                    locDisplay.textContent = initParts.join(', ');
+                    locDisplay.classList.remove('placeholder');
+                }
+            }
+
+            // Interactive save handling (AJAX save without page refresh)
+            const profileForm = document.getElementById('adm_profile_form_' + mode);
+            const saveOnlyBtn = document.getElementById('adm_btn_save_only_' + mode);
+            const feedbackBox = document.getElementById('adm_save_feedback_' + mode);
+
+            function showSaveFeedback(msg, type) {
+                if (!feedbackBox) return;
+                feedbackBox.style.display = 'block';
+                if (type === 'success') {
+                    feedbackBox.style.background = '#ecfdf5';
+                    feedbackBox.style.color = '#065f46';
+                    feedbackBox.style.border = '1px solid #a7f3d0';
+                    feedbackBox.innerHTML = '<i class="fa-solid fa-circle-check" style="margin-right:6px; color:#10b981;"></i> ' + msg;
+                } else {
+                    feedbackBox.style.background = '#fef2f2';
+                    feedbackBox.style.color = '#991b1b';
+                    feedbackBox.style.border = '1px solid #fecaca';
+                    feedbackBox.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="margin-right:6px; color:#ef4444;"></i> ' + msg;
+                }
+                setTimeout(() => {
+                    if (feedbackBox) {
+                        feedbackBox.style.transition = 'opacity 0.5s';
+                        feedbackBox.style.opacity = '0';
+                        setTimeout(() => {
+                            feedbackBox.style.display = 'none';
+                            feedbackBox.style.opacity = '1';
+                        }, 500);
+                    }
+                }, 4000);
+            }
+
+            function syncAllFieldsBeforeSave() {
+                syncLocFields();
+                if (typeof syncHidden === 'function') syncHidden();
+                const curAddr = document.getElementById('adm_inputAddress_' + mode)?.value?.trim() || '';
+                const curPost = document.getElementById('adm_selectPostalCode_' + mode)?.value?.trim() || '';
+                const curDetail = document.getElementById('adm_inputAddressDetail_' + mode)?.value?.trim() || '';
+
+                const wpA = document.getElementById('adm_wp_addr_' + mode);
+                const dpA = document.getElementById('adm_dp_addr_' + mode);
+                if (wpA) wpA.value = curAddr;
+                if (dpA) dpA.value = curAddr;
+
+                const wpP = document.getElementById('adm_wp_post_' + mode);
+                const dpP = document.getElementById('adm_dp_post_' + mode);
+                if (wpP) wpP.value = curPost;
+                if (dpP) dpP.value = curPost;
+
+                const wpDet = document.getElementById('adm_wp_detail_' + mode);
+                if (wpDet) wpDet.value = curDetail;
+            }
+
+            if (saveOnlyBtn && profileForm) {
+                saveOnlyBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    syncAllFieldsBeforeSave();
+
+                    if (!profileForm.checkValidity()) {
+                        profileForm.reportValidity();
+                        return;
+                    }
+
+                    const originalBtnHtml = saveOnlyBtn.innerHTML;
+                    saveOnlyBtn.disabled = true;
+                    saveOnlyBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan Perubahan...';
+
+                    const formData = new FormData(profileForm);
+                    formData.append('save_only', '1');
+                    formData.append('ajax', '1');
+
+                    fetch(profileForm.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => {
+                        const contentType = response.headers.get('content-type') || '';
+                        if (contentType.includes('application/json')) {
+                            return response.json();
+                        }
+                        return { success: true, message: 'Perubahan data profil berhasil disimpan.' };
+                    })
+                    .then(data => {
+                        saveOnlyBtn.disabled = false;
+                        if (data.success) {
+                            saveOnlyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Data Tersimpan!';
+                            showSaveFeedback(data.message || 'Perubahan data profil berhasil disimpan ke database.', 'success');
+                            setTimeout(() => {
+                                saveOnlyBtn.innerHTML = originalBtnHtml;
+                            }, 2500);
+                        } else {
+                            saveOnlyBtn.innerHTML = originalBtnHtml;
+                            showSaveFeedback(data.error || 'Gagal menyimpan perubahan.', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Fetch save error:', err);
+                        saveOnlyBtn.disabled = false;
+                        saveOnlyBtn.innerHTML = originalBtnHtml;
+                        profileForm.submit();
+                    });
+                });
+
+                profileForm.addEventListener('submit', function() {
+                    syncAllFieldsBeforeSave();
+                });
+            }
+
+            // Initialize live map preview & permit doc helper
+            adminUpdateMapPreview(mode);
+            const profSelect = document.getElementById('adm_select_profession_' + mode);
+            if (profSelect) {
+                adminUpdatePermitDocHelper(profSelect.value, mode);
+            }
+        })();
+        </script>
+        <?php
+    }
+}
+                ?>
+                <style>
+                .admin-tooltip {
+                    position: relative;
+                    display: inline-flex;
+                    align-items: center;
+                    cursor: pointer;
+                    color: #0284c7;
+                    margin-left: 4px;
+                }
+                .admin-tooltip .admin-tooltip-text {
+                    visibility: hidden;
+                    opacity: 0;
+                    width: 250px;
+                    background-color: #0f172a;
+                    color: #ffffff;
+                    text-align: left;
+                    border-radius: 8px;
+                    padding: 8px 12px;
+                    font-size: 11.5px;
+                    font-weight: 500;
+                    line-height: 1.4;
+                    position: absolute;
+                    z-index: 1000;
+                    bottom: 125%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+                    transition: opacity 0.2s;
+                    pointer-events: none;
+                    text-transform: none;
+                    letter-spacing: normal;
+                }
+                .admin-tooltip .admin-tooltip-text::after {
+                    content: "";
+                    position: absolute;
+                    top: 100%;
+                    left: 50%;
+                    margin-left: -5px;
+                    border-width: 5px;
+                    border-style: solid;
+                    border-color: #0f172a transparent transparent transparent;
+                }
+                .admin-tooltip:hover .admin-tooltip-text,
+                .admin-tooltip:focus .admin-tooltip-text {
+                    visibility: visible;
+                    opacity: 1;
+                }
+                </style>
                 <?php if ($selectedEmployer): ?>
                     <!-- DETAIL VIEW FOR VERIFIKASI PEMBERI KERJA -->
                     <div class="detail-page-wrapper" style="max-width: 1200px; margin: 0 auto; width: 100%;">
@@ -3374,8 +4820,8 @@ document.addEventListener('click', function(e) {
                         </div>
 
                     <!-- TOP HEADER BAR -->
-                    <div class="detail-header-bar" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px 24px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-                        <div style="display:flex; align-items:center; gap:16px;">
+                    <div class="detail-header-bar" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:18px 24px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:nowrap; gap:16px;">
+                        <div style="display:flex; align-items:center; gap:16px; min-width:0; flex:1 1 auto;">
                             <?php
                                 $empBrandTitle = !empty($selectedEmployer['brand_name']) ? $selectedEmployer['brand_name'] : ($selectedEmployer['owner_name'] ?: $selectedEmployer['name']);
                                 $empOwnerSubtitle = !empty($selectedEmployer['brand_name']) ? ($selectedEmployer['owner_name'] ?: $selectedEmployer['name']) : '';
@@ -3391,6 +4837,21 @@ document.addEventListener('click', function(e) {
                                     <h1 style="font-size:20px; font-weight:800; margin:0; color:#0f172a;"><?php echo e($empBrandTitle); ?></h1>
                                     <?php
                                         $status = $selectedEmployer['verification_status'] ?? 'PENDING';
+                                        $isOnlineReverif = ($selectedEmployer['extension_status'] === 'REQUESTED' 
+                                            || ($selectedEmployer['extension_requested'] ?? 0) == 1 
+                                            || ($selectedEmployer['verification_status'] ?? '') === 'REVERIFICATION_PENDING'
+                                            || (!empty($selectedEmployer['last_activated_at']) && ($selectedEmployer['verification_status'] ?? '') === 'PENDING')
+                                            || (($_GET['reverif_type'] ?? '') === 'online'));
+
+                                        $empActiveUntilTime = !empty($selectedEmployer['active_until']) ? strtotime($selectedEmployer['active_until']) : null;
+                                        $isOfflineReverif = !$isOnlineReverif && (
+                                            (!empty($selectedEmployer['last_activated_at']) && (
+                                                in_array($selectedEmployer['verification_status'] ?? '', ['TRANSITION_LIMITED', 'FULL_DISABLED'], true)
+                                                || ($empActiveUntilTime !== null && $empActiveUntilTime <= (time() + 7 * 86400))
+                                            ))
+                                            || (($_GET['reverif_type'] ?? '') === 'offline')
+                                        );
+
                                         $isRevisionStatus = in_array(strtoupper($status), ['REVISION', 'NEEDS_REVISION']) || ($tab === 'revision');
                                         $isIndividual = strcasecmp((string)($selectedEmployer['entity_type'] ?? 'Individual'), 'Individual') === 0;
                                         $hasAssignment = !empty($selectedEmployer['assigned_to']);
@@ -3402,6 +4863,12 @@ document.addEventListener('click', function(e) {
                                             $revNum = (int)($selectedEmployer['revision_count'] ?? ($selectedEmployer['rejection_count'] ?? 1));
                                             $revNum = max(1, min(3, $revNum));
                                             $statusLabel = "Revisi Diminta (ke-{$revNum})";
+                                        } elseif ($isOnlineReverif) {
+                                            $statusClass = 'pending';
+                                            $statusLabel = 'Verifikasi Ulang Profil';
+                                        } elseif ($isOfflineReverif) {
+                                            $statusClass = 'process';
+                                            $statusLabel = 'Verifikasi Ulang Profil';
                                         } elseif ($status === 'APPROVED') {
                                             $statusClass = 'verified';
                                             $statusLabel = 'Terverifikasi';
@@ -3421,6 +4888,15 @@ document.addEventListener('click', function(e) {
                                     <span class="pill-badge <?php echo $statusClass; ?>" style="<?php echo $isRevisionStatus ? 'background:#fff7ed; color:#ea580c; border:1px solid #ffedd5;' : ($statusClass === 'pending' ? 'background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd;' : ''); ?>">
                                         ● <?php echo e($statusLabel); ?>
                                     </span>
+                                    <?php if ($isOnlineReverif): ?>
+                                        <span class="pill-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:700; display:inline-flex; align-items:center; gap:5px; padding:4px 10px;">
+                                            <i class="fa-solid fa-arrows-rotate"></i> Verifikasi Ulang Profil (Online)
+                                        </span>
+                                    <?php elseif ($isOfflineReverif): ?>
+                                        <span class="pill-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:700; display:inline-flex; align-items:center; gap:5px; padding:4px 10px;">
+                                            <i class="fa-solid fa-building-user"></i> Verifikasi Ulang Profil (Offline)
+                                        </span>
+                                    <?php endif; ?>
                                     <?php if ($activeProfileChange): ?>
                                         <span class="pill-badge" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-weight:700; display:inline-flex; align-items:center; gap:5px; padding:4px 10px;">
                                             <i class="fa-solid fa-clock-rotate-left"></i> Ada Pengajuan Perubahan Profil
@@ -3439,12 +4915,12 @@ document.addEventListener('click', function(e) {
                             </div>
                         </div>
 
-                        <div>
+                        <div style="flex:0 0 auto; margin-left:16px;">
                             <?php if ($isDinasFlow): ?>
                                 <button type="button" onclick="const sec = document.getElementById('sectionManualDinasEdit'); if (sec) { sec.scrollIntoView({behavior:'smooth'}); const dt = sec.querySelector('details'); if (dt) dt.open = true; }" style="display:inline-flex; align-items:center; gap:8px; background:#0284c7; border:none; border-radius:999px; padding:9px 20px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.25);">
                                     <i class="fa-solid fa-pen-to-square"></i> Ajukan Permohonan Ulang
                                 </button>
-                            <?php elseif ($hasAssignment && !$isRevisionStatus && $status !== 'APPROVED' && $status !== 'REJECTED'): ?>
+                            <?php elseif ($hasAssignment && !$isRevisionStatus && ($status !== 'APPROVED' || $isOnlineReverif || $isOfflineReverif) && $status !== 'REJECTED'): ?>
                                 <div style="display:flex; align-items:center; gap:8px;">
                                     <button type="button" data-open-modal="modal-confirm-unassign" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:999px; padding:8px 16px; font-size:13px; font-weight:700; color:#475569; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
                                         Batalkan Penugasan
@@ -3459,7 +4935,7 @@ document.addEventListener('click', function(e) {
                                         Setujui
                                     </button>
                                 </div>
-                            <?php elseif (!$hasAssignment && !$isRevisionStatus && $status !== 'APPROVED' && $status !== 'REJECTED'): ?>
+                            <?php elseif (!$hasAssignment && !$isRevisionStatus && ($status !== 'APPROVED' || $isOnlineReverif || $isOfflineReverif) && $status !== 'REJECTED'): ?>
                                 <button type="button" data-open-modal="modal-confirm-ambil-pengajuan" style="display:inline-flex; align-items:center; gap:8px; background:#ffffff; border:1px solid #00a8e8; border-radius:999px; padding:8px 18px; font-size:13px; font-weight:700; color:#0284c7; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
                                     <i class="fa-solid fa-arrows-rotate" style="color:#00a8e8;"></i> Ambil Pengajuan
                                 </button>
@@ -3797,7 +5273,7 @@ document.addEventListener('click', function(e) {
                             <?php
                             $savedMethod = !empty($selectedEmployer['verification_method']) ? strtoupper($selectedEmployer['verification_method']) : 'ONLINE';
                             $savedLocResult = !empty($selectedEmployer['location_check_result']) ? strtoupper($selectedEmployer['location_check_result']) : 'SESUAI';
-                            $isDecided = in_array($status, ['APPROVED', 'REJECTED', 'NEEDS_REVISION', 'REVISION'], true) || $isRevisionStatus;
+                            $isDecided = !$isOnlineReverif && !$isOfflineReverif && (in_array($status, ['APPROVED', 'REJECTED', 'NEEDS_REVISION', 'REVISION'], true) || $isRevisionStatus);
                             ?>
                             <div id="sectionMetodeVerifikasi" class="section-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:22px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
                                 <div class="section-card-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
@@ -4007,11 +5483,35 @@ document.addEventListener('click', function(e) {
                                             <span>Pemberi kerja belum memiliki penugasan aktif. Silakan klik tombol <strong>"Ambil Pengajuan"</strong> pada bagian header terlebih dahulu untuk mengaktifkan pilihan metode dan verifikasi.</span>
                                         <?php else: ?>
                                             <i class="fa-solid fa-lock" style="color:#94a3b8;"></i>
-                                            <span>Tombol keputusan di bagian atas (<strong>Setujui</strong> / <strong>Revisi</strong> / <strong>Tolak</strong>) akan aktif setelah consent verifikasi di atas dicentang.</span>
+                                            <span>Tombol keputusan (<strong>Setujui</strong> / <strong>Revisi</strong> / <strong>Tolak</strong>) akan aktif setelah consent verifikasi di atas dicentang.</span>
                                         <?php endif; ?>
                                     </div>
+
+                                    
                                 <?php endif; ?>
                             </div>
+
+                            <?php
+                            $vDocPath = $selectedEmployer['permit_document'] ?: ($selectedEmployer['doc_permission'] ?: '');
+                            if (empty($vDocPath) || (!file_exists(__DIR__ . '/' . ltrim($vDocPath, '/')) && !file_exists($vDocPath))) {
+                                if (file_exists(__DIR__ . '/public/images/surat-pernyataan-usaha.pdf')) {
+                                    $vDocPath = 'public/images/surat-pernyataan-usaha.pdf';
+                                }
+                            }
+                            $vHasDoc = !empty($vDocPath);
+                            $vDocName = $vHasDoc ? basename($vDocPath) : 'Tidak ada dokumen';
+
+                            $vPhotoPath = $selectedEmployer['workplace_photo'] ?: ($selectedEmployer['doc_location_photo'] ?: '');
+                            if (empty($vPhotoPath) || (!file_exists(__DIR__ . '/' . ltrim($vPhotoPath, '/')) && !file_exists($vPhotoPath))) {
+                                if (file_exists(__DIR__ . '/public/images/foto-lokasi.png')) {
+                                    $vPhotoPath = 'public/images/foto-lokasi.png';
+                                } elseif (file_exists(__DIR__ . '/public/images/jobi-mascot.png')) {
+                                    $vPhotoPath = 'public/images/jobi-mascot.png';
+                                }
+                            }
+                            $vHasPhoto = !empty($vPhotoPath);
+                            $vPhotoName = $vHasPhoto ? basename($vPhotoPath) : 'Tidak ada foto';
+                            ?>
 
                             <!-- CARD 3: DATA PROFIL TABLE (INDIVIDUAL VS PERUSAHAAN/OSS) -->
                             <?php if (strcasecmp((string)($selectedEmployer['entity_type'] ?? 'Individual'), 'Perusahaan') === 0): ?>
@@ -4047,9 +5547,12 @@ document.addEventListener('click', function(e) {
                                     </div>
                                 </div>
                             <?php else: ?>
-                                <!-- TABLE FOR INDIVIDUAL (DATA PROFIL PEMBERI KERJA INDIVIDU) -->
-                                <div class="section-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px;">
-                                    <div class="section-card-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:16px;">Data Profil Pemberi Kerja Individu</div>
+                                <?php if ($isOnlineReverif): ?>
+                                    <?php render_online_reverification_comparison($selectedEmployer); ?>
+                                <?php else: ?>
+                                    <!-- TABLE FOR INDIVIDUAL (DATA PROFIL PEMBERI KERJA INDIVIDU) -->
+                                    <div class="section-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px;">
+                                        <div class="section-card-title" style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:16px;">Data Profil Pemberi Kerja Individu</div>
                                     <div style="overflow-x:auto;">
                                         <table class="compare-table" style="width:100%; border-collapse:collapse; font-size:13px;">
                                             <thead>
@@ -4160,6 +5663,30 @@ document.addEventListener('click', function(e) {
                                         </table>
                                     </div>
                                 </div>
+
+                                <?php if ($isOfflineReverif): ?>
+                                    <!-- FORM EDITABLE KHUSUS VERIFIKASI ULANG PROFIL OFFLINE -->
+                                    <details id="detailsAdminProfileFormOffline" class="section-card" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:14px; padding:20px; margin-bottom:20px;" open>
+                                        <summary style="font-weight:800; color:#0f172a; cursor:pointer; font-size:14.5px; display:flex; align-items:center; justify-content:space-between; user-select:none; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
+                                            <div style="display:flex; align-items:center; gap:10px;">
+                                                <span style="display:flex; align-items:center; gap:8px;">
+                                                    <i class="fa-solid fa-pen-to-square" style="color:#0284c7;"></i> Form Profil Pemberi Kerja Individu (Versi Admin - Prefilled &amp; Editable)
+                                                </span>
+                                                <span class="pill-badge" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:5px; padding:2px 8px;">
+                                                    <i class="fa-solid fa-building-user"></i> Mode Offline
+                                                </span>
+                                            </div>
+                                            <span style="font-size:11.5px; font-weight:600; color:#0284c7; background:#e0f2fe; padding:3px 10px; border-radius:999px;">
+                                                Buka / Tutup
+                                            </span>
+                                        </summary>
+                                        <div style="font-size:12px; color:#64748b; margin-top:4px; margin-bottom:16px;">
+                                            Verifikasi Ulang Profil Offline: Petugas dapat memperbarui data profil pemohon secara langsung berdasarkan hasil pemeriksaan lapangan sebelum menetapkan keputusan.
+                                        </div>
+                                        <?php render_admin_employer_profile_form($selectedEmployer, 'offline_reverif'); ?>
+                                    </details>
+                                <?php endif; ?>
+                                <?php endif; ?>
                             <?php endif; ?>
 
                             <!-- CARD: HASIL VERIFIKASI (IF REVISI DIMINTA / PROCESSED) -->
@@ -4392,252 +5919,7 @@ document.addEventListener('click', function(e) {
                                                 Buka / Tutup
                                             </span>
                                         </summary>
-                                        <form method="post" action="admin.php?view=verifikasi_employer&detail_id=<?php echo $selectedEmployer['user_id']; ?>" enctype="multipart/form-data" style="margin-top:20px;">
-                                            <input type="hidden" name="admin_action" value="manual_dinas_edit">
-                                            <input type="hidden" name="user_id" value="<?php echo $selectedEmployer['user_id']; ?>">
-
-                                            <!-- 1. IDENTITAS PEMBERI KERJA INDIVIDU -->
-                                            <div style="font-size:12.5px; font-weight:800; color:#0369a1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; padding-bottom:6px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-user"></i> 1. Identitas Pemberi Kerja Individu
-                                            </div>
-                                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Nama Lengkap Pemberi Kerja <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <input type="text" name="owner_name" value="<?php echo e($selectedEmployer['owner_name'] ?: $selectedEmployer['name']); ?>" required style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        NIK (16 Digit) <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <input type="text" name="nik" value="<?php echo e($selectedEmployer['nik'] ?? ''); ?>" maxlength="16" placeholder="16 digit NIK pemohon" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Nomor Telepon <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <input type="text" name="phone" value="<?php echo e($selectedEmployer['phone']); ?>" required style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Nomor WhatsApp <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <input type="text" name="whatsapp" value="<?php echo e($selectedEmployer['whatsapp'] ?? $selectedEmployer['phone']); ?>" required style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Jenis Profesi / Usaha Individu <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <input type="text" name="profession" value="<?php echo e($selectedEmployer['profession'] ?? ''); ?>" required placeholder="Contoh: Jasa Desain Grafis" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        NPWP <span style="font-size:11.5px; font-weight:500; color:#64748b;">(Opsional)</span>
-                                                     </label>
-                                                    <input type="text" name="npwp" value="<?php echo e($selectedEmployer['npwp'] ?? ''); ?>" placeholder="Contoh: 12.345.678.9-123.000" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                            </div>
-
-                                            <!-- 2. ALAMAT & LOKASI DOMISILI -->
-                                            <div style="font-size:12.5px; font-weight:800; color:#0369a1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; padding-bottom:6px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-map-location-dot"></i> 2. Lokasi Domisili & Alamat
-                                            </div>
-                                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Provinsi <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <input type="text" name="province" value="<?php echo e($selectedEmployer['province'] ?? ''); ?>" required placeholder="Contoh: Jawa Barat" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Kota / Kabupaten <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <input type="text" name="city" value="<?php echo e($selectedEmployer['city']); ?>" required placeholder="Contoh: Kota Bandung" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Kecamatan <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <input type="text" name="district" value="<?php echo e($selectedEmployer['district'] ?? ''); ?>" required placeholder="Contoh: Coblong" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Kelurahan / Desa <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <input type="text" name="village" value="<?php echo e($selectedEmployer['village'] ?? ''); ?>" required placeholder="Contoh: Dago" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Kode Pos <span style="font-size:11.5px; font-weight:500; color:#64748b;">(Opsional)</span>
-                                                    </label>
-                                                    <input type="text" name="postal_code" value="<?php echo e($selectedEmployer['postal_code'] ?? ''); ?>" placeholder="Contoh: 40135" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Detail Alamat / Patokan <span style="font-size:11.5px; font-weight:500; color:#64748b;">(Opsional)</span>
-                                                    </label>
-                                                    <input type="text" name="address_detail" value="<?php echo e($selectedEmployer['address_detail'] ?? ''); ?>" placeholder="Patokan atau penjelas lokasi..." style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div style="grid-column: span 2;">
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Alamat Lengkap Domisili <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <input type="text" name="address" value="<?php echo e($selectedEmployer['address']); ?>" required placeholder="Contoh: Jl. Ir. H. Juanda No. 25" style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                            </div>
-
-                                            <!-- 3. DOKUMEN & BUKTI TEMPAT USAHA (PREFILL DOKUMEN & FOTO) -->
-                                            <div style="font-size:12.5px; font-weight:800; color:#0369a1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; padding-bottom:6px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-folder-open"></i> 3. Dokumen & Bukti Tempat Usaha
-                                            </div>
-                                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
-                                                <!-- FILE PENDUKUNG -->
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Dokumen Perizinan Usaha <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <?php
-                                                        $adminDoc = $selectedEmployer['permit_document'] ?: ($selectedEmployer['doc_permission'] ?: '');
-                                                        $adminHasDoc = !empty($adminDoc);
-                                                        $adminDocName = $adminHasDoc ? basename($adminDoc) : '';
-                                                    ?>
-                                                    <?php if ($adminHasDoc): ?>
-                                                        <div style="background:#f8fafc; border:1.5px solid #00a8e8; border-radius:10px; padding:12px; margin-bottom:10px;">
-                                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;">
-                                                                <div style="display:flex; align-items:center; gap:10px; min-width:0;">
-                                                                    <div style="width:36px; height:36px; border-radius:8px; background:#fee2e2; color:#ef4444; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-                                                                        <i class="fa-solid fa-file-pdf"></i>
-                                                                    </div>
-                                                                    <div style="min-width:0;">
-                                                                        <div style="font-size:13px; font-weight:700; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?php echo e($adminDocName); ?>">
-                                                                            <?php echo e($adminDocName); ?>
-                                                                        </div>
-                                                                        <div style="font-size:11.5px; color:#0284c7; font-weight:600; display:flex; align-items:center; gap:4px;">
-                                                                            <i class="fa-solid fa-circle-check"></i> File Terunggah Pemohon
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <span style="background:#e0f2fe; color:#0284c7; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;">Tersimpan</span>
-                                                            </div>
-                                                            <div style="display:flex; align-items:center; gap:8px;">
-                                                                <button type="button" data-open-modal="modal-view-doc" style="display:inline-flex; align-items:center; gap:6px; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:5px 12px; font-size:12px; font-weight:600; color:#0284c7; cursor:pointer;">
-                                                                    <i class="fa-solid fa-eye"></i> Lihat File
-                                                                </button>
-                                                                <a href="<?php echo e($adminDoc); ?>" target="_blank" download style="display:inline-flex; align-items:center; gap:6px; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:5px 12px; font-size:12px; font-weight:600; color:#475569; text-decoration:none;">
-                                                                    <i class="fa-solid fa-download"></i> Unduh
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                        <input type="hidden" name="existing_permit_document" value="<?php echo e($adminDoc); ?>">
-                                                        <div style="font-size:11.5px; font-weight:600; color:#64748b; margin-bottom:4px;">Ganti Dokumen Perizinan Usaha (Opsional):</div>
-                                                    <?php else: ?>
-                                                        <div style="background:#fef2f2; border:1px dashed #fca5a5; border-radius:8px; padding:10px 12px; font-size:12px; color:#991b1b; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                                                            <i class="fa-solid fa-circle-exclamation"></i> Belum ada dokumen perizinan usaha terunggah. Silakan unggah berkas.
-                                                        </div>
-                                                    <?php endif; ?>
-                                                    <input type="file" name="permit_document" accept=".pdf,.docx" style="width:100%; padding:8px 10px; border:1.5px dashed #cbd5e1; border-radius:8px; font-size:12px; background:#ffffff; box-sizing:border-box;">
-                                                    <div style="font-size:11px; color:#64748b; margin-top:4px;">Format PDF, Docx. Ukuran Maksimal 2MB</div>
-                                                </div>
-
-                                                <!-- FOTO BUKTI TEMPAT USAHA / LOKASI -->
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Foto Bukti Tempat Usaha / Lokasi <span style="color:#ef4444;">*</span>
-                                                    </label>
-                                                    <?php
-                                                        $adminPhoto = $selectedEmployer['workplace_photo'] ?: ($selectedEmployer['doc_location_photo'] ?: '');
-                    if (empty($adminPhoto) || (!file_exists(__DIR__ . '/' . ltrim($adminPhoto, '/')) && !file_exists($adminPhoto))) {
-                        if (file_exists(__DIR__ . '/public/images/foto-lokasi.png')) {
-                            $adminPhoto = 'public/images/foto-lokasi.png';
-                        } elseif (file_exists(__DIR__ . '/public/images/jobi-mascot.png')) {
-                            $adminPhoto = 'public/images/jobi-mascot.png';
-                        }
-                    }
-                                                        $adminHasPhoto = !empty($adminPhoto);
-                                                        $adminPhotoName = $adminHasPhoto ? basename($adminPhoto) : '';
-                                                    ?>
-                                                    <?php if ($adminHasPhoto): ?>
-                                                        <div style="background:#f8fafc; border:1.5px solid #00a8e8; border-radius:10px; padding:12px; margin-bottom:10px;">
-                                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;">
-                                                                <div style="display:flex; align-items:center; gap:10px; min-width:0;">
-                                                                    <div style="width:36px; height:36px; border-radius:8px; background:#e0f2fe; color:#0284c7; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-                                                                        <i class="fa-solid fa-image"></i>
-                                                                    </div>
-                                                                    <div style="min-width:0;">
-                                                                        <div style="font-size:13px; font-weight:700; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?php echo e($adminPhotoName); ?>">
-                                                                            <?php echo e($adminPhotoName); ?>
-                                                                        </div>
-                                                                        <div style="font-size:11.5px; color:#0284c7; font-weight:600; display:flex; align-items:center; gap:4px;">
-                                                                            <i class="fa-solid fa-circle-check"></i> Foto Terunggah Pemohon
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <span style="background:#e0f2fe; color:#0284c7; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;">Tersimpan</span>
-                                                            </div>
-                                                            <div style="display:flex; align-items:center; gap:8px;">
-                                                                <button type="button" data-open-modal="modal-view-photos" style="display:inline-flex; align-items:center; gap:6px; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:5px 12px; font-size:12px; font-weight:600; color:#0284c7; cursor:pointer;">
-                                                                    <i class="fa-solid fa-eye"></i> Lihat Foto
-                                                                </button>
-                                                                <a href="<?php echo e($adminPhoto); ?>" target="_blank" download style="display:inline-flex; align-items:center; gap:6px; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:5px 12px; font-size:12px; font-weight:600; color:#475569; text-decoration:none;">
-                                                                    <i class="fa-solid fa-download"></i> Unduh
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                        <input type="hidden" name="existing_workplace_photo" value="<?php echo e($adminPhoto); ?>">
-                                                        <div style="font-size:11.5px; font-weight:600; color:#64748b; margin-bottom:4px;">Ganti Foto Lokasi (Opsional):</div>
-                                                    <?php else: ?>
-                                                        <div style="background:#fef2f2; border:1px dashed #fca5a5; border-radius:8px; padding:10px 12px; font-size:12px; color:#991b1b; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                                                            <i class="fa-solid fa-circle-exclamation"></i> Belum ada foto lokasi terunggah. Silakan unggah foto.
-                                                        </div>
-                                                    <?php endif; ?>
-                                                    <input type="file" name="workplace_photo" accept=".png,.jpg,.jpeg" style="width:100%; padding:8px 10px; border:1.5px dashed #cbd5e1; border-radius:8px; font-size:12px; background:#ffffff; box-sizing:border-box;">
-                                                    <div style="font-size:11px; color:#64748b; margin-top:4px;">Format PNG, JPG. Ukuran Maksimal 2MB</div>
-                                                </div>
-                                            </div>
-
-                                            <!-- 4. MEDIA SOSIAL & DESKRIPSI -->
-                                            <div style="font-size:12.5px; font-weight:800; color:#0369a1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; padding-bottom:6px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-share-nodes"></i> 4. Media Sosial & Deskripsi
-                                            </div>
-                                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Instagram <span style="font-size:11.5px; font-weight:500; color:#64748b;">(Opsional)</span>
-                                                    </label>
-                                                    <input type="text" name="instagram" value="<?php echo e($selectedEmployer['instagram'] ?? ''); ?>" placeholder="@username atau https://instagram.com/..." style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        LinkedIn <span style="font-size:11.5px; font-weight:500; color:#64748b;">(Opsional)</span>
-                                                    </label>
-                                                    <input type="text" name="linkedin" value="<?php echo e($selectedEmployer['linkedin'] ?? ''); ?>" placeholder="username atau https://linkedin.com/in/..." style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div style="grid-column: span 2;">
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Facebook <span style="font-size:11.5px; font-weight:500; color:#64748b;">(Opsional)</span>
-                                                    </label>
-                                                    <input type="text" name="facebook" value="<?php echo e($selectedEmployer['facebook'] ?? ''); ?>" placeholder="@username atau https://facebook.com/..." style="width:100%; height:40px; padding:8px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:8px; color:#0f172a; box-sizing:border-box; background:#ffffff;">
-                                                </div>
-                                                <div style="grid-column: span 2;">
-                                                    <label style="font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:4px; margin-bottom:6px;">
-                                                        Deskripsi Singkat Usaha / Rekrutmen <span style="font-size:11.5px; font-weight:500; color:#64748b;">(Opsional)</span>
-                                                    </label>
-                                                    <textarea name="description" placeholder="Deskripsikan profil usaha atau kegiatan Anda..." style="width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13.5px; min-height:75px; color:#0f172a; box-sizing:border-box; background:#ffffff; font-family:inherit; resize:vertical;"><?php echo e($selectedEmployer['description']); ?></textarea>
-                                                </div>
-                                            </div>
-
-                                            <!-- FORM ACTION BUTTONS -->
-                                            <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:12px; border-top:1px solid #e2e8f0; padding-top:16px;">
-                                                <button type="submit" name="save_only" value="1" class="secondary-btn" style="height:38px; padding:0 18px; font-size:13px; font-weight:600; border:1.5px solid #cbd5e1; border-radius:8px; cursor:pointer; background:#ffffff; color:#334155; display:inline-flex; align-items:center; gap:6px;">
-                                                    <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan Data
-                                                </button>
-                                                <button type="submit" name="send_consent" value="1" class="primary-btn" style="height:38px; padding:0 18px; font-size:13px; font-weight:700; background:#0284c7; color:#ffffff; border:none; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-                                                    <i class="fa-solid fa-paper-plane"></i> Kirim Permintaan Consent
-                                                </button>
-                                            </div>
-                                        </form>
+                                        <?php render_admin_employer_profile_form($selectedEmployer, 'dinas_revision_3'); ?>
                                     </details>
 
                                     <!-- STEP 3: PERNYATAAN VERIFIKASI MANUAL PETUGAS DINAS -->
@@ -5391,26 +6673,26 @@ document.addEventListener('click', function(e) {
                         const btnHdrRevisi = document.getElementById('headerBtnRevisi');
                         const btnHdrTolak = document.getElementById('headerBtnTolak');
                         const btnHdrSetujui = document.getElementById('headerBtnSetujui');
-
-                        const headerButtons = [btnHdrRevisi, btnHdrTolak, btnHdrSetujui].filter(Boolean);
+                                                                        
+                        const allButtons = [btnHdrRevisi, btnHdrTolak, btnHdrSetujui].filter(Boolean);
 
                         if (isConsentGiven) {
-                            headerButtons.forEach(btn => {
+                            allButtons.forEach(btn => {
                                 btn.disabled = false;
                                 btn.style.opacity = '1';
                                 btn.style.cursor = 'pointer';
                             });
                             if (notice) {
-                                notice.innerHTML = '<span style="color:#059669; font-weight:700;"><i class="fa-solid fa-circle-check"></i> Consent telah dicentang. Silakan ambil keputusan verifikasi melalui tombol di bagian atas (Header).</span>';
+                                notice.innerHTML = '<span style="color:#059669; font-weight:700;"><i class="fa-solid fa-circle-check"></i> Consent telah dicentang. Anda dapat mengambil keputusan verifikasi sekarang melalui tombol di header bar atas.</span>';
                             }
                         } else {
-                            headerButtons.forEach(btn => {
+                            allButtons.forEach(btn => {
                                 btn.disabled = true;
                                 btn.style.opacity = '0.5';
                                 btn.style.cursor = 'not-allowed';
                             });
                             if (notice) {
-                                notice.innerHTML = '<i class="fa-solid fa-lock" style="color:#94a3b8;"></i> <span>Tombol keputusan di bagian atas (<strong>Setujui</strong> / <strong>Revisi</strong> / <strong>Tolak</strong>) akan aktif setelah consent verifikasi di atas dicentang.</span>';
+                                notice.innerHTML = '<i class="fa-solid fa-lock" style="color:#94a3b8;"></i> <span>Tombol keputusan (<strong>Setujui</strong> / <strong>Revisi</strong> / <strong>Tolak</strong>) akan aktif setelah consent verifikasi di atas dicentang.</span>';
                             }
                         }
                     }
@@ -5733,6 +7015,18 @@ document.addEventListener('click', function(e) {
                                             <td style="padding:14px 16px; color:#334155; font-size:13px;"><?php echo e($vEmp['city'] ?: '-'); ?></td>
                                             <td style="padding:14px 16px; color:#334155; font-size:13px; white-space:nowrap;"><?php echo e($vEmp['phone'] ?: '0'); ?></td>
                                             <td style="padding:14px 16px; font-size:13px; white-space:nowrap;">
+                                                <?php
+                                                    $isRowOnlineReverif = ($vEmp['extension_status'] === 'REQUESTED' 
+                                                        || ($vEmp['extension_requested'] ?? 0) == 1 
+                                                        || ($vEmp['verification_status'] ?? '') === 'REVERIFICATION_PENDING'
+                                                        || (!empty($vEmp['last_activated_at']) && ($vEmp['verification_status'] ?? '') === 'PENDING'));
+
+                                                    $rowActiveUntilTime = !empty($vEmp['active_until']) ? strtotime($vEmp['active_until']) : null;
+                                                    $isRowOfflineReverif = !$isRowOnlineReverif && !empty($vEmp['last_activated_at']) && (
+                                                        in_array($vEmp['verification_status'] ?? '', ['TRANSITION_LIMITED', 'FULL_DISABLED'], true)
+                                                        || ($rowActiveUntilTime !== null && $rowActiveUntilTime <= (time() + 7 * 86400))
+                                                    );
+                                                ?>
                                                 <?php if ($vEmp['verification_status'] === 'APPROVED'): ?>
                                                     <span class="pill-badge verified" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;">● Terverifikasi</span>
                                                 <?php elseif ($vEmp['verification_status'] === 'PENDING'): ?>
@@ -5744,6 +7038,19 @@ document.addEventListener('click', function(e) {
                                                     <span class="pill-badge danger" style="background:#fef2f2; color:#dc2626; border:1px solid #fee2e2;">● Ditolak</span>
                                                 <?php else: ?>
                                                     <span class="pill-badge revision" style="background:#fff7ed; color:#ea580c; border:1px solid #ffedd5;">● <?php echo e($vEmp['verification_status']); ?></span>
+                                                <?php endif; ?>
+                                                <?php if ($isRowOnlineReverif): ?>
+                                                    <div style="margin-top:5px;">
+                                                        <span class="pill-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:11px; font-weight:700; display:inline-flex; align-items:center; gap:5px; padding:3px 8px;">
+                                                            <i class="fa-solid fa-arrows-rotate"></i> Verifikasi Ulang Profil (Online)
+                                                        </span>
+                                                    </div>
+                                                <?php elseif ($isRowOfflineReverif): ?>
+                                                    <div style="margin-top:5px;">
+                                                        <span class="pill-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:11px; font-weight:700; display:inline-flex; align-items:center; gap:5px; padding:3px 8px;">
+                                                            <i class="fa-solid fa-building-user"></i> Verifikasi Ulang Profil (Offline)
+                                                        </span>
+                                                    </div>
                                                 <?php endif; ?>
                                                 <?php if (!empty($vEmp['pending_profile_changes']) && (int)$vEmp['pending_profile_changes'] > 0): ?>
                                                     <div style="margin-top:5px;">
@@ -5763,7 +7070,7 @@ document.addEventListener('click', function(e) {
                                             </td>
                                             <td style="padding:14px 16px; color:#64748b; font-size:12.5px; white-space:nowrap;"><?php echo date('d M Y, H:i', strtotime($vEmp['created_at'])); ?></td>
                                             <td style="padding:14px 16px; text-align:right; white-space:nowrap;">
-                                                <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=<?php echo e($tab); ?>&detail_id=<?php echo $vEmp['profile_id'] ?: $vEmp['user_id']; ?>&profile_id=<?php echo $vEmp['profile_id']; ?>" class="btn-lihat-detail">
+                                                <a href="admin.php?view=verifikasi_employer&entity=<?php echo e($entity); ?>&tab=<?php echo e($tab); ?>&detail_id=<?php echo $vEmp['profile_id'] ?: $vEmp['user_id']; ?>&profile_id=<?php echo $vEmp['profile_id']; ?><?php echo $isRowOnlineReverif ? '&reverif_type=online' : ($isRowOfflineReverif ? '&reverif_type=offline' : ''); ?>" class="btn-lihat-detail">
                                                     Lihat Detail
                                                 </a>
                                             </td>

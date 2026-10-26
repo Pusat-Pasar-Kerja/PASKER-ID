@@ -774,12 +774,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $newExtStatus = $isReverification ? 'REQUESTED' : 'NONE';
 
         if ($profile) {
+            if ($isReverification) {
+                ensure_profile_change_schema();
+                $verCount = (int)db()->query('SELECT COUNT(*) FROM profile_versions WHERE user_id = ' . (int)$user['id'])->fetchColumn();
+                $nextVer = $verCount + 1;
+                $snapStmt = db()->prepare('INSERT INTO profile_versions (user_id, request_id, version_num, snapshot_data, change_summary, created_at) VALUES (?, NULL, ?, ?, "Siklus Sebelumnya (Sebelum Verifikasi Ulang)", ' . (db()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? 'datetime("now")' : 'NOW()') . ')');
+                $snapStmt->execute([$user['id'], $nextVer, json_encode($profile, JSON_UNESCAPED_UNICODE)]);
+            }
+
+            $socMediaStr = "Instagram: {$instagram}, Facebook: {$facebook}, LinkedIn: {$linkedin}, TikTok: {$tiktok}";
             $stmt = db()->prepare('UPDATE employer_profiles SET
                 owner_name = ?, nik = ?, phone = ?, whatsapp = ?, profession = ?, npwp = ?,
                 brand_name = ?, business_logo = ?,
-                linkedin = ?, facebook = ?, instagram = ?,
+                linkedin = ?, facebook = ?, instagram = ?, tiktok = ?, social_media = ?,
                 same_location_siapkerja = ?, province = ?, city = ?, domicile_city_id = ?, district = ?, village = ?, postal_code = ?,
                 same_address_siapkerja = ?, address = ?, address_detail = ?,
+                domicile_address = ?, domicile_province = ?, domicile_city = ?, domicile_district = ?, domicile_village = ?, domicile_postal_code = ?,
+                workplace_same_as_domicile = ?, workplace_address = ?, workplace_province = ?, workplace_city = ?, workplace_district = ?, workplace_village = ?, workplace_postal_code = ?, workplace_detail = ?,
                 latitude = ?, longitude = ?, permit_document = ?, doc_permission = ?,
                 workplace_photo = ?, doc_location_photo = ?,
                 description = ?, user_consent = ?, consent_accepted = ?,
@@ -792,9 +803,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $stmt->execute([
                 $ownerName, $nik, $phone, $whatsapp, $profession, $npwp,
                 $brandName, $businessLogo,
-                $linkedin, $facebook, $instagram,
+                $linkedin, $facebook, $instagram, $tiktok, $socMediaStr,
                 $sameLoc, $province, $city, $city, $district, $village, $postalCode,
                 $sameAddr, $address, $addressDetail,
+                $address, $province, $city, $district, $village, $postalCode,
+                $sameLoc, $address, $province, $city, $district, $village, $postalCode, $addressDetail,
                 $latitude, $longitude, $permitDoc, $permitDoc,
                 $workplacePhoto, $workplacePhoto,
                 $description, $consent, $consent,
@@ -822,22 +835,27 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 } catch (Throwable $ignored) {}
             }
         } else {
+            $socMediaStr = "Instagram: {$instagram}, Facebook: {$facebook}, LinkedIn: {$linkedin}, TikTok: {$tiktok}";
             $stmt = db()->prepare('INSERT INTO employer_profiles (
                 user_id, owner_name, nik, phone, whatsapp, profession, npwp,
                 brand_name, business_logo,
-                linkedin, facebook, instagram,
+                linkedin, facebook, instagram, tiktok, social_media,
                 same_location_siapkerja, province, city, domicile_city_id, district, village, postal_code,
                 same_address_siapkerja, address, address_detail,
+                domicile_address, domicile_province, domicile_city, domicile_district, domicile_village, domicile_postal_code,
+                workplace_same_as_domicile, workplace_address, workplace_province, workplace_city, workplace_district, workplace_village, workplace_postal_code, workplace_detail,
                 latitude, longitude, permit_document, doc_permission, workplace_photo, doc_location_photo,
                 description, user_consent, consent_accepted,
                 entity_type, verification_status, verified, active_until, extension_requested, extension_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Individu", "PENDING", 0, NULL, 0, "NONE")');
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Individu", "PENDING", 0, NULL, 0, "NONE")');
             $stmt->execute([
                 $user['id'], $ownerName, $nik, $phone, $whatsapp, $profession, $npwp,
                 $brandName, $businessLogo,
-                $linkedin, $facebook, $instagram,
+                $linkedin, $facebook, $instagram, $tiktok, $socMediaStr,
                 $sameLoc, $province, $city, $city, $district, $village, $postalCode,
                 $sameAddr, $address, $addressDetail,
+                $address, $province, $city, $district, $village, $postalCode,
+                $sameLoc, $address, $province, $city, $district, $village, $postalCode, $addressDetail,
                 $latitude, $longitude, $permitDoc, $permitDoc, $workplacePhoto, $workplacePhoto,
                 $description, $consent, $consent
             ]);
