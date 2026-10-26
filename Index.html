@@ -1866,18 +1866,22 @@
                                 <?php if ($hasValidDates): ?>
                                     <div class="lifecycle-header-summary">
                                         <div class="lifecycle-summary-item">
-                                            <div class="summary-top-tag <?php echo $isH7 ? 'warning' : ''; ?>">
-                                                <i class="<?php echo $isH7 ? 'fa-solid fa-triangle-exclamation' : 'fa-regular fa-clock'; ?>"></i>
+                                            <div class="summary-top-tag <?php echo ($isH7 || $isLastDay) ? 'warning' : ''; ?>">
+                                                <i class="<?php echo ($isH7 || $isLastDay) ? 'fa-solid fa-triangle-exclamation' : 'fa-regular fa-clock'; ?>"></i>
                                                 HARI KE-<?php echo $elapsedDays; ?> DARI <?php echo $totalDays; ?>
                                             </div>
                                         </div>
                                         <div class="lifecycle-summary-sep"></div>
                                         <div class="lifecycle-summary-item">
                                             <div class="summary-main-val">
-                                                <i class="fa-regular fa-calendar" style="<?php echo $isH7 ? 'color:#d97706;' : 'color:#0284c7;'; ?>"></i>
-                                                Sisa <?php echo $daysRemaining; ?> hari
+                                                <i class="fa-regular fa-calendar" style="<?php echo ($isH7 || $isLastDay) ? 'color:#d97706;' : 'color:#0284c7;'; ?>"></i>
+                                                <?php if ($daysRemaining <= 0 || $isLastDay): ?>
+                                                    Hari Terakhir (H-0)
+                                                <?php else: ?>
+                                                    Sisa <?php echo $daysRemaining; ?> hari
+                                                <?php endif; ?>
                                             </div>
-                                            <div class="summary-sub-val">Siklus 6 Bulan</div>
+                                            <div class="summary-sub-val"><?php echo ($daysRemaining <= 0 || $isLastDay) ? 'Berakhir Hari Ini' : 'Siklus 6 Bulan'; ?></div>
                                         </div>
                                     </div>
                                 <?php else: ?>
@@ -1890,6 +1894,32 @@
                                         </div>
                                     </div>
                                 <?php endif; ?>
+                            <?php elseif ($isTransitionPeriod): ?>
+                                <div class="lifecycle-header-summary" style="border-color:#fde68a; background:#fffbeb;">
+                                    <div class="lifecycle-summary-item">
+                                        <div class="summary-top-tag warning">
+                                            <i class="fa-solid fa-triangle-exclamation"></i>
+                                            HARI KE-<?php echo $transElapsed; ?> DARI 7
+                                        </div>
+                                    </div>
+                                    <div class="lifecycle-summary-sep" style="background:#fde68a;"></div>
+                                    <div class="lifecycle-summary-item">
+                                        <div class="summary-main-val" style="color:#d97706;">
+                                            <i class="fa-regular fa-calendar" style="color:#d97706;"></i>
+                                            Sisa <?php echo $transRemain; ?> hari
+                                        </div>
+                                        <div class="summary-sub-val" style="color:#92400e; font-weight:600;">Masa Transisi</div>
+                                    </div>
+                                </div>
+                            <?php elseif ($isFullDisable || $verificationStatus === 'INACTIVE_REVERIFICATION_REQUIRED' || $verificationStatus === 'FULL_DISABLED'): ?>
+                                <div class="lifecycle-header-summary" style="border-color:#fecaca; background:#fef2f2;">
+                                    <div class="lifecycle-summary-item">
+                                        <div class="summary-main-val" style="color:#dc2626; font-size:13.5px; display:flex; align-items:center; gap:6px;">
+                                            <i class="fa-solid fa-ban" style="color:#dc2626;"></i> Hak Akses Nonaktif
+                                        </div>
+                                        <div class="summary-sub-val" style="color:#991b1b; font-weight:600;">Perlu Verifikasi Ulang</div>
+                                    </div>
+                                </div>
                             <?php endif; ?>
                         </div>
 
@@ -1975,17 +2005,13 @@
                                 </div>
                             </div>
                         <?php elseif ($isTransitionPeriod): ?>
-                            <!-- 2. DASHBOARD PEMBERI KERJA – MASA TRANSISI 7 HARI HAK AKSES PEMBERI KERJA INDIVIDU -->
+                            <!-- 2. DASHBOARD PEMBERI KERJA – MASA TRANSISI HAK AKSES PEMBERI KERJA INDIVIDU -->
                             <div class="lifecycle-banner banner-warning">
-                                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap;">
                                     <div style="flex:1; min-width:280px;">
-                                        <div class="banner-title"><i class="fa-solid fa-triangle-exclamation"></i> MASA TRANSISI 7 HARI HAK AKSES PEMBERI KERJA INDIVIDU</div>
-                                        <div class="banner-desc">
-                                            Masa aktif telah berakhir dan Verifikasi Ulang Profil belum disetujui Admin. Anda berada dalam masa transisi selama <?php echo $transRemain; ?> hari. Anda tidak dapat membuat atau mengirim Lowongan baru, tetapi tetap dapat menyelesaikan proses rekrutmen yang sudah berjalan.
-                                        </div>
-                                        <div class="banner-countdown-row" style="margin-top:10px;">
-                                            <div class="countdown-stat">Hari ke-<?php echo $transElapsed; ?> dari 7</div>
-                                            <div class="countdown-remain">Sisa <?php echo $transRemain; ?> hari</div>
+                                        <div class="banner-title"><i class="fa-solid fa-triangle-exclamation"></i> MASA TRANSISI HAK AKSES PEMBERI KERJA INDIVIDU</div>
+                                        <div class="banner-desc" style="margin:0;">
+                                            Masa aktif 6 bulan telah berakhir dan Verifikasi Ulang Profil belum disetujui Admin. Selama masa transisi, Anda tidak dapat membuat atau mengirim lowongan baru, namun tetap dapat menyelesaikan proses rekrutmen kandidat yang sudah berjalan.
                                         </div>
                                         <?php if (!empty($isReverificationPending)): ?>
                                             <div class="banner-subbox" style="background:#fffbeb; border:1px solid #fde68a; color:#92400e; margin-top:10px; border-radius:8px; padding:10px 14px;">
@@ -1994,7 +2020,7 @@
                                             </div>
                                         <?php endif; ?>
                                     </div>
-                                    <div style="display:flex; align-items:center; gap:8px;">
+                                    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                                         <?php if (empty($isReverificationPending)): ?>
                                             <?php if ($isEligibleForReverification): ?>
                                                 <button type="button" class="primary-btn" style="background:#d97706; color:#ffffff; border-radius:8px; height:38px; padding:0 18px; font-weight:700; display:inline-flex; align-items:center; gap:8px;" data-open-modal="modal-employer-profile">
@@ -2010,13 +2036,13 @@
                                 </div>
                             </div>
                         <?php elseif ($isFullDisable || $verificationStatus === 'INACTIVE_REVERIFICATION_REQUIRED' || $verificationStatus === 'FULL_DISABLED'): ?>
-                            <!-- 3. DASHBOARD PEMBERI KERJA – HAK AKSES PEMBERI KERJA INDIVIDU NONAKTIF SETELAH MASA TRANSISI -->
+                            <!-- 3. DASHBOARD PEMBERI KERJA – HAK AKSES PEMBERI KERJA INDIVIDU NONAKTIF -->
                             <div class="lifecycle-banner banner-danger">
-                                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap;">
                                     <div style="flex:1; min-width:280px;">
-                                        <div class="banner-title"><i class="fa-solid fa-ban"></i> HAK AKSES PEMBERI KERJA INDIVIDU NONAKTIF SETELAH MASA TRANSISI</div>
-                                        <div class="banner-desc">
-                                            Masa transisi 7 hari telah berakhir dan Verifikasi Ulang Profil belum disetujui Admin. Seluruh fungsi operasional Pemberi Kerja Individu diblokir sampai proses Verifikasi Ulang Profil disetujui Admin.
+                                        <div class="banner-title"><i class="fa-solid fa-ban"></i> HAK AKSES PEMBERI KERJA INDIVIDU NONAKTIF</div>
+                                        <div class="banner-desc" style="margin:0;">
+                                            Masa transisi telah berakhir dan Verifikasi Ulang Profil belum disetujui Admin. Seluruh fungsi operasional Pemberi Kerja Individu dinonaktifkan sampai proses Verifikasi Ulang Profil disetujui Admin.
                                         </div>
                                         <?php if (!empty($isReverificationPending)): ?>
                                             <div class="banner-subbox" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; margin-top:10px; border-radius:8px; padding:10px 14px;">
@@ -2025,7 +2051,7 @@
                                             </div>
                                         <?php endif; ?>
                                     </div>
-                                    <div style="display:flex; align-items:center; gap:8px;">
+                                    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                                         <?php if (empty($isReverificationPending)): ?>
                                             <?php if ($isEligibleForReverification): ?>
                                                 <button type="button" class="primary-btn" style="background:#dc2626; color:#ffffff; border-radius:8px; height:38px; padding:0 18px; font-weight:700; display:inline-flex; align-items:center; gap:8px;" data-open-modal="modal-employer-profile">
@@ -2040,14 +2066,25 @@
                                     </div>
                                 </div>
                             </div>
-                        <?php elseif (in_array($verificationStatus, ['ACTIVE_VERIFIED', 'APPROVED'], true) && $isH7 && $hasValidDates): ?>
-                            <!-- 1. DASHBOARD PEMBERI KERJA – REMINDER H-7 VERIFIKASI ULANG PROFIL -->
+                        <?php elseif (in_array($verificationStatus, ['ACTIVE_VERIFIED', 'APPROVED'], true) && ($isH7 || $isLastDay) && $hasValidDates): ?>
+                            <!-- 1. DASHBOARD PEMBERI KERJA – REMINDER MASA AKTIF AKAN BERAKHIR -->
                             <div class="lifecycle-banner banner-warning">
-                                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap;">
                                     <div style="flex:1; min-width:280px;">
-                                        <div class="banner-title"><i class="fa-solid fa-triangle-exclamation"></i> MASA AKTIF HAK AKSES AKAN SEGERA BERAKHIR (H-<?php echo $daysRemaining; ?>)</div>
-                                        <div class="banner-desc">
-                                            Hak Akses Pemberi Kerja Individu Anda akan berakhir dalam <?php echo $daysRemaining; ?> hari pada <?php echo $activeUntilLong; ?>. Segera ajukan Verifikasi Ulang Profil agar masa aktif diperpanjang tanpa jeda operasional.
+                                        <div class="banner-title">
+                                            <i class="fa-solid fa-triangle-exclamation"></i>
+                                            <?php if ($daysRemaining <= 0 || $isLastDay): ?>
+                                                MASA AKTIF HAK AKSES BERAKHIR HARI INI
+                                            <?php else: ?>
+                                                MASA AKTIF HAK AKSES AKAN SEGERA BERAKHIR
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="banner-desc" style="margin:0;">
+                                            <?php if ($daysRemaining <= 0 || $isLastDay): ?>
+                                                Hak Akses Pemberi Kerja Individu Anda akan berakhir hari ini pada pukul 23:59 WIB (<?php echo $activeUntilLong; ?>). Segera ajukan Verifikasi Ulang Profil agar masa aktif diperpanjang tanpa jeda operasional.
+                                            <?php else: ?>
+                                                Hak Akses Pemberi Kerja Individu Anda akan segera berakhir pada <?php echo $activeUntilLong; ?>. Segera ajukan Verifikasi Ulang Profil agar masa aktif diperpanjang tanpa jeda operasional.
+                                            <?php endif; ?>
                                         </div>
                                         <?php if (!empty($isReverificationPending)): ?>
                                             <div class="banner-subbox" style="background:#fffbeb; border:1px solid #fde68a; color:#92400e; margin-top:10px; border-radius:8px; padding:10px 14px;">
@@ -2056,7 +2093,7 @@
                                             </div>
                                         <?php endif; ?>
                                     </div>
-                                    <div style="display:flex; align-items:center; gap:8px;">
+                                    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                                         <?php if (empty($isReverificationPending)): ?>
                                             <?php if ($isEligibleForReverification): ?>
                                                 <button type="button" class="primary-btn" style="background:#0284c7; color:#ffffff; border-radius:8px; height:38px; padding:0 18px; font-weight:700; display:inline-flex; align-items:center; gap:8px;" data-open-modal="modal-employer-profile">

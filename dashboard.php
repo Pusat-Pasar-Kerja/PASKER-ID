@@ -217,7 +217,8 @@ if ($hasValidDates) {
             $daysRemaining = 0;
             $isLastDay = true;
             $elapsedDays = $totalDays;
-        } elseif ($daysRemaining <= 7) {
+        }
+        if ($daysRemaining <= 7 || $isLastDay) {
             $isH7 = true;
         }
 
