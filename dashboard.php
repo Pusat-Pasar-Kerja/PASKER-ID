@@ -141,7 +141,7 @@ $isExpired = false;
 $isTransitionPeriod = false;
 $isFullDisable = false;
 
-if (!empty($profile['verified']) && (int)$profile['verified'] === 1 && in_array($verificationStatus, ['APPROVED', 'ACTIVE_VERIFIED', 'TRANSITION_LIMITED', 'FULL_DISABLED', 'INACTIVE_REVERIFICATION_REQUIRED'], true)) {
+if (!empty($profile['last_activated_at']) || (!empty($profile['verified']) && (int)$profile['verified'] === 1 && in_array($verificationStatus, ['APPROVED', 'ACTIVE_VERIFIED', 'TRANSITION_LIMITED', 'FULL_DISABLED', 'INACTIVE_REVERIFICATION_REQUIRED'], true))) {
     if ($activeUntil) {
         if ($now <= $activeUntil) {
             $diff = $now->diff($activeUntil);
@@ -765,13 +765,32 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             exit;
         }
 
-        // If user is currently active (e.g. H-7 before expiration), preserve verified = 1 and existing active_until
-        $keepActive = (!empty($profile['verified']) && (int)$profile['verified'] === 1 && $activeUntil && $now <= $activeUntil);
-        $newVerified = $keepActive ? 1 : 0;
-        $newActiveUntil = $keepActive ? ($profile['active_until'] ?? null) : null;
-        $newVerStatus = $keepActive ? ($profile['verification_status'] ?? 'APPROVED') : 'PENDING';
-        $newExtRequested = $isReverification ? 1 : 0;
-        $newExtStatus = $isReverification ? 'REQUESTED' : 'NONE';
+        // If user is currently in a reverification cycle, preserve active_until and set appropriate state
+        $isReverifCycle = (!empty($profile['last_activated_at']) || $isReverification);
+        if ($isReverifCycle && $activeUntil) {
+            $newActiveUntil = $profile['active_until'] ?? null;
+            if ($now <= $activeUntil) {
+                // Reminder H-7 (termasuk H-0): full access remains active until active_until
+                $newVerified = 1;
+                $newVerStatus = 'APPROVED';
+            } elseif (($now->getTimestamp() - $activeUntil->getTimestamp()) <= (7 * 86400)) {
+                // Masa Transisi 7 Hari: recruitment active, posting disabled
+                $newVerified = 1;
+                $newVerStatus = 'TRANSITION_LIMITED';
+            } else {
+                // Hak Akses Nonaktif: locked until approved
+                $newVerified = 0;
+                $newVerStatus = 'INACTIVE_REVERIFICATION_REQUIRED';
+            }
+            $newExtRequested = 1;
+            $newExtStatus = 'REQUESTED';
+        } else {
+            $newVerified = 0;
+            $newActiveUntil = null;
+            $newVerStatus = 'PENDING';
+            $newExtRequested = 0;
+            $newExtStatus = 'NONE';
+        }
 
         if ($profile) {
             if ($isReverification) {
