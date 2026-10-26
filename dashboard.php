@@ -461,13 +461,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $permitExt = strtolower(pathinfo((string) $_FILES['permit_document']['name'], PATHINFO_EXTENSION));
             $permitSize = (int) ($_FILES['permit_document']['size'] ?? 0);
             $permitErr = (int) ($_FILES['permit_document']['error'] ?? UPLOAD_ERR_NO_FILE);
-            if ($permitErr !== UPLOAD_ERR_OK || !in_array($permitExt, ['pdf', 'docx'], true) || $permitSize > 2 * 1024 * 1024) {
-                flash('error', 'Dokumen Perizinan Usaha harus berformat PDF atau Docx dengan ukuran maksimal 2MB.');
+            if ($permitErr !== UPLOAD_ERR_OK || !in_array($permitExt, ['pdf', 'docx', 'jpg', 'jpeg'], true) || $permitSize > 2 * 1024 * 1024) {
+                flash('error', 'Dokumen Perizinan Usaha harus berformat PDF atau JPG dengan ukuran maksimal 2MB.');
                 redirect('dashboard.php?open_add_business=1');
                 exit;
             }
         }
-        $permitDoc = store_upload('permit_document', 'employer/' . $user['id'], ['pdf', 'docx']);
+        $permitDoc = store_upload('permit_document', 'employer/' . $user['id'], ['pdf', 'docx', 'jpg', 'jpeg']);
 
         if (!empty($_FILES['workplace_photo']['name'])) {
             $photoExt = strtolower(pathinfo((string) $_FILES['workplace_photo']['name'], PATHINFO_EXTENSION));
@@ -698,15 +698,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $permitExt = strtolower(pathinfo((string) $_FILES['permit_document']['name'], PATHINFO_EXTENSION));
             $permitSize = (int) ($_FILES['permit_document']['size'] ?? 0);
             $permitErr = (int) ($_FILES['permit_document']['error'] ?? UPLOAD_ERR_NO_FILE);
-            if ($permitErr !== UPLOAD_ERR_OK || !in_array($permitExt, ['pdf', 'docx'], true) || $permitSize > 2 * 1024 * 1024) {
-                $_SESSION['profile_modal_error'] = 'Dokumen Perizinan Usaha harus berformat PDF atau Docx dengan ukuran maksimal 2MB.';
-                flash('error', 'Dokumen Perizinan Usaha harus berformat PDF atau Docx dengan ukuran maksimal 2MB.');
+            if ($permitErr !== UPLOAD_ERR_OK || !in_array($permitExt, ['pdf', 'docx', 'jpg', 'jpeg'], true) || $permitSize > 2 * 1024 * 1024) {
+                $_SESSION['profile_modal_error'] = 'Dokumen Perizinan Usaha harus berformat PDF atau JPG dengan ukuran maksimal 2MB.';
+                flash('error', 'Dokumen Perizinan Usaha harus berformat PDF atau JPG dengan ukuran maksimal 2MB.');
                 redirect('dashboard.php?open_profile=1');
                 exit;
             }
         }
 
-        $permitDoc = store_upload('permit_document', 'employer/' . $user['id'], ['pdf', 'docx']);
+        $permitDoc = store_upload('permit_document', 'employer/' . $user['id'], ['pdf', 'docx', 'jpg', 'jpeg']);
         if (!empty($_FILES['workplace_photo']['name'])) {
             $photoExt = strtolower(pathinfo((string) $_FILES['workplace_photo']['name'], PATHINFO_EXTENSION));
             $photoSize = (int) ($_FILES['workplace_photo']['size'] ?? 0);

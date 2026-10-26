@@ -631,7 +631,7 @@ if (file_exists($pkiCssPath)) {
                                         Dokumen Perizinan Usaha <span class="req">*</span>
                                         <span class="pki-tooltip" tabindex="0" role="tooltip">
                                             <?php echo $infoIconSvg; ?>
-                                            <span class="tooltip-popover">Unggah file yang mendukung validitas identitas atau kegiatan usaha Pemberi Kerja Individu.</span>
+                                            <span class="tooltip-popover">Dokumen yang diunggah harus sesuai dengan Jenis Usaha Individu yang dipilih. Format PDF/JPG, maksimal 2 MB per file.</span>
                                         </span>
                                     </label>
                                     <div class="pki-upload-box" id="pcr_box_permit_document" onclick="pcrTriggerUpload('pcr_permit_document')">
@@ -651,9 +651,11 @@ if (file_exists($pkiCssPath)) {
                                             <button type="button" class="pki-upload-btn" id="pcr_btn_permit_document"><?php echo !empty($vPermitDoc) ? 'Ganti' : 'Pilih File'; ?></button>
                                         </div>
                                     </div>
-                                    <input type="file" name="pcr_permit_document" id="pcr_input_permit_document" accept=".pdf,.docx" style="display:none;" onchange="pcrHandleFileChange(this, 'pcr_permit_document')">
+                                    <input type="file" name="pcr_permit_document" id="pcr_input_permit_document" accept=".pdf,.docx,.jpg,.jpeg" style="display:none;" onchange="pcrHandleFileChange(this, 'pcr_permit_document')">
                                     <input type="hidden" name="pcr_existing_permit_document" id="pcr_existing_permit_document" value="<?php echo e($vPermitDoc); ?>">
-                                    <div class="pki-field-helper">Ukuran maksimum 2 MB • Format PDF, Docx</div>
+                                    <div class="pki-field-helper" id="pcr_helper_permit_document">
+                                        <?php echo function_exists('get_permit_document_helper_html') ? get_permit_document_helper_html($vProfession) : '<div class="pki-permit-doc-helper-wrap"><div class="pki-permit-doc-prompt" style="color:#64748b; line-height:1.45; margin-bottom:3px;">Pilih Jenis Usaha Individu terlebih dahulu untuk melihat dokumen yang perlu diunggah.</div><div class="pki-permit-doc-format" style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div></div>'; ?>
+                                    </div>
                                     <div class="pki-field-helper" id="pcr_helper_permit_document_size" style="<?php echo $vPermitDocSizeText !== '' ? '' : 'display:none;'; ?>">
                                         <?php if ($vPermitDocSizeText !== ''): ?>
                                             Ukuran file saat ini: <?php echo e($vPermitDocSizeText); ?>
@@ -1108,6 +1110,32 @@ function pcrUpdateMapPreview() {
     const profDisplay = document.getElementById('pcr_profession_display');
     const profHidden = document.getElementById('pcr_profession');
 
+    function updatePcrPermitDocHelper(profession) {
+        const helper = document.getElementById('pcr_helper_permit_document');
+        if (!helper) return;
+        if (typeof window.getPermitDocHelperHtml === 'function') {
+            helper.innerHTML = window.getPermitDocHelperHtml(profession);
+        } else if (window.PERMIT_DOC_REQUIREMENTS) {
+            const p = (profession || '').trim();
+            if (p && window.PERMIT_DOC_REQUIREMENTS[p]) {
+                helper.innerHTML = '<div class="pki-permit-doc-helper-wrap">' +
+                    '<div style="font-weight:600; color:#334155; margin-bottom:2px;">Dokumen yang perlu diunggah:</div>' +
+                    '<div style="color:#475569; margin-bottom:4px; line-height:1.45;">' + window.PERMIT_DOC_REQUIREMENTS[p] + '</div>' +
+                    '<div style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div>' +
+                    '</div>';
+            } else {
+                helper.innerHTML = '<div class="pki-permit-doc-helper-wrap">' +
+                    '<div style="color:#64748b; line-height:1.45; margin-bottom:3px;">Pilih Jenis Usaha Individu terlebih dahulu untuk melihat dokumen yang perlu diunggah.</div>' +
+                    '<div style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div>' +
+                    '</div>';
+            }
+        }
+    }
+
+    if (profHidden && profHidden.value) {
+        updatePcrPermitDocHelper(profHidden.value);
+    }
+
     if (profTrigger && profDropdown) {
         profTrigger.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -1171,6 +1199,7 @@ function pcrUpdateMapPreview() {
                     check.className = 'fa-solid fa-check pki-select-check';
                     opt.appendChild(check);
                 }
+                updatePcrPermitDocHelper(val);
                 profDropdown.style.display = 'none';
                 profTrigger.setAttribute('aria-expanded', 'false');
                 profTrigger.focus();

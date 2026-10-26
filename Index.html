@@ -6284,10 +6284,10 @@
                             <!-- Dokumen Perizinan Usaha -->
                             <div class="pki-field">
                                 <label class="pki-field-label" id="label_new_biz_permit_document">
-                                    Dokumen Perizinan Usaha (NIB / SKU / Ket. Usaha) <span class="req">*</span>
+                                    Dokumen Perizinan Usaha <span class="req">*</span>
                                     <span class="pki-tooltip" tabindex="0" role="tooltip">
                                         <svg class="tooltip-icon" width="13" height="13" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; cursor:pointer;"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
-                                        <span class="tooltip-popover">Unggah file legalitas usaha, NIB, atau Surat Keterangan Usaha dari Kelurahan/Desa.</span>
+                                        <span class="tooltip-popover">Dokumen yang diunggah harus sesuai dengan Jenis Usaha Individu yang dipilih. Format PDF/JPG, maksimal 2 MB per file.</span>
                                     </span>
                                 </label>
                                 <div class="pki-upload-box" id="new_biz_box_permit_document" onclick="newBizTriggerUpload('permit_document')">
@@ -6301,8 +6301,13 @@
                                         <button type="button" class="pki-upload-btn" id="new_biz_btn_permit_document">Pilih File</button>
                                     </div>
                                 </div>
-                                <input type="file" name="permit_document" id="new_biz_input_permit_document" accept=".pdf,.docx" style="display:none;" onchange="newBizHandleFileChange(this, 'permit_document')">
-                                <div class="pki-field-helper" id="helper_new_biz_permit_document">Ukuran maksimum 2 MB • Format PDF, Docx</div>
+                                <input type="file" name="permit_document" id="new_biz_input_permit_document" accept=".pdf,.docx,.jpg,.jpeg" style="display:none;" onchange="newBizHandleFileChange(this, 'permit_document')">
+                                <div class="pki-field-helper" id="helper_new_biz_permit_document">
+                                    <div class="pki-permit-doc-helper-wrap">
+                                        <div class="pki-permit-doc-prompt" style="color:#64748b; line-height:1.45; margin-bottom:3px;">Pilih Jenis Usaha Individu terlebih dahulu untuk melihat dokumen yang perlu diunggah.</div>
+                                        <div class="pki-permit-doc-format" style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div>
+                                    </div>
+                                </div>
                                 <div class="pki-field-helper" id="helper_new_biz_permit_document_size" style="display:none; color:#059669; font-weight:600;"></div>
                             </div>
 
@@ -6528,7 +6533,12 @@
         if (container) container.classList.remove('has-error');
         if (helper) {
             helper.classList.remove('error');
-            if (fieldId === 'user_consent' || fieldId === 'social') {
+            if (fieldId === 'permit_document') {
+                const curProf = document.getElementById('new_biz_profession')?.value || '';
+                if (typeof window.updateNewBizPermitDocHelper === 'function') {
+                    window.updateNewBizPermitDocHelper(curProf);
+                }
+            } else if (fieldId === 'user_consent' || fieldId === 'social') {
                 helper.style.display = 'none';
             }
         }
@@ -6610,11 +6620,11 @@
         } else if (step === 3) {
             const permitFile = document.getElementById('new_biz_input_permit_document')?.files?.[0];
             if (!permitFile) {
-                flag('permit_document', 'Dokumen Perizinan Usaha wajib diunggah minimal 1 dokumen (PDF/Docx).', document.getElementById('new_biz_box_permit_document'));
+                flag('permit_document', 'Dokumen Perizinan Usaha wajib diunggah minimal 1 dokumen.', document.getElementById('new_biz_box_permit_document'));
             } else {
                 const ext = (permitFile.name.split('.').pop() || '').toLowerCase();
-                if (!['pdf', 'docx'].includes(ext) || permitFile.size > 2 * 1024 * 1024) {
-                    flag('permit_document', 'Format dokumen harus PDF/Docx dengan ukuran maksimal 2MB.', document.getElementById('new_biz_box_permit_document'));
+                if (!['pdf', 'docx', 'jpg', 'jpeg'].includes(ext) || permitFile.size > 2 * 1024 * 1024) {
+                    flag('permit_document', 'Format PDF/JPG, maksimal 2 MB per file.', document.getElementById('new_biz_box_permit_document'));
                 } else {
                     newBizClearError('permit_document');
                 }
@@ -6757,6 +6767,29 @@
         if (noRes) noRes.style.display = total === 0 ? 'block' : 'none';
     };
 
+    window.updateNewBizPermitDocHelper = function(profession) {
+        const helper = document.getElementById('helper_new_biz_permit_document');
+        if (!helper) return;
+        helper.classList.remove('error');
+        if (typeof window.getPermitDocHelperHtml === 'function') {
+            helper.innerHTML = window.getPermitDocHelperHtml(profession);
+        } else if (window.PERMIT_DOC_REQUIREMENTS) {
+            const p = (profession || '').trim();
+            if (p && window.PERMIT_DOC_REQUIREMENTS[p]) {
+                helper.innerHTML = '<div class="pki-permit-doc-helper-wrap">' +
+                    '<div style="font-weight:600; color:#334155; margin-bottom:2px;">Dokumen yang perlu diunggah:</div>' +
+                    '<div style="color:#475569; margin-bottom:4px; line-height:1.45;">' + window.PERMIT_DOC_REQUIREMENTS[p] + '</div>' +
+                    '<div style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div>' +
+                    '</div>';
+            } else {
+                helper.innerHTML = '<div class="pki-permit-doc-helper-wrap">' +
+                    '<div style="color:#64748b; line-height:1.45; margin-bottom:3px;">Pilih Jenis Usaha Individu terlebih dahulu untuk melihat dokumen yang perlu diunggah.</div>' +
+                    '<div style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div>' +
+                    '</div>';
+            }
+        }
+    };
+
     window.newBizSelectProfession = function(val) {
         const hidden = document.getElementById('new_biz_profession');
         const disp = document.getElementById('new_biz_profession_display');
@@ -6780,6 +6813,9 @@
             }
         });
         newBizClearError('profession');
+        if (typeof window.updateNewBizPermitDocHelper === 'function') {
+            window.updateNewBizPermitDocHelper(val);
+        }
     };
 
     window.newBizSyncSamePhone = function(chk) {

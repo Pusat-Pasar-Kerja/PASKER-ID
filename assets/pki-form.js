@@ -266,6 +266,81 @@
     }
 
     // ─── 1b. Searchable Profession Selector (Matching Karirhub Look) ───
+    const PERMIT_DOC_REQUIREMENTS = {
+        'Praktik Dokter Umum': 'Surat Tanda Registrasi (STR) Dokter dan Surat Izin Praktik (SIP) sesuai tempat praktik.',
+        'Praktik Dokter Gigi': 'STR Dokter Gigi dan SIP Dokter Gigi sesuai tempat praktik.',
+        'Praktik Bidan': 'STR Bidan dan SIP Bidan sesuai tempat praktik.',
+        'Praktik Keperawatan Mandiri': 'STR Perawat dan SIP Perawat sesuai tempat praktik.',
+        'Praktik Psikolog': 'STR dan izin praktik psikolog sesuai lingkup layanan, seperti SILP atau SIP Psikolog Klinis.',
+        'Layanan Fisioterapi': 'STR Fisioterapis dan SIP Fisioterapis sesuai tempat praktik.',
+        'Praktik Terapis Wicara': 'STR dan SIP tenaga profesional yang memberikan terapi wicara.',
+        'Layanan Akupunktur': 'NIB dan dokumen izin atau pendaftaran praktik sesuai jalur layanan.',
+        'Layanan Terapi Tumbuh Kembang Anak': 'NIB, bukti kompetensi penanggung jawab terapi, serta izin praktik tenaga kesehatan/psikolog sesuai layanan.',
+        'Layanan Konsultasi Gizi/Nutrisionis': 'Bukti kualifikasi gizi/nutrisi serta STR dan SIP apabila menyelenggarakan praktik profesi kesehatan.',
+
+        'Praktik Notaris / PPAT': 'SK Pengangkatan Notaris/PPAT dan Berita Acara Sumpah/Janji Jabatan.',
+        'Praktik Advokat/Pengacara / Konsultan Hukum': 'Kartu Tanda Anggota organisasi advokat dan Berita Acara Sumpah Advokat.',
+        'Konsultan Pajak': 'Izin Praktik Konsultan Pajak, kartu izin yang berlaku, dan Sertifikat Konsultan Pajak.',
+        'Jasa Akuntansi': 'Izin Akuntan Berpraktik atau dokumen izin Kantor Jasa Akuntansi apabila layanan yang diberikan mempersyaratkannya, serta bukti kompetensi.',
+        'Konsultan Manajemen': 'Portofolio konsultasi/proposal layanan dan sertifikat keahlian atau riwayat pengalaman.',
+        'Jasa Administrasi dan Pengurusan Dokumen': 'Contoh layanan administrasi dengan data pribadi disamarkan, bukti pengalaman, dan dokumen perizinan usaha apabila dipersyaratkan.',
+        'Jasa Penerjemah': 'Portofolio terjemahan, sertifikat keahlian bahasa, serta SK/Berita Acara Sumpah apabila menawarkan jasa penerjemah tersumpah.',
+
+        'Praktik Arsitek': 'Surat Tanda Registrasi Arsitek (STRA), lisensi arsitek apabila diwajibkan sesuai lingkup praktik, dan portofolio desain.',
+        'Jasa Desain Interior': 'Izin praktik apabila dipersyaratkan, portofolio desain interior/gambar kerja, dan bukti kompetensi atau pengalaman.',
+        'Jasa Drafter': 'STRA apabila dipersyaratkan sesuai layanan, portofolio gambar teknik/CAD, serta sertifikat pelatihan atau pengalaman drafter.',
+        'Jasa Perbaikan/Bengkel Teknik (Instalasi Listrik & Elektronik)': 'SIUP, Surat Keterangan Usaha dari Kelurahan, portofolio/perintah kerja servis, dan sertifikat keterampilan teknis jika ada.',
+
+        'Bimbingan Belajar': 'Contoh jadwal/silabus pembelajaran, bukti kualifikasi pengajar, dan izin lembaga apabila diwajibkan.',
+        'Kursus Bahasa': 'Sertifikat kemampuan bahasa/kualifikasi pengajar dan silabus kursus.',
+        'Kursus Musik': 'Sertifikat atau portofolio keterampilan musik serta silabus/jadwal pembelajaran.',
+        'Kursus Tari': 'Portofolio kegiatan tari dan bukti pelatihan/pengalaman instruktur.',
+
+        'Studio Foto dan Video': 'Portofolio produksi foto/video dan contoh katalog/layanan.',
+        'Jasa Fotografi/Videografi': 'Portofolio foto/video dan contoh hasil pekerjaan.',
+        'Jasa Dekorasi Acara': 'Portofolio dekorasi acara dan katalog paket jasa.',
+        'Jasa Penjahit/Atelier': 'Portofolio hasil jahitan dan katalog layanan/produk.',
+        'Jasa Grooming Hewan': 'Sertifikat pelatihan perawatan hewan jika ada dan contoh layanan.',
+        'Jasa Desain Grafis': 'Portofolio desain grafis, contoh file hasil kerja atau tautan portofolio, dan bukti kompetensi jika ada.',
+        'Jasa Florist/Dekorasi Bunga': 'SIUP dan katalog produk/jasa.',
+
+        'Konten Kreator/Digital Creator': 'Dasbor akun, tautan akun/kanal konten yang dikelola, tangkapan layar hasil karya, serta portofolio atau media kit.',
+        'Jasa Editing Video / Transfer Video': 'Portofolio video sebelum/sesudah editing dan contoh hasil akhir.',
+        'Jasa Live Streaming / Host Live Streaming': 'Portofolio/tangkapan layar siaran, tautan kanal, dan contoh layanan.',
+        'Studio Podcast': 'Tautan episode/portofolio dan katalog jasa produksi.',
+
+        'Barbershop': 'Izin Usaha, portofolio hasil potong, dan sertifikat kursus jika ada.',
+        'Makeup Artist': 'Portofolio hasil rias dengan izin model dan sertifikat pelatihan tata rias jika ada.',
+
+        'Jasa Laundry': 'Daftar layanan dan tarif.',
+        'Jasa Servis AC': 'Sertifikat pelatihan teknisi jika ada serta bukti pengalaman/hasil servis.'
+    };
+
+    function getPermitDocHelperHtml(profession) {
+        const p = (profession || '').trim();
+        if (p && PERMIT_DOC_REQUIREMENTS[p]) {
+            return '<div class="pki-permit-doc-helper-wrap">' +
+                '<div class="pki-permit-doc-title" style="font-weight:600; color:#334155; margin-bottom:2px;">Dokumen yang perlu diunggah:</div>' +
+                '<div class="pki-permit-doc-requirement" style="color:#475569; margin-bottom:4px; line-height:1.45;">' + PERMIT_DOC_REQUIREMENTS[p] + '</div>' +
+                '<div class="pki-permit-doc-format" style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div>' +
+                '</div>';
+        }
+        return '<div class="pki-permit-doc-helper-wrap">' +
+            '<div class="pki-permit-doc-prompt" style="color:#64748b; line-height:1.45; margin-bottom:3px;">Pilih Jenis Usaha Individu terlebih dahulu untuk melihat dokumen yang perlu diunggah.</div>' +
+            '<div class="pki-permit-doc-format" style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div>' +
+            '</div>';
+    }
+
+    window.PERMIT_DOC_REQUIREMENTS = PERMIT_DOC_REQUIREMENTS;
+    window.getPermitDocHelperHtml = getPermitDocHelperHtml;
+
+    function updatePermitDocHelper(profession) {
+        const helper = document.getElementById('helper_permit_document');
+        if (!helper) return;
+        helper.classList.remove('error');
+        helper.innerHTML = getPermitDocHelperHtml(profession);
+    }
+
     function initProfessionSelector() {
         const trigger = document.getElementById('pki_profession_trigger');
         const dropdown = document.getElementById('pki_profession_dropdown');
@@ -276,6 +351,13 @@
         const noResults = document.getElementById('pki_profession_no_results');
 
         if (!trigger || !dropdown) return;
+
+        // Initialize helper on load
+        if (hiddenInput && hiddenInput.value) {
+            updatePermitDocHelper(hiddenInput.value);
+        } else {
+            updatePermitDocHelper('');
+        }
 
         function openDropdown() {
             dropdown.style.display = 'block';
@@ -402,6 +484,7 @@
                 }
 
                 clearFieldError('profession');
+                updatePermitDocHelper(val);
                 closeDropdown();
                 trigger.focus();
             });
@@ -1342,7 +1425,12 @@
         if (container) container.classList.remove('has-error');
         if (helper) {
             helper.classList.remove('error');
-            helper.textContent = DEFAULT_HELPERS[fieldId] || '';
+            if (fieldId === 'permit_document') {
+                const curProf = document.getElementById('pki_profession')?.value || '';
+                updatePermitDocHelper(curProf);
+            } else {
+                helper.textContent = DEFAULT_HELPERS[fieldId] || '';
+            }
             if (fieldId === 'user_consent' || fieldId === 'npwp') {
                 helper.style.display = 'none';
             }
@@ -1621,8 +1709,8 @@
                     flagError('permit_document', 'Dokumen Perizinan Usaha wajib diunggah minimal 1 dokumen.', document.getElementById('pki_box_permit_document'));
                 } else if (permitFile) {
                     const permitExt = (permitFile.name.split('.').pop() || '').toLowerCase();
-                    if (!['pdf', 'docx'].includes(permitExt) || permitFile.size > 2 * 1024 * 1024) {
-                        flagError('permit_document', 'Format PDF, Docx. Ukuran Maksimal 2MB.', document.getElementById('pki_box_permit_document'));
+                    if (!['pdf', 'docx', 'jpg', 'jpeg'].includes(permitExt) || permitFile.size > 2 * 1024 * 1024) {
+                        flagError('permit_document', 'Format PDF/JPG, maksimal 2 MB per file.', document.getElementById('pki_box_permit_document'));
                     } else {
                         clearFieldError('permit_document');
                     }

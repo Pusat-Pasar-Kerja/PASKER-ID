@@ -498,7 +498,7 @@ if (file_exists($pkiCssPath)) {
                 Dokumen Perizinan Usaha <span class="req">*</span>
                 <span class="pki-tooltip" tabindex="0" role="tooltip">
                     <?php echo $infoIconSvg; ?>
-                    <span class="tooltip-popover">Unggah file yang mendukung validitas identitas atau kegiatan usaha Pemberi Kerja Individu.</span>
+                    <span class="tooltip-popover">Dokumen yang diunggah harus sesuai dengan Jenis Usaha Individu yang dipilih. Format PDF/JPG, maksimal 2 MB per file.</span>
                 </span>
             </label>
             <div class="pki-upload-box" id="pki_box_permit_document" onclick="pkiTriggerUpload('permit_document')">
@@ -518,9 +518,11 @@ if (file_exists($pkiCssPath)) {
                     <button type="button" class="pki-upload-btn" id="pki_btn_permit_document"><?php echo !empty($vPermitDoc) ? 'Ganti' : 'Pilih File'; ?></button>
                 </div>
             </div>
-            <input type="file" name="permit_document" id="pki_input_permit_document" accept=".pdf,.docx" style="display:none;" onchange="pkiHandleFileChange(this, 'permit_document')">
+            <input type="file" name="permit_document" id="pki_input_permit_document" accept=".pdf,.docx,.jpg,.jpeg" style="display:none;" onchange="pkiHandleFileChange(this, 'permit_document')">
             <input type="hidden" name="existing_permit_document" id="pki_existing_permit_document" value="<?php echo e($vPermitDoc); ?>">
-            <div class="pki-field-helper" id="helper_permit_document">Ukuran maksimum 2 MB • Format PDF, Docx</div>
+            <div class="pki-field-helper" id="helper_permit_document">
+                <?php echo function_exists('get_permit_document_helper_html') ? get_permit_document_helper_html($vProfession) : '<div class="pki-permit-doc-helper-wrap"><div class="pki-permit-doc-prompt" style="color:#64748b; line-height:1.45; margin-bottom:3px;">Pilih Jenis Usaha Individu terlebih dahulu untuk melihat dokumen yang perlu diunggah.</div><div class="pki-permit-doc-format" style="color:#64748b; font-size:11px;">Format PDF/JPG, maksimal 2 MB per file.</div></div>'; ?>
+            </div>
             <div class="pki-field-helper" id="helper_permit_document_size" style="<?php echo $vPermitDocSizeText !== '' ? '' : 'display:none;'; ?>">
                 <?php if ($vPermitDocSizeText !== ''): ?>
                     Ukuran file yang di upload: <?php echo e($vPermitDocSizeText); ?>
