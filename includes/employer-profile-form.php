@@ -561,7 +561,7 @@ if (file_exists($pkiCssPath)) {
             <div class="pki-field-helper" id="helper_workplace_photo">
                 <div class="pki-permit-doc-helper-wrap">
                     <div class="pki-permit-doc-title" style="font-weight:600; color:#334155; margin-bottom:2px;">Foto yang perlu diunggah:</div>
-                    <div class="pki-permit-doc-requirement" style="color:#475569; margin-bottom:4px; line-height:1.45;">Foto tempat usaha, lokasi kegiatan, dan/atau sarana pendukung usaha.</div>
+                    <div class="pki-permit-doc-requirement" style="color:#475569; margin-bottom:4px; line-height:1.45;">Foto tempat usaha, lokasi kegiatan, atau sarana pendukung usaha.</div>
                     <div class="pki-permit-doc-format" style="color:#64748b; font-size:11px;">Format PNG/JPG, maksimal 2 MB per file.</div>
                 </div>
             </div>
