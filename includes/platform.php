@@ -2000,12 +2000,29 @@ function reject_profile_change_request(int $requestId, string $reviewerName, str
 /**
  * Menghitung SLA Deadline Verifikasi (3 hari kalender) dan menghasilkan badge tampilan sesuai desain
  */
-function get_verification_deadline_info(?string $createdAt, string $status = 'PENDING', ?int $referenceNow = null, ?string $updatedAt = null): array
+/**
+ * Menghitung SLA Deadline Verifikasi (3 hari kalender) dan menghasilkan badge tampilan sesuai desain.
+ * Mendukung baik pendaftaran pertama kali maupun pengajuan Verifikasi Ulang Profil.
+ */
+function get_verification_deadline_info(?string $createdAt, string $status = 'PENDING', ?int $referenceNow = null, ?string $updatedAt = null, bool $isReverification = false): array
 {
-    $isResolved = in_array($status, ['APPROVED', 'REJECTED', 'ACTIVE_VERIFIED', 'FULL_DISABLED', 'Tayang', 'Ditolak', 'CANCELED'], true);
-    $isRevision = in_array($status, ['NEEDS_REVISION', 'REVISION', 'Perlu Direvisi', 'Perlu Revisi'], true);
+    if ($isReverification) {
+        // Pada Verifikasi Ulang Profil yang sedang diajukan (pending review),
+        // status di DB bisa berupa APPROVED (H-7) atau TRANSITION_LIMITED / FULL_DISABLED,
+        // namun SLA tetap berjalan aktif (belum resolved).
+        $isResolved = false;
+        $isRevision = in_array($status, ['NEEDS_REVISION', 'REVISION', 'Perlu Direvisi', 'Perlu Revisi'], true);
+        $baseDate = !empty($updatedAt) ? $updatedAt : $createdAt;
+    } else {
+        $isResolved = in_array($status, ['APPROVED', 'REJECTED', 'ACTIVE_VERIFIED', 'FULL_DISABLED', 'Tayang', 'Ditolak', 'CANCELED'], true);
+        $isRevision = in_array($status, ['NEEDS_REVISION', 'REVISION', 'Perlu Direvisi', 'Perlu Revisi'], true);
+        $baseDate = $createdAt;
+        if (!empty($updatedAt) && strtotime($updatedAt) > strtotime($createdAt)) {
+            $baseDate = $updatedAt;
+        }
+    }
 
-    if ($isResolved || $isRevision || empty($createdAt)) {
+    if ($isResolved || $isRevision || empty($baseDate)) {
         return [
             'status' => $isRevision ? 'PAUSED' : 'RESOLVED',
             'days_left' => null,
@@ -2018,14 +2035,12 @@ function get_verification_deadline_info(?string $createdAt, string $status = 'PE
     }
 
     $now = $referenceNow ?? time();
-    $baseDate = $createdAt;
-    if (!empty($updatedAt) && strtotime($updatedAt) > strtotime($createdAt)) {
-        $baseDate = $updatedAt;
-    }
     $createdTs = strtotime($baseDate);
     $deadlineTs = $createdTs + (3 * 86400); // 3 hari kalender (72 jam)
     $secondsLeft = $deadlineTs - $now;
     $hoursLeft = $secondsLeft / 3600;
+
+    $deadlineTitle = 'Batas SLA: ' . date('d M Y, H:i', $deadlineTs) . ' WIB';
 
     // Lewat dari 3 hari (SLA Terlampaui)
     if ($secondsLeft <= 0) {
@@ -2034,7 +2049,7 @@ function get_verification_deadline_info(?string $createdAt, string $status = 'PE
             'days_left' => 0,
             'is_overdue' => true,
             'deadline_time' => $deadlineTs,
-            'badge_html' => '<span style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-exclamation" style="color:#dc2626; font-size:11px;"></i> Segera Verifikasi</span>',
+            'badge_html' => '<span title="' . $deadlineTitle . '" style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-exclamation" style="color:#dc2626; font-size:11px;"></i> Segera Verifikasi</span>',
             'row_bg' => 'background:#fff1f2;',
             'row_style' => 'background:#fff1f2; border-bottom:1px solid #ffe4e6;',
         ];
@@ -2047,7 +2062,7 @@ function get_verification_deadline_info(?string $createdAt, string $status = 'PE
             'days_left' => 3,
             'is_overdue' => false,
             'deadline_time' => $deadlineTs,
-            'badge_html' => '<span style="background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-info" style="color:#0284c7; font-size:11px;"></i> 3 hari lagi</span>',
+            'badge_html' => '<span title="' . $deadlineTitle . '" style="background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-info" style="color:#0284c7; font-size:11px;"></i> 3 hari lagi</span>',
             'row_bg' => '',
             'row_style' => 'border-bottom:1px solid #f1f5f9;',
         ];
@@ -2058,7 +2073,7 @@ function get_verification_deadline_info(?string $createdAt, string $status = 'PE
             'days_left' => 2,
             'is_overdue' => false,
             'deadline_time' => $deadlineTs,
-            'badge_html' => '<span style="background:#ede9fe; color:#6366f1; border:1px solid #ddd6fe; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-info" style="color:#6366f1; font-size:11px;"></i> 2 hari lagi</span>',
+            'badge_html' => '<span title="' . $deadlineTitle . '" style="background:#ede9fe; color:#6366f1; border:1px solid #ddd6fe; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-info" style="color:#6366f1; font-size:11px;"></i> 2 hari lagi</span>',
             'row_bg' => '',
             'row_style' => 'border-bottom:1px solid #f1f5f9;',
         ];
@@ -2069,7 +2084,7 @@ function get_verification_deadline_info(?string $createdAt, string $status = 'PE
             'days_left' => 1,
             'is_overdue' => false,
             'deadline_time' => $deadlineTs,
-            'badge_html' => '<span style="background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-info" style="color:#7c3aed; font-size:11px;"></i> 1 hari lagi</span>',
+            'badge_html' => '<span title="' . $deadlineTitle . '" style="background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-circle-info" style="color:#7c3aed; font-size:11px;"></i> 1 hari lagi</span>',
             'row_bg' => '',
             'row_style' => 'border-bottom:1px solid #f1f5f9;',
         ];
@@ -2080,7 +2095,7 @@ function get_verification_deadline_info(?string $createdAt, string $status = 'PE
             'days_left' => 0,
             'is_overdue' => false,
             'deadline_time' => $deadlineTs,
-            'badge_html' => '<span style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-clock" style="color:#d97706; font-size:11px;"></i> 0 hari lagi</span>',
+            'badge_html' => '<span title="' . $deadlineTitle . '" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fa-solid fa-clock" style="color:#d97706; font-size:11px;"></i> 0 hari lagi</span>',
             'row_bg' => '',
             'row_style' => 'border-bottom:1px solid #f1f5f9;',
         ];

@@ -1403,29 +1403,85 @@ if ($view === 'verifikasi_job') {
 $unread = unread_notification_count((int) $user['id']);
 $notifications = user_notifications((int) $user['id']);
 
-// Trigger notifikasi bell jika ada pengajuan pemberi kerja yang belum diverifikasi dan melewati batas SLA 3 hari
+// Trigger notifikasi bell jika ada pengajuan pemberi kerja (baru maupun verifikasi ulang) yang belum diverifikasi dan melewati batas SLA 3 hari
+$totalOverdueCount = 0;
+$overdueInitialCount = 0;
+$overdueReverifCount = 0;
 try {
     $slaLimitDate = date('Y-m-d H:i:s', time() - (3 * 86400));
-    $stmtOverdue = db()->prepare('
+    
+    $dinasFilterSql = '';
+    $dinasFilterParams = [];
+    if ($user['role'] === 'admin_dinas' || (!empty($user['domicile_city_id']) && $user['role'] !== 'admin' && $user['role'] !== 'admin_pusat')) {
+        $adminDomicileCity = (string)($user['domicile_city_id'] ?? '');
+        if ($adminDomicileCity !== '') {
+            $dinasFilterSql = ' AND (ep.city LIKE ? OR ep.domicile_city_id = ? OR ep.domicile_city_id IS NULL OR ep.city IS NULL OR ep.city = "")';
+            $dinasFilterParams = ['%' . $adminDomicileCity . '%', $adminDomicileCity];
+        }
+    }
+
+    // 1. Pengajuan pertama kali yang overdue
+    $stmtOverdueInitial = db()->prepare('
         SELECT COUNT(*) 
         FROM employer_profiles ep 
         JOIN users u ON u.id = ep.user_id 
-        WHERE (
-            (ep.updated_at IS NOT NULL AND ep.updated_at != "" AND ep.updated_at <= ?)
-            OR ((ep.updated_at IS NULL OR ep.updated_at = "") AND u.created_at <= ?)
-        )
+        WHERE u.role = "employer"
+          AND (ep.extension_status IS NULL OR ep.extension_status != "REQUESTED")
+          AND (ep.extension_requested IS NULL OR ep.extension_requested = 0)
+          AND (ep.last_activated_at IS NULL OR ep.last_activated_at = "")
           AND (ep.verification_status NOT IN ("APPROVED", "REJECTED", "ACTIVE_VERIFIED", "FULL_DISABLED", "NEEDS_REVISION", "REVISION") OR ep.verification_status IS NULL)
+          AND (
+              (ep.updated_at IS NOT NULL AND ep.updated_at != "" AND ep.updated_at <= ?)
+              OR ((ep.updated_at IS NULL OR ep.updated_at = "") AND u.created_at <= ?)
+          )
+          ' . $dinasFilterSql . '
     ');
-    $stmtOverdue->execute([$slaLimitDate, $slaLimitDate]);
-    $overdueEmployerCount = (int)$stmtOverdue->fetchColumn();
+    $stmtOverdueInitial->execute(array_merge([$slaLimitDate, $slaLimitDate], $dinasFilterParams));
+    $overdueInitialCount = (int)$stmtOverdueInitial->fetchColumn();
 
-    if ($overdueEmployerCount > 0) {
+    // 2. Pengajuan Verifikasi Ulang Profil yang overdue (SLA 3 hari sejak diajukan verifikasi ulang / updated_at)
+    $stmtOverdueReverif = db()->prepare('
+        SELECT COUNT(*) 
+        FROM employer_profiles ep 
+        JOIN users u ON u.id = ep.user_id 
+        WHERE u.role = "employer"
+          AND (
+              ep.extension_status = "REQUESTED" 
+              OR ep.extension_requested = 1 
+              OR ep.verification_status = "REVERIFICATION_PENDING"
+              OR (ep.last_activated_at IS NOT NULL AND ep.verification_status = "PENDING")
+          )
+          AND (ep.verification_status NOT IN ("REJECTED") OR ep.verification_status IS NULL)
+          AND (
+              (ep.updated_at IS NOT NULL AND ep.updated_at != "" AND ep.updated_at <= ?)
+              OR ((ep.updated_at IS NULL OR ep.updated_at = "") AND u.created_at <= ?)
+          )
+          ' . $dinasFilterSql . '
+    ');
+    $stmtOverdueReverif->execute(array_merge([$slaLimitDate, $slaLimitDate], $dinasFilterParams));
+    $overdueReverifCount = (int)$stmtOverdueReverif->fetchColumn();
+
+    $totalOverdueCount = $overdueInitialCount + $overdueReverifCount;
+
+    if ($totalOverdueCount > 0) {
         $unread += 1;
+        
+        if ($overdueInitialCount > 0 && $overdueReverifCount > 0) {
+            $alertTitle = 'Peringatan SLA Verifikasi (' . $totalOverdueCount . ' Pengajuan)';
+            $alertMessage = 'Terdapat ' . $overdueInitialCount . ' verifikasi baru dan ' . $overdueReverifCount . ' verifikasi ulang profil yang belum diproses dan telah melewati batas SLA 3 hari. Segera lakukan verifikasi.';
+        } elseif ($overdueReverifCount > 0) {
+            $alertTitle = 'Peringatan SLA Verifikasi Ulang (' . $overdueReverifCount . ' Pengajuan)';
+            $alertMessage = 'Terdapat ' . $overdueReverifCount . ' pengajuan verifikasi ulang profil yang belum diproses dan telah melewati batas SLA 3 hari. Segera lakukan verifikasi.';
+        } else {
+            $alertTitle = 'Peringatan SLA Verifikasi (' . $overdueInitialCount . ' Pengajuan)';
+            $alertMessage = 'Terdapat ' . $overdueInitialCount . ' pengajuan verifikasi pemberi kerja baru yang belum diproses dan telah melewati batas SLA 3 hari. Segera lakukan verifikasi.';
+        }
+
         array_unshift($notifications, [
             'id' => 'sla_overdue_alert',
             'user_id' => $user['id'],
-            'title' => 'Peringatan SLA Verifikasi (' . $overdueEmployerCount . ' Pengajuan)',
-            'message' => 'Terdapat ' . $overdueEmployerCount . ' pengajuan verifikasi pemberi kerja yang belum diproses dan telah melewati batas SLA 3 hari. Segera lakukan verifikasi.',
+            'title' => $alertTitle,
+            'message' => $alertMessage,
             'type' => 'SLA_OVERDUE_ALERT',
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
@@ -4909,7 +4965,11 @@ document.addEventListener('click', function(e) {
                                     <?php endif; ?>
                                     Slug: <code><?php echo strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $empBrandTitle)); ?></code> &nbsp;|&nbsp;
                                     <strong><?php echo e($selectedEmployer['entity_type'] ?? 'Individual'); ?></strong> &nbsp;|&nbsp;
-                                    Didaftarkan: <?php echo date('d M Y, H:i', strtotime($selectedEmployer['created_at'])); ?> &nbsp;|&nbsp;
+                                    Didaftarkan: <?php echo date('d M Y, H:i', strtotime($selectedEmployer['created_at'])); ?>
+                                    <?php if ($isOnlineReverif && !empty($selectedEmployer['updated_at'])): ?>
+                                        &nbsp;|&nbsp; <span style="color:#0284c7; font-weight:600;"><i class="fa-solid fa-arrows-rotate"></i> Diajukan Verifikasi Ulang: <?php echo date('d M Y, H:i', strtotime($selectedEmployer['updated_at'])); ?></span>
+                                    <?php endif; ?>
+                                    &nbsp;|&nbsp;
                                     <?php echo e($selectedEmployer['city'] ?: 'Dalung, Kuta Utara, Kab. Badung, Bali'); ?>
                                 </div>
                             </div>
@@ -5222,11 +5282,14 @@ document.addEventListener('click', function(e) {
                                         <div style="color:#64748b; margin-bottom:4px; font-weight:500; display:flex; align-items:center; gap:6px;">
                                             <i class="fa-regular fa-clock" style="color:#e11d48; font-size:12px;"></i> SLA Verifikasi
                                         </div>
-                                        <div style="font-weight:700; color:#0f172a;">
+                                        <div style="font-weight:700; color:#0f172a; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                                             <?php
-                                            $selDeadlineInfo = get_verification_deadline_info($selectedEmployer['created_at'] ?? null, $selectedEmployer['verification_status'] ?? 'PENDING', null, $selectedEmployer['updated_at'] ?? null);
+                                            $selDeadlineInfo = get_verification_deadline_info($selectedEmployer['created_at'] ?? null, $selectedEmployer['verification_status'] ?? 'PENDING', null, $selectedEmployer['updated_at'] ?? null, $isOnlineReverif);
                                             echo $selDeadlineInfo['badge_html'];
                                             ?>
+                                            <?php if (!empty($selDeadlineInfo['deadline_time'])): ?>
+                                                <span style="font-size:11.5px; font-weight:500; color:#64748b;">(s/d <?php echo date('d M Y, H:i', $selDeadlineInfo['deadline_time']); ?> WIB)</span>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                     <div style="grid-column: span 2;">
@@ -6779,6 +6842,21 @@ document.addEventListener('click', function(e) {
                             </div>
                         </div>
 
+                        <?php if (!empty($totalOverdueCount) && (int)$totalOverdueCount > 0 && ($tab === 'process' || $tab === 'all')): ?>
+                            <div style="background:#fff1f2; border:1px solid #fecdd3; border-left:4px solid #e11d48; border-radius:12px; padding:12px 18px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; box-shadow:0 1px 3px rgba(225,29,72,0.06);">
+                                <div style="display:flex; align-items:center; gap:10px; color:#9f1239; font-size:13px;">
+                                    <i class="fa-solid fa-triangle-exclamation" style="font-size:16px; color:#e11d48;"></i>
+                                    <span>
+                                        <strong>Pemberitahuan SLA Verifikasi:</strong> Terdapat <strong><?php echo (int)$totalOverdueCount; ?></strong> pengajuan
+                                        <?php if (!empty($overdueReverifCount) && (int)$overdueReverifCount > 0): ?>
+                                            (termasuk <strong><?php echo (int)$overdueReverifCount; ?></strong> Verifikasi Ulang Profil)
+                                        <?php endif; ?>
+                                        yang telah melewati batas waktu SLA 3 hari kalender. Baris bertanda <span style="background:#fee2e2; color:#dc2626; border-radius:4px; padding:1px 6px; font-weight:700; font-size:11px;">Segera Verifikasi</span> memerlukan pemeriksaan segera.
+                                    </span>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
                         <!-- FILTER MAIN FORM EMP -->
                         <form method="get" action="admin.php" id="filterMainFormEmp" style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px; width:100%; position:relative;">
                             <input type="hidden" name="view" value="verifikasi_employer">
@@ -6991,7 +7069,23 @@ document.addEventListener('click', function(e) {
                                     <?php foreach ($showingEmployers as $vEmp):
                                         $vBrand = !empty($vEmp['brand_name']) ? $vEmp['brand_name'] : ($vEmp['owner_name'] ?: $vEmp['name']);
                                         $vOwner = !empty($vEmp['brand_name']) ? ($vEmp['owner_name'] ?: $vEmp['name']) : '';
-                                        $vDeadline = get_verification_deadline_info($vEmp['created_at'] ?? null, $vEmp['verification_status'] ?? 'PENDING', null, $vEmp['updated_at'] ?? null);
+                                        $isRowOnlineReverif = ($vEmp['extension_status'] === 'REQUESTED' 
+                                            || ($vEmp['extension_requested'] ?? 0) == 1 
+                                            || ($vEmp['verification_status'] ?? '') === 'REVERIFICATION_PENDING'
+                                            || (!empty($vEmp['last_activated_at']) && ($vEmp['verification_status'] ?? '') === 'PENDING'));
+
+                                        $rowActiveUntilTime = !empty($vEmp['active_until']) ? strtotime($vEmp['active_until']) : null;
+                                        $isRowOfflineReverif = !$isRowOnlineReverif && !empty($vEmp['last_activated_at']) && (
+                                            in_array($vEmp['verification_status'] ?? '', ['TRANSITION_LIMITED', 'FULL_DISABLED'], true)
+                                            || ($rowActiveUntilTime !== null && $rowActiveUntilTime <= (time() + 7 * 86400))
+                                        );
+                                        $vDeadline = get_verification_deadline_info(
+                                            $vEmp['created_at'] ?? null, 
+                                            $vEmp['verification_status'] ?? 'PENDING', 
+                                            null, 
+                                            $vEmp['updated_at'] ?? null, 
+                                            $isRowOnlineReverif
+                                        );
                                     ?>
                                         <tr style="<?php echo $vDeadline['row_style']; ?>">
                                             <td style="padding:14px 16px;">
@@ -7015,18 +7109,6 @@ document.addEventListener('click', function(e) {
                                             <td style="padding:14px 16px; color:#334155; font-size:13px;"><?php echo e($vEmp['city'] ?: '-'); ?></td>
                                             <td style="padding:14px 16px; color:#334155; font-size:13px; white-space:nowrap;"><?php echo e($vEmp['phone'] ?: '0'); ?></td>
                                             <td style="padding:14px 16px; font-size:13px; white-space:nowrap;">
-                                                <?php
-                                                    $isRowOnlineReverif = ($vEmp['extension_status'] === 'REQUESTED' 
-                                                        || ($vEmp['extension_requested'] ?? 0) == 1 
-                                                        || ($vEmp['verification_status'] ?? '') === 'REVERIFICATION_PENDING'
-                                                        || (!empty($vEmp['last_activated_at']) && ($vEmp['verification_status'] ?? '') === 'PENDING'));
-
-                                                    $rowActiveUntilTime = !empty($vEmp['active_until']) ? strtotime($vEmp['active_until']) : null;
-                                                    $isRowOfflineReverif = !$isRowOnlineReverif && !empty($vEmp['last_activated_at']) && (
-                                                        in_array($vEmp['verification_status'] ?? '', ['TRANSITION_LIMITED', 'FULL_DISABLED'], true)
-                                                        || ($rowActiveUntilTime !== null && $rowActiveUntilTime <= (time() + 7 * 86400))
-                                                    );
-                                                ?>
                                                 <?php if ($vEmp['verification_status'] === 'APPROVED'): ?>
                                                     <span class="pill-badge verified" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;">● Terverifikasi</span>
                                                 <?php elseif ($vEmp['verification_status'] === 'PENDING'): ?>
@@ -7060,7 +7142,14 @@ document.addEventListener('click', function(e) {
                                                     </div>
                                                 <?php endif; ?>
                                             </td>
-                                            <td style="padding:14px 16px; font-size:13px; white-space:nowrap;"><?php echo $vDeadline['badge_html']; ?></td>
+                                            <td style="padding:14px 16px; font-size:13px; white-space:nowrap;">
+                                                <?php echo $vDeadline['badge_html']; ?>
+                                                <?php if (!empty($vDeadline['is_overdue'])): ?>
+                                                    <div style="font-size:10.5px; color:#dc2626; font-weight:700; margin-top:2px;">
+                                                        Lewat batas SLA
+                                                    </div>
+                                                <?php endif; ?>
+                                            </td>
                                             <td style="padding:14px 16px; font-size:13px;">
                                                 <?php if (!empty($vEmp['assigned_to'])): ?>
                                                     <span style="font-weight:600; color:#0284c7;"><?php echo e($vEmp['assigned_to']); ?></span>
