@@ -669,7 +669,7 @@ if (file_exists($pkiCssPath)) {
                                         Foto Bukti Tempat Usaha / Lokasi <span class="req">*</span>
                                         <span class="pki-tooltip" tabindex="0" role="tooltip">
                                             <?php echo $infoIconSvg; ?>
-                                            <span class="tooltip-popover">Unggah foto bagian depan rumah, tempat usaha, atau lokasi kegiatan yang sesuai dengan alamat tempat usaha/kegiatan.</span>
+                                            <span class="tooltip-popover">Unggah foto yang menunjukkan kondisi tempat usaha, lokasi kegiatan, dan/atau sarana pendukung usaha sebagai bukti aktivitas usaha.</span>
                                         </span>
                                     </label>
                                     <div class="pki-upload-box" id="pcr_box_workplace_photo" onclick="pcrTriggerUpload('pcr_workplace_photo')">
@@ -691,7 +691,13 @@ if (file_exists($pkiCssPath)) {
                                     </div>
                                     <input type="file" name="pcr_workplace_photo" id="pcr_input_workplace_photo" accept=".png,.jpg,.jpeg" style="display:none;" onchange="pcrHandleFileChange(this, 'pcr_workplace_photo')">
                                     <input type="hidden" name="pcr_existing_workplace_photo" id="pcr_existing_workplace_photo" value="<?php echo e($vPhoto); ?>">
-                                    <div class="pki-field-helper">Ukuran maksimum 2 MB • Format PNG, JPG</div>
+                                    <div class="pki-field-helper" id="pcr_helper_workplace_photo">
+                                        <div class="pki-permit-doc-helper-wrap">
+                                            <div class="pki-permit-doc-title" style="font-weight:600; color:#334155; margin-bottom:2px;">Foto yang perlu diunggah:</div>
+                                            <div class="pki-permit-doc-requirement" style="color:#475569; margin-bottom:4px; line-height:1.45;">Foto tempat usaha, lokasi kegiatan, dan/atau sarana pendukung usaha.</div>
+                                            <div class="pki-permit-doc-format" style="color:#64748b; font-size:11px;">Format PNG/JPG, maksimal 2 MB per file.</div>
+                                        </div>
+                                    </div>
                                     <div class="pki-field-helper" id="pcr_helper_workplace_photo_size" style="<?php echo $vPhotoSizeText !== '' ? '' : 'display:none;'; ?>">
                                         <?php if ($vPhotoSizeText !== ''): ?>
                                             Ukuran file saat ini: <?php echo e($vPhotoSizeText); ?>
