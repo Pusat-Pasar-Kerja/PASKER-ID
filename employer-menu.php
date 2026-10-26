@@ -1,9 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
 
-if (current_user()) {
-    redirect(role_home(current_user()['role'] ?? ''));
-}
+$user = current_user();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -357,12 +355,21 @@ if (current_user()) {
             </a>
         </div>
         <div class="top-nav-right">
-            <a href="admin.php" class="nav-admin-link" title="Dasbor Pengelola">
-                <span>Dasbor Pengelola</span>
-                <div class="admin-avatar">
-                    <i class="fa-solid fa-user-tie"></i>
-                </div>
-            </a>
+            <?php if ($user && !in_array($user['role'] ?? '', ['admin', 'admin_dinas', 'admin_pusat'], true)): ?>
+                <a href="<?php echo e(role_home($user['role'] ?? '')); ?>" class="nav-admin-link" title="Dasbor Saya">
+                    <span>Dasbor (<?php echo e($user['name'] ?? 'Saya'); ?>)</span>
+                    <div class="admin-avatar">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                </a>
+            <?php else: ?>
+                <a href="admin.php" class="nav-admin-link" title="Dasbor Pengelola">
+                    <span>Dasbor Pengelola</span>
+                    <div class="admin-avatar">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </div>
+                </a>
+            <?php endif; ?>
         </div>
     </header>
 

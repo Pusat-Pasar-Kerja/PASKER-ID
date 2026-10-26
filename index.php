@@ -1,11 +1,12 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
 
-$user = current_user();
-
-if ($user) {
-    redirect(role_home($user['role'] ?? ''));
+if (isset($_GET['logout'])) {
+    logout_user();
+    redirect('index.php');
 }
+
+$user = current_user();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -309,10 +310,23 @@ if ($user) {
 
         <!-- RIGHT CONTENT SIDE (ORIGINAL EMPLOYER FLOW & LOGIN ACTION) -->
         <div class="portal-content-side">
-            <a class="quick-login-link" href="login.php">
-                <i class="fa-solid fa-right-to-bracket"></i>
-                Login
-            </a>
+            <?php if ($user): ?>
+                <div class="user-quick-bar" style="position: absolute; top: 24px; right: 24px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+                    <a class="quick-login-link" style="position: static;" href="<?php echo e(role_home($user['role'] ?? '')); ?>" title="Buka Dasbor">
+                        <i class="fa-solid fa-gauge-high"></i>
+                        Dasbor (<?php echo e($user['name'] ?? 'Akun'); ?>)
+                    </a>
+                    <a class="quick-login-link" style="position: static; background: #fee2e2; color: #dc2626;" href="logout.php" title="Keluar dari sesi ini">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        Keluar
+                    </a>
+                </div>
+            <?php else: ?>
+                <a class="quick-login-link" href="login.php">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    Login
+                </a>
+            <?php endif; ?>
 
             <div class="portal-header">
                 <h2>Daftar Sebagai</h2>
@@ -330,10 +344,17 @@ if ($user) {
                 <i class="fa-solid fa-chevron-right action-arrow"></i>
             </a>
 
+            <?php if ($user): ?>
+            <div class="login-note-box">
+                <i class="fa-solid fa-circle-check" style="color:#16a34a; margin-right:6px;"></i>
+                Saat ini Anda login sebagai <strong><?php echo e($user['name'] ?? 'Pengguna'); ?></strong>. Ingin beralih akun simulasi? <a href="login.php?switch=1" style="color:#0284c7; font-weight:700; text-decoration:underline;">Ganti Akun</a> atau <a href="logout.php" style="color:#dc2626; font-weight:700; text-decoration:underline;">Keluar</a>.
+            </div>
+            <?php else: ?>
             <div class="login-note-box">
                 <i class="fa-solid fa-shield-halved" style="color:#0284c7; margin-right:6px;"></i>
                 Sudah memiliki Akun SIAPkerja? Klik tombol <strong>Login</strong> di sudut kanan atas untuk langsung masuk.
             </div>
+            <?php endif; ?>
         </div>
     </div>
 </body>
