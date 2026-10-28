@@ -128,7 +128,7 @@ $professionGroups = function_exists('individual_business_types') ? individual_bu
         'Jasa Live Streaming / Host Live Streaming', 'Studio Podcast',
     ],
     'Kecantikan & Perawatan Pribadi' => [
-        'Barbershop', 'Makeup Artist',
+        'Makeup Artist',
     ],
     'Jasa Rumah Tangga, Pemeliharaan & Perbaikan' => [
         'Jasa Laundry', 'Jasa Servis AC',

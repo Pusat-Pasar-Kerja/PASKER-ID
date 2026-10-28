@@ -453,7 +453,6 @@ function individual_business_types(): array
             'Studio Podcast',
         ],
         'Kecantikan & Perawatan Pribadi' => [
-            'Barbershop',
             'Makeup Artist',
         ],
         'Jasa Rumah Tangga, Pemeliharaan & Perbaikan' => [
@@ -508,7 +507,6 @@ function individual_business_permit_requirements(): array
         'Jasa Live Streaming / Host Live Streaming' => 'Portofolio/tangkapan layar siaran, tautan kanal, dan contoh layanan.',
         'Studio Podcast' => 'Tautan episode/portofolio dan katalog jasa produksi.',
 
-        'Barbershop' => 'Izin Usaha, portofolio hasil potong, dan sertifikat kursus jika ada.',
         'Makeup Artist' => 'Portofolio hasil rias dengan izin model dan sertifikat pelatihan tata rias jika ada.',
 
         'Jasa Laundry' => 'Daftar layanan dan tarif.',

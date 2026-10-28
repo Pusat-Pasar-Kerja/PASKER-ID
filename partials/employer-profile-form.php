@@ -265,7 +265,6 @@ if (file_exists($pkiCssPath)) {
                             'Studio Podcast',
                         ],
                         'Kecantikan & Perawatan Pribadi' => [
-                            'Barbershop',
                             'Makeup Artist',
                         ],
                         'Jasa Rumah Tangga, Pemeliharaan & Perbaikan' => [

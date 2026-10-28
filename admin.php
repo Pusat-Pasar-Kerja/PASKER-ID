@@ -3705,7 +3705,7 @@ document.addEventListener('click', function(e) {
             'Pendidikan & Pelatihan' => ['Bimbingan Belajar', 'Kursus Bahasa', 'Kursus Musik', 'Kursus Tari'],
             'Jasa Acara, Kreatif & Hewan Peliharaan' => ['Studio Foto dan Video', 'Jasa Fotografi/Videografi', 'Jasa Dekorasi Acara', 'Jasa Penjahit/Atelier', 'Jasa Grooming Hewan', 'Jasa Desain Grafis', 'Jasa Florist/Dekorasi Bunga'],
             'Digital, Media & Konten' => ['Konten Kreator/Digital Creator', 'Jasa Editing Video / Transfer Video', 'Jasa Live Streaming / Host Live Streaming', 'Studio Podcast'],
-            'Kecantikan & Perawatan Pribadi' => ['Barbershop', 'Makeup Artist'],
+            'Kecantikan & Perawatan Pribadi' => ['Makeup Artist'],
             'Jasa Rumah Tangga, Pemeliharaan & Perbaikan' => ['Jasa Laundry', 'Jasa Servis AC']
         ];
         $flatProfessions = [];
