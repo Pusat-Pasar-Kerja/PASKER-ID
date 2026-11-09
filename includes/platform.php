@@ -769,15 +769,9 @@ function render_notif_dropdown(array $notifications, int $unread, string $verSta
             $isConsentTitle = (stripos($title, 'Persetujuan') !== false || stripos($title, 'Consent') !== false);
             // Hanya izinkan modal-user-consent jika manualStatus === 'CONSENT_PENDING' dan belum terverifikasi
             $canOpenConsent = ($isConsentTitle && $manualStatus === 'CONSENT_PENDING' && !$isVerified);
-            $isProfileChangeTitle = (stripos($title, 'Perubahan Profil') !== false || ($row['type'] ?? '') === 'PROFILE_CHANGE_SUBMITTED');
-            $isProfileTitle = (stripos($title, 'Verifikasi Ulang') !== false || stripos($title, 'Perbaikan Profil') !== false || stripos($title, 'Profil Ditolak') !== false || stripos($title, 'Hak Akses Tidak Aktif') !== false);
 
             if ($canOpenConsent) {
                 $modalAttr = ' data-open-modal="modal-user-consent" style="cursor:pointer;"';
-            } elseif ($isProfileChangeTitle) {
-                $modalAttr = ' data-open-modal="modal-profile-change-request" style="cursor:pointer;"';
-            } elseif ($isProfileTitle || in_array($verStatus, ['INACTIVE_REVERIFICATION_REQUIRED', 'NEEDS_REVISION', 'REJECTED'], true)) {
-                $modalAttr = ' data-open-modal="modal-employer-profile" style="cursor:pointer;"';
             } else {
                 $modalAttr = '';
             }
@@ -785,6 +779,7 @@ function render_notif_dropdown(array $notifications, int $unread, string $verSta
             // Custom icon and styling based on notification type / title
             $iconHtml = '';
             $extraStyle = '';
+            $isProfileChangeTitle = (stripos($title, 'Perubahan Profil') !== false || ($row['type'] ?? '') === 'PROFILE_CHANGE_SUBMITTED');
             $isSlaOverdue = (($row['type'] ?? '') === 'SLA_OVERDUE_ALERT' || stripos($title, 'SLA Verifikasi') !== false);
             if ($isSlaOverdue) {
                 $iconHtml = '<i class="fa-solid fa-triangle-exclamation" style="color:#dc2626; font-size:12px; margin-right:4px;"></i> ';
