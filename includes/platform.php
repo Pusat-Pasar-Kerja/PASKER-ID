@@ -235,7 +235,57 @@ function job_revision_quick_tags(): array
 
 function job_rich_html(?string $html): string
 {
-    $clean = strip_tags((string) $html, '<p><br><b><strong><i><em><u><s><ul><ol><li><h3><h4><a><span>');
+    if ($html === null || trim($html) === '') {
+        return '';
+    }
+
+    $raw = trim($html);
+
+    // If string was stored escaped (starts with &lt;), decode it
+    if (str_starts_with($raw, '&lt;') && str_contains($raw, '&gt;')) {
+        $raw = html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    // 1. If it's pure plain text (no HTML tags at all)
+    if (strip_tags($raw) === $raw) {
+        return nl2br(htmlspecialchars($raw, ENT_QUOTES, 'UTF-8'));
+    }
+
+    // 2. Remove comments (e.g. <!--TgQPHd|||[]-->)
+    $clean = preg_replace('/<!--.*?-->/s', '', $raw);
+
+    // 3. Remove dangerous tags and their content
+    $clean = preg_replace('/<(script|style|iframe|object|embed|applet|svg|canvas|form|button|input|select|textarea)[^>]*>.*?<\/\1>/si', '', $clean);
+
+    // 4. Unwrap structural wrappers (div, span, header, footer, section, article)
+    $clean = preg_replace('/<\/?(div|span|section|article|header|footer|aside|nav)[^>]*>/i', '', $clean);
+
+    // 5. Allow only a safe whitelist of tags
+    $allowedTags = '<p><br><b><strong><i><em><u><s><ul><ol><li><h3><h4><a>';
+    $clean = strip_tags($clean, $allowedTags);
+
+    // 6. Strip all attributes from tags except safe href on <a>
+    $clean = preg_replace_callback('/<([a-z0-9]+)([^>]*)>/i', function ($matches) {
+        $tag = strtolower($matches[1]);
+        $attrStr = $matches[2];
+
+        if ($tag === 'a') {
+            if (preg_match('/href=([\'"])(https?:\/\/[^\'"]+|mailto:[^\'"]+)\1/i', $attrStr, $hrefMatches)) {
+                $safeHref = htmlspecialchars($hrefMatches[2], ENT_QUOTES, 'UTF-8');
+                return '<a href="' . $safeHref . '" target="_blank" rel="noopener noreferrer" style="color:#0284c7; text-decoration:underline;">';
+            }
+            return '<span>'; // neutralized
+        }
+
+        return '<' . $tag . '>';
+    }, $clean);
+
+    // Clean up any remaining close tags for neutralized <a>
+    $clean = str_replace('</a>', '</span>', $clean);
+
+    // 7. Remove empty tags (e.g. <p></p>, <li></li>, <b></b>)
+    $clean = preg_replace('/<([a-z0-9]+)>\s*<\/\1>/i', '', $clean);
+
     return trim($clean);
 }
 

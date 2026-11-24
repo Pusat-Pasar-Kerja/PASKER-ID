@@ -917,6 +917,46 @@ function initRichEditors(root) {
 
 
 
+        area.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const clipboardData = e.clipboardData || window.clipboardData;
+            let htmlData = clipboardData ? clipboardData.getData('text/html') : '';
+            if (htmlData) {
+                // Strip comments
+                htmlData = htmlData.replace(/<!--.*?-->/gs, '');
+                // Strip scripts and styles
+                htmlData = htmlData.replace(/<(script|style|iframe|object|embed)[^>]*>.*?<\/\1>/gis, '');
+                // Unwrap structural wrappers
+                htmlData = htmlData.replace(/<\/?(div|span|section|article|header|footer)[^>]*>/gi, '');
+                // Strip all attributes from allowed tags except safe href on a
+                htmlData = htmlData.replace(/<([a-z0-9]+)([^>]*)>/gi, (match, tag, attrs) => {
+                    tag = tag.toLowerCase();
+                    if (!['p', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'ul', 'ol', 'li', 'h3', 'h4', 'a'].includes(tag)) {
+                        return '';
+                    }
+                    if (tag === 'a') {
+                        const hrefMatch = attrs.match(/href=(['"])(https?:\/\/[^'"]+|mailto:[^'"]+)\1/i);
+                        return hrefMatch ? `<a href="${hrefMatch[2]}" target="_blank" rel="noopener noreferrer">` : '<span>';
+                    }
+                    return `<${tag}>`;
+                });
+                htmlData = htmlData.replace(/<\/([a-z0-9]+)>/gi, (match, tag) => {
+                    tag = tag.toLowerCase();
+                    if (!['p', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'ul', 'ol', 'li', 'h3', 'h4', 'a'].includes(tag)) {
+                        return '';
+                    }
+                    return `</${tag}>`;
+                });
+                // Remove empty tags
+                htmlData = htmlData.replace(/<([a-z0-9]+)>\s*<\/\1>/gi, '');
+                document.execCommand('insertHTML', false, htmlData.trim());
+            } else {
+                const plainText = clipboardData ? clipboardData.getData('text/plain') : '';
+                document.execCommand('insertText', false, plainText);
+            }
+            sync();
+        });
+
         area.addEventListener('input', sync);
         area.addEventListener('blur', sync);
     });

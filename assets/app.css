@@ -1473,6 +1473,23 @@ body {
     margin: 0 0 10px;
 }
 
+.job-review-prose ul {
+    margin: 6px 0 12px;
+    padding-left: 20px;
+    list-style-type: disc;
+}
+
+.job-review-prose ol {
+    margin: 6px 0 12px;
+    padding-left: 20px;
+    list-style-type: decimal;
+}
+
+.job-review-prose li {
+    margin-bottom: 6px;
+    line-height: 1.5;
+}
+
 .job-review-empty {
     margin: 0;
     color: #94a3b8;

@@ -1050,7 +1050,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $minEducation = trim($_POST['min_education'] ?? $_POST['education_required'] ?? '');
         $minExperience = trim($_POST['min_experience'] ?? $_POST['experience_required'] ?? '');
         $quota = (int)($_POST['quota'] ?? 1);
-        $description = trim($_POST['job_description'] ?? $_POST['description'] ?? '');
+        $description = job_rich_html(trim($_POST['job_description'] ?? $_POST['description'] ?? ''));
 
         $salaryMin = isset($_POST['salary_min']) && $_POST['salary_min'] !== '' ? (int)preg_replace('/[^0-9]/', '', (string)$_POST['salary_min']) : null;
         $salaryMax = isset($_POST['salary_max']) && $_POST['salary_max'] !== '' ? (int)preg_replace('/[^0-9]/', '', (string)$_POST['salary_max']) : null;
@@ -1079,7 +1079,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'marital_statuses' => $maritalStatuses,
             'age_min' => isset($_POST['age_min']) && $_POST['age_min'] !== '' ? (int)$_POST['age_min'] : 18,
             'age_max' => isset($_POST['age_max']) && $_POST['age_max'] !== '' ? (int)$_POST['age_max'] : 45,
-            'special_requirements' => trim($_POST['special_requirements'] ?? ''),
+            'special_requirements' => job_rich_html(trim($_POST['special_requirements'] ?? '')),
             'skills' => $skills,
             'contacts' => $contacts,
         ];

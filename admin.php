@@ -8466,7 +8466,7 @@ document.addEventListener('click', function(e) {
                         <!-- DESKRIPSI -->
                         <div style="margin-bottom:20px;">
                             <div style="font-size:13px; font-weight:700; color:#0f172a; margin-bottom:6px;">Deskripsi</div>
-                            <div style="font-size:13px; color:#334155; line-height:1.6;"><?php echo nl2br(e($selectedJob['description'])); ?></div>
+                            <div style="font-size:13px; color:#334155; line-height:1.6;" class="job-review-prose"><?php echo job_rich_html($selectedJob['description']); ?></div>
                         </div>
 
                         <!-- PERSYARATAN KHUSUS -->
@@ -8476,7 +8476,7 @@ document.addEventListener('click', function(e) {
                         <?php if ($reqText !== ''): ?>
                         <div style="margin-bottom:20px;">
                             <div style="font-size:13px; font-weight:700; color:#0f172a; margin-bottom:6px;">Persyaratan Khusus</div>
-                            <div style="font-size:13px; color:#334155; line-height:1.6;"><?php echo nl2br(e($reqText)); ?></div>
+                            <div style="font-size:13px; color:#334155; line-height:1.6;" class="job-review-prose"><?php echo job_rich_html($reqText); ?></div>
                         </div>
                         <?php endif; ?>
 
